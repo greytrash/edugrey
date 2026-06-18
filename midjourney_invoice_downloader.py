@@ -8,7 +8,7 @@ destino indicada.
 from __future__ import annotations
 
 import argparse
-import os
+import logging
 import re
 import sys
 import time
@@ -17,7 +17,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterable
 
-from playwright.sync_api import Page, sync_playwright
+from playwright.sync_api import Error as PlaywrightError, Page, sync_playwright
+
+log = logging.getLogger(__name__)
 
 
 # ---------- Utilidades de fechas -------------------------------------------------
@@ -103,12 +105,16 @@ def filas_objetivo(
 ) -> list[ObjetivoDescarga]:
     rows = page.locator("table tr, [role='row']")
     total_rows = rows.count()
-    print(f"Detectadas {total_rows} filas; filtrando por fecha...")
+    log.info("Detectadas %d filas; filtrando por fecha...", total_rows)
 
     objetivos: list[ObjetivoDescarga] = []
     for i in range(total_rows):
         row = rows.nth(i)
-        text = row.inner_text()
+        try:
+            text = row.inner_text()
+        except PlaywrightError:
+            log.warning("No se pudo leer la fila %d (elemento obsoleto). Saltando.", i)
+            continue
         fecha = parse_fecha(text or "")
         if not fecha or not (fecha_min <= fecha <= fecha_max):
             continue
@@ -123,7 +129,7 @@ def filas_objetivo(
             link = row.locator("a")
         if link.count() > 0:
             objetivos.append(ObjetivoDescarga(fecha=fecha, enlace=link.first))
-            print(f"✓ Seleccionada fila {i} → {fecha.strftime('%Y-%m-%d')}")
+            log.info("Seleccionada fila %d -> %s", i, fecha.strftime("%Y-%m-%d"))
 
     return objetivos
 
@@ -134,40 +140,72 @@ def descargar_facturas(
     carpeta_destino: Path,
     esperar_descarga: float,
     sobrescribir: bool,
-):
-    carpeta_destino.mkdir(parents=True, exist_ok=True)
+) -> tuple[int, int]:
+    """Descarga facturas y devuelve ``(exitosas, fallidas)``."""
+    try:
+        carpeta_destino.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        log.error("No se pudo crear la carpeta %s: %s", carpeta_destino, exc)
+        raise
+
+    exitosas = 0
+    fallidas = 0
 
     for objetivo in objetivos:
-        with page.expect_popup() as pop_info:
-            objetivo.enlace.click()
-        factura_page = pop_info.value
-        factura_page.wait_for_load_state("domcontentloaded")
-        time.sleep(esperar_descarga)
+        factura_page = None
+        try:
+            with page.expect_popup() as pop_info:
+                objetivo.enlace.click()
+            factura_page = pop_info.value
+            factura_page.wait_for_load_state("domcontentloaded")
+            time.sleep(esperar_descarga)
 
-        boton = factura_page.locator(
-            "a:has-text('Descargar factura'), button:has-text('Descargar factura'), "
-            "a:has-text('Download invoice'), button:has-text('Download invoice')"
-        )
-        if boton.count() == 0:
-            print(
-                f"⚠️ No veo el botón de descarga en {objetivo.fecha:%Y-%m-%d}. Descárgala manualmente."
+            boton = factura_page.locator(
+                "a:has-text('Descargar factura'), button:has-text('Descargar factura'), "
+                "a:has-text('Download invoice'), button:has-text('Download invoice')"
             )
-            factura_page.close()
-            continue
+            if boton.count() == 0:
+                log.warning(
+                    "No se encontro boton de descarga en %s. Descargala manualmente.",
+                    objetivo.fecha.strftime("%Y-%m-%d"),
+                )
+                fallidas += 1
+                continue
 
-        destino = carpeta_destino / f"Midjourney_{objetivo.fecha:%Y-%m-%d}.pdf"
-        if destino.exists() and not sobrescribir:
-            print(f"➡️ Ya existe {destino}. Saltando descarga.")
-            factura_page.close()
-            continue
+            destino = carpeta_destino / f"Midjourney_{objetivo.fecha:%Y-%m-%d}.pdf"
+            if destino.exists() and not sobrescribir:
+                log.info("Ya existe %s. Saltando descarga.", destino)
+                continue
 
-        with factura_page.expect_download() as download_info:
-            boton.first.click()
-        descarga = download_info.value
-        descarga.save_as(destino)
-        print(f"⬇️ Guardado: {destino}")
+            with factura_page.expect_download() as download_info:
+                boton.first.click()
+            descarga = download_info.value
+            descarga.save_as(destino)
+            log.info("Guardado: %s", destino)
+            exitosas += 1
 
-        factura_page.close()
+        except PlaywrightError as exc:
+            log.error(
+                "Error de Playwright al procesar factura %s: %s",
+                objetivo.fecha.strftime("%Y-%m-%d"),
+                exc,
+            )
+            fallidas += 1
+        except OSError as exc:
+            log.error(
+                "Error de E/S al guardar factura %s: %s",
+                objetivo.fecha.strftime("%Y-%m-%d"),
+                exc,
+            )
+            fallidas += 1
+        finally:
+            if factura_page is not None:
+                try:
+                    factura_page.close()
+                except PlaywrightError:
+                    pass
+
+    return exitosas, fallidas
 
 
 def parse_arguments(argv: list[str]) -> argparse.Namespace:
@@ -227,54 +265,78 @@ def parse_arguments(argv: list[str]) -> argparse.Namespace:
 
 
 def main(argv: list[str]) -> int:
-    args = parse_arguments(argv)
-    if args.desde > args.hasta:
-        print("La fecha inicial debe ser anterior o igual a la final.")
-        return 1
-
-    print(
-        "Abriré Chromium con perfil persistente para que puedas iniciar sesión si es necesario."
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        datefmt="%H:%M:%S",
     )
 
-    with sync_playwright() as playwright:
-        browser = playwright.chromium.launch_persistent_context(
-            user_data_dir=str(args.persistencia), headless=args.headless
-        )
-        page = browser.new_page()
-        page.goto(args.url, wait_until="domcontentloaded")
+    args = parse_arguments(argv)
+    if args.desde > args.hasta:
+        log.error("La fecha inicial debe ser anterior o igual a la final.")
+        return 1
 
-        print(
-            "\n💡 Inicia sesión si te lo pide y navega a la lista de pagos/facturas de Stripe."
-        )
-        input(
-            "➡️  Cuando VEAS la lista de cargos/facturas, pulsa ENTER aquí y el script continuará...\n"
-        )
+    log.info(
+        "Abriendo Chromium con perfil persistente para que puedas iniciar sesion si es necesario."
+    )
 
-        objetivos = filas_objetivo(
-            page=page,
-            fecha_min=args.desde,
-            fecha_max=args.hasta,
-            keywords=args.keywords,
-        )
-        if not objetivos:
-            print(
-                "⚠️ No he encontrado filas dentro del rango. ¿Seguro que estás en la lista de facturas/cargos?"
+    try:
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch_persistent_context(
+                user_data_dir=str(args.persistencia), headless=args.headless
             )
-            browser.close()
-            return 1
+            try:
+                page = browser.new_page()
+                page.goto(args.url, wait_until="domcontentloaded")
 
-        descargar_facturas(
-            page=page,
-            objetivos=objetivos,
-            carpeta_destino=args.destino,
-            esperar_descarga=args.espera,
-            sobrescribir=args.sobrescribir,
-        )
+                log.info(
+                    "Inicia sesion si te lo pide y navega a la lista de pagos/facturas de Stripe."
+                )
+                input(
+                    "Cuando VEAS la lista de cargos/facturas, pulsa ENTER aqui y el script continuara...\n"
+                )
 
-        browser.close()
+                objetivos = filas_objetivo(
+                    page=page,
+                    fecha_min=args.desde,
+                    fecha_max=args.hasta,
+                    keywords=args.keywords,
+                )
+                if not objetivos:
+                    log.warning(
+                        "No se encontraron filas dentro del rango. "
+                        "Comprueba que estas en la lista de facturas/cargos."
+                    )
+                    return 1
 
-    print("\n✅ Listo. Revisa la carpeta:", args.destino)
-    return 0
+                exitosas, fallidas = descargar_facturas(
+                    page=page,
+                    objetivos=objetivos,
+                    carpeta_destino=args.destino,
+                    esperar_descarga=args.espera,
+                    sobrescribir=args.sobrescribir,
+                )
+
+                log.info(
+                    "Resultado: %d descargadas, %d fallidas. Carpeta: %s",
+                    exitosas,
+                    fallidas,
+                    args.destino,
+                )
+                return 1 if fallidas > 0 else 0
+
+            finally:
+                browser.close()
+
+    except PlaywrightError as exc:
+        log.error("Error fatal de Playwright: %s", exc)
+        return 1
+    except KeyboardInterrupt:
+        log.info("Interrumpido por el usuario.")
+        return 130
+    except OSError as exc:
+        log.error("Error de E/S: %s", exc)
+        return 1
 
 
 if __name__ == "__main__":  # pragma: no cover - punto de entrada CLI
