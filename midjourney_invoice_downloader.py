@@ -8,7 +8,6 @@ destino indicada.
 from __future__ import annotations
 
 import argparse
-import os
 import re
 import sys
 import time
@@ -16,6 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Iterable
+from urllib.parse import urlparse
 
 from playwright.sync_api import Page, sync_playwright
 
@@ -226,11 +226,25 @@ def parse_arguments(argv: list[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+ALLOWED_URL_SCHEMES = ("http", "https")
+
+
 def main(argv: list[str]) -> int:
     args = parse_arguments(argv)
     if args.desde > args.hasta:
         print("La fecha inicial debe ser anterior o igual a la final.")
         return 1
+
+    parsed_url = urlparse(args.url)
+    if parsed_url.scheme not in ALLOWED_URL_SCHEMES:
+        print(
+            f"Esquema de URL no permitido: '{parsed_url.scheme}'. "
+            f"Solo se permiten {ALLOWED_URL_SCHEMES}."
+        )
+        return 1
+
+    args.destino = args.destino.resolve()
+    args.persistencia = args.persistencia.resolve()
 
     print(
         "Abriré Chromium con perfil persistente para que puedas iniciar sesión si es necesario."
