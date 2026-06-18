@@ -8,10 +8,7 @@ destino indicada.
 from __future__ import annotations
 
 import argparse
-import os
-import re
 import sys
-import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -19,62 +16,23 @@ from typing import Iterable
 
 from playwright.sync_api import Page, sync_playwright
 
-
-# ---------- Utilidades de fechas -------------------------------------------------
-
-MESES = {
-    "ene": 1,
-    "feb": 2,
-    "mar": 3,
-    "abr": 4,
-    "may": 5,
-    "jun": 6,
-    "jul": 7,
-    "ago": 8,
-    "sept": 9,
-    "sep": 9,
-    "oct": 10,
-    "nov": 11,
-    "dic": 12,
-    "jan": 1,
-    "apr": 4,
-    "aug": 8,
-    "dec": 12,
-}
+from utils.browser import download_file, open_popup
+from utils.dates import parse_date_argument, parse_fecha
+from utils.i18n import bilingual_selector
 
 
-def parse_fecha(txt: str) -> datetime | None:
-    """Parsea fechas en español o inglés en formatos abreviados."""
-    match = re.search(r"(\d{1,2})\s+([A-Za-záéíóúñ]+)\s+(\d{4})", txt, re.IGNORECASE)
-    if not match:
-        return None
+# ---------- Selectores bilingües -------------------------------------------------
 
-    day = int(match.group(1))
-    month_name = match.group(2).lower()
-    year = int(match.group(3))
+SELECTOR_VER_FACTURA = bilingual_selector(
+    labels_es=["Ver datos", "Ver detalles"],
+    labels_en=["View", "Invoice"],
+    tags=["a"],
+)
 
-    normalized_month = (
-        month_name.replace("é", "e")
-        .replace("á", "a")
-        .replace("í", "i")
-        .replace("ó", "o")
-        .replace("ú", "u")
-    )
-
-    month = MESES.get(normalized_month[:4]) or MESES.get(normalized_month[:3])
-    if not month:
-        return None
-
-    return datetime(year, month, day)
-
-
-def parse_date_argument(value: str) -> datetime:
-    try:
-        return datetime.strptime(value, "%Y-%m-%d")
-    except ValueError as error:  # pragma: no cover - validación de entrada CLI
-        raise argparse.ArgumentTypeError(
-            "Usa el formato YYYY-MM-DD, por ejemplo 2025-07-02"
-        ) from error
+SELECTOR_DESCARGAR = bilingual_selector(
+    labels_es=["Descargar factura"],
+    labels_en=["Download invoice"],
+)
 
 
 # ---------- Lógica principal -----------------------------------------------------
@@ -116,14 +74,12 @@ def filas_objetivo(
         if not any(keyword in text for keyword in keywords):
             continue
 
-        link = row.locator(
-            "a:has-text('Ver datos'), a:has-text('Ver detalles'), a:has-text('View'), a:has-text('Invoice')"
-        )
+        link = row.locator(SELECTOR_VER_FACTURA)
         if link.count() == 0:
             link = row.locator("a")
         if link.count() > 0:
             objetivos.append(ObjetivoDescarga(fecha=fecha, enlace=link.first))
-            print(f"✓ Seleccionada fila {i} → {fecha.strftime('%Y-%m-%d')}")
+            print(f"  Seleccionada fila {i} -> {fecha.strftime('%Y-%m-%d')}")
 
     return objetivos
 
@@ -138,36 +94,22 @@ def descargar_facturas(
     carpeta_destino.mkdir(parents=True, exist_ok=True)
 
     for objetivo in objetivos:
-        with page.expect_popup() as pop_info:
-            objetivo.enlace.click()
-        factura_page = pop_info.value
-        factura_page.wait_for_load_state("domcontentloaded")
-        time.sleep(esperar_descarga)
+        with open_popup(page, objetivo.enlace, wait_seconds=esperar_descarga) as factura_page:
+            boton = factura_page.locator(SELECTOR_DESCARGAR)
+            if boton.count() == 0:
+                print(
+                    f"  No veo el boton de descarga en {objetivo.fecha:%Y-%m-%d}. "
+                    "Descargala manualmente."
+                )
+                continue
 
-        boton = factura_page.locator(
-            "a:has-text('Descargar factura'), button:has-text('Descargar factura'), "
-            "a:has-text('Download invoice'), button:has-text('Download invoice')"
-        )
-        if boton.count() == 0:
-            print(
-                f"⚠️ No veo el botón de descarga en {objetivo.fecha:%Y-%m-%d}. Descárgala manualmente."
-            )
-            factura_page.close()
-            continue
+            destino = carpeta_destino / f"Midjourney_{objetivo.fecha:%Y-%m-%d}.pdf"
+            if destino.exists() and not sobrescribir:
+                print(f"  Ya existe {destino}. Saltando descarga.")
+                continue
 
-        destino = carpeta_destino / f"Midjourney_{objetivo.fecha:%Y-%m-%d}.pdf"
-        if destino.exists() and not sobrescribir:
-            print(f"➡️ Ya existe {destino}. Saltando descarga.")
-            factura_page.close()
-            continue
-
-        with factura_page.expect_download() as download_info:
-            boton.first.click()
-        descarga = download_info.value
-        descarga.save_as(destino)
-        print(f"⬇️ Guardado: {destino}")
-
-        factura_page.close()
+            download_file(factura_page, boton.first, destino)
+            print(f"  Guardado: {destino}")
 
 
 def parse_arguments(argv: list[str]) -> argparse.Namespace:
@@ -199,13 +141,13 @@ def parse_arguments(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--headless",
         action="store_true",
-        help="Ejecuta Chromium en modo headless (requiere sesión guardada previamente).",
+        help="Ejecuta Chromium en modo headless (requiere sesion guardada previamente).",
     )
     parser.add_argument(
         "--espera",
         type=float,
         default=1.0,
-        help="Tiempo extra (segundos) tras abrir cada factura antes de buscar el botón.",
+        help="Tiempo extra (segundos) tras abrir cada factura antes de buscar el boton.",
     )
     parser.add_argument(
         "--sobrescribir",
@@ -215,7 +157,7 @@ def parse_arguments(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--url",
         default="https://billing.midjourney.com/",
-        help="URL de la página de facturación.",
+        help="URL de la pagina de facturacion.",
     )
     parser.add_argument(
         "--keywords",
@@ -233,7 +175,7 @@ def main(argv: list[str]) -> int:
         return 1
 
     print(
-        "Abriré Chromium con perfil persistente para que puedas iniciar sesión si es necesario."
+        "Abrire Chromium con perfil persistente para que puedas iniciar sesion si es necesario."
     )
 
     with sync_playwright() as playwright:
@@ -244,10 +186,10 @@ def main(argv: list[str]) -> int:
         page.goto(args.url, wait_until="domcontentloaded")
 
         print(
-            "\n💡 Inicia sesión si te lo pide y navega a la lista de pagos/facturas de Stripe."
+            "\nInicia sesion si te lo pide y navega a la lista de pagos/facturas de Stripe."
         )
         input(
-            "➡️  Cuando VEAS la lista de cargos/facturas, pulsa ENTER aquí y el script continuará...\n"
+            "  Cuando VEAS la lista de cargos/facturas, pulsa ENTER aqui y el script continuara...\n"
         )
 
         objetivos = filas_objetivo(
@@ -258,7 +200,7 @@ def main(argv: list[str]) -> int:
         )
         if not objetivos:
             print(
-                "⚠️ No he encontrado filas dentro del rango. ¿Seguro que estás en la lista de facturas/cargos?"
+                "No he encontrado filas dentro del rango. Seguro que estas en la lista de facturas/cargos?"
             )
             browser.close()
             return 1
@@ -273,9 +215,9 @@ def main(argv: list[str]) -> int:
 
         browser.close()
 
-    print("\n✅ Listo. Revisa la carpeta:", args.destino)
+    print("\nListo. Revisa la carpeta:", args.destino)
     return 0
 
 
-if __name__ == "__main__":  # pragma: no cover - punto de entrada CLI
+if __name__ == "__main__":  # pragma: no cover
     sys.exit(main(sys.argv[1:]))
