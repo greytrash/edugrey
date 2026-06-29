@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Escalera de Precios · Vichy Catalan Corporación</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Hanken+Grotesk:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --granate:#9E1B32;       /* carmín/garnata Vichy — acento primario */
+  --granate-prof:#5C0F1F;  /* garnata profunda */
+  --granate-luz:#C8455E;   /* garnata luminosa */
+  --ocre:#C8A14A;          /* oro modernista — acento secundario */
+  --ocre-luz:#E2C375;
+  --termal:#1E8296;        /* agua termal — burbujas */
+  --termal-prof:#0C3B47;
+  --marfil:#F7F0E3;        /* marfil/crema — texto sobre oscuro */
+  --marfil-2:#EFE6D4;
+  --tinta:#140A0D;         /* casi-negro cálido */
+  --tinta-2:#1E1014;
+  /* trencadís */
+  --t1:#9E1B32; --t2:#C8A14A; --t3:#1E8296; --t4:#C8623B; --t5:#6F9080; --t6:#2C5C86; --t7:#E2C375; --t8:#7A1528;
+
+  --maxw: 1180px;
+  --ease: cubic-bezier(.22,.61,.36,1);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Hanken Grotesk',system-ui,sans-serif;
+  background:
+    radial-gradient(1200px 800px at 78% -10%, rgba(158,27,50,.34), transparent 60%),
+    radial-gradient(1000px 900px at 10% 110%, rgba(30,130,150,.30), transparent 58%),
+    linear-gradient(160deg,#1a0c11 0%, #160a0f 38%, #0c2329 100%);
+  color:var(--marfil);
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ============ BUBBLES CANVAS ============ */
+#bubbles{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+
+/* film grain / vignette */
+.vignette{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(120% 120% at 50% 40%, transparent 55%, rgba(8,4,6,.55) 100%);}
+
+/* ============ DECK ============ */
+.deck{position:relative;z-index:2;height:100vh;width:100vw}
+.slide{
+  position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;
+  padding:clamp(28px,5vw,80px) clamp(22px,6vw,96px);
+  opacity:0;visibility:hidden;transform:translateY(14px) scale(.992);
+  transition:opacity .7s var(--ease), transform .7s var(--ease), visibility .7s;
+  overflow:auto;
+}
+.slide.is-active{opacity:1;visibility:visible;transform:none}
+.inner{width:100%;max-width:var(--maxw);margin:0 auto}
+
+/* reveal children */
+.slide.is-active .rv{animation:rise .8s var(--ease) both}
+.slide.is-active .rv:nth-child(2){animation-delay:.06s}
+.slide.is-active .rv:nth-child(3){animation-delay:.12s}
+.slide.is-active .rv:nth-child(4){animation-delay:.18s}
+.slide.is-active .rv:nth-child(5){animation-delay:.24s}
+.rv{opacity:0}
+@keyframes rise{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+
+/* ============ TYPE ============ */
+.eyebrow{font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.32em;
+  font-size:clamp(10px,.92vw,12.5px);color:var(--ocre-luz)}
+h1.title{font-family:'Fraunces',serif;font-weight:400;line-height:.96;
+  font-size:clamp(40px,7.4vw,104px);letter-spacing:-.015em;color:var(--marfil)}
+h2.shead{font-family:'Fraunces',serif;font-weight:500;line-height:1.02;
+  font-size:clamp(28px,4.4vw,58px);letter-spacing:-.012em}
+h2.shead em{font-style:italic;color:var(--ocre-luz);font-weight:500}
+.lead{font-size:clamp(15px,1.5vw,20px);line-height:1.5;color:var(--marfil-2);max-width:62ch;font-weight:300}
+.kicker{color:var(--granate-luz)}
+.mono{font-family:'Space Mono',monospace}
+
+/* ============ TRENCADÍS ============ */
+.trencadis{display:flex;gap:4px;height:12px;width:clamp(140px,22vw,300px)}
+.trencadis span{flex:1;border-radius:2px;transform:skewX(-12deg);opacity:.92}
+.trencadis span:nth-child(8n+1){background:var(--t1)}
+.trencadis span:nth-child(8n+2){background:var(--t2)}
+.trencadis span:nth-child(8n+3){background:var(--t3)}
+.trencadis span:nth-child(8n+4){background:var(--t4)}
+.trencadis span:nth-child(8n+5){background:var(--t5)}
+.trencadis span:nth-child(8n+6){background:var(--t6)}
+.trencadis span:nth-child(8n+7){background:var(--t7)}
+.trencadis span:nth-child(8n+0){background:var(--t8)}
+.trencadis.thin{height:7px;gap:3px}
+
+/* ============ COVER ============ */
+.cover-inner{display:flex;flex-direction:column;gap:clamp(20px,3vh,40px)}
+.wordmark{display:flex;flex-direction:column;gap:6px}
+.wordmark .wm-main{font-family:'Fraunces',serif;font-weight:500;letter-spacing:.14em;
+  font-size:clamp(18px,2.1vw,28px);color:var(--marfil);display:flex;align-items:center;gap:.5em}
+.wm-dot{width:.5em;height:.5em;border-radius:50%;background:var(--granate);box-shadow:0 0 0 3px rgba(200,161,74,.35)}
+.wordmark .wm-sub{font-family:'Space Mono',monospace;font-size:clamp(9px,1vw,11px);letter-spacing:.42em;color:var(--ocre);text-transform:uppercase}
+.cover-meta{display:flex;flex-wrap:wrap;gap:10px 26px;align-items:center}
+.metachip{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.04em;color:var(--marfil-2);
+  display:inline-flex;align-items:center;gap:8px}
+.metachip b{color:var(--ocre-luz);font-weight:700}
+.dotsep{width:5px;height:5px;border-radius:50%;background:var(--granate-luz)}
+
+/* ============ GRID HELPERS ============ */
+.grid{display:grid;gap:clamp(12px,1.4vw,18px)}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+
+/* glass card */
+.card{background:rgba(247,240,227,.055);border:1px solid rgba(247,240,227,.14);
+  border-radius:16px;padding:clamp(16px,1.8vw,26px);backdrop-filter:blur(8px);
+  transition:transform .35s var(--ease),border-color .35s,background .35s}
+.card:hover{transform:translateY(-4px);border-color:rgba(200,161,74,.5);background:rgba(247,240,227,.085)}
+.card .ck{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ocre)}
+.card .cnum{font-family:'Fraunces',serif;font-weight:500;font-size:clamp(30px,3.4vw,46px);line-height:1;margin:8px 0 6px;color:var(--marfil)}
+.card .cdesc{font-size:14px;line-height:1.45;color:var(--marfil-2);font-weight:300}
+
+/* light panel for dense data */
+.panel{background:linear-gradient(180deg,rgba(247,240,227,.97),rgba(239,230,212,.95));
+  color:var(--tinta);border-radius:18px;padding:clamp(16px,2vw,30px);
+  box-shadow:0 30px 80px -30px rgba(0,0,0,.6);border:1px solid rgba(200,161,74,.35)}
+.panel h3{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(17px,1.8vw,22px);color:var(--granate-prof);margin-bottom:4px}
+.panel .psub{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;color:#6b5a3a;text-transform:uppercase}
+
+/* ============ TABLE ============ */
+table{width:100%;border-collapse:collapse;font-size:clamp(12px,1.15vw,14.5px)}
+thead th{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  text-align:right;color:#7a6845;padding:8px 10px;border-bottom:2px solid rgba(158,27,50,.35)}
+thead th:first-child{text-align:left}
+tbody td{padding:9px 10px;text-align:right;border-bottom:1px solid rgba(20,10,13,.08);color:#241318}
+tbody td:first-child{text-align:left;font-weight:600}
+tbody tr.is-vichy td{background:rgba(158,27,50,.09);color:var(--granate-prof);font-weight:700}
+tbody tr.is-vichy td:first-child{color:var(--granate)}
+.price{font-family:'Space Mono',monospace;font-weight:700}
+.up{color:#0e7a4f}.down{color:#b3122b}.flat{color:#8a7a55}
+
+/* ============ ESCALERA (signature) ============ */
+.stair-wrap{position:relative;display:flex;align-items:flex-end;gap:clamp(8px,1.4vw,20px);
+  height:clamp(270px,44vh,420px);padding:0 4px;margin-top:42px}
+.step{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;position:relative}
+.bar{width:100%;border-radius:10px 10px 4px 4px;position:relative;
+  height:0;transition:height 1.1s var(--ease);
+  background:linear-gradient(180deg,rgba(247,240,227,.22),rgba(247,240,227,.07));
+  border:1px solid rgba(247,240,227,.2);overflow:hidden}
+.slide.is-active .bar{height:var(--h)}
+.bar.vichy{background:linear-gradient(180deg,var(--granate-luz),var(--granate) 55%,var(--granate-prof));
+  border-color:var(--ocre);box-shadow:0 0 38px -6px rgba(200,69,94,.7), inset 0 0 20px rgba(255,255,255,.12)}
+.bar.perrier{background:linear-gradient(180deg,rgba(200,161,74,.34),rgba(200,161,74,.12));border-color:rgba(226,195,117,.7)}
+.bar .pv{position:absolute;top:8px;left:0;right:0;text-align:center;font-family:'Space Mono',monospace;
+  font-weight:700;font-size:clamp(11px,1.2vw,15px);color:var(--marfil)}
+.bar.vichy .pv{color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.4)}
+.step .lbl{margin-top:10px;font-size:clamp(10px,1vw,12.5px);text-align:center;color:var(--marfil-2);line-height:1.2;font-weight:500;min-height:2.4em}
+.step .lbl small{display:block;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--ocre);text-transform:uppercase;margin-top:3px}
+.step.is-vichy .lbl{color:var(--marfil);font-weight:700}
+.crown{position:absolute;top:-22px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.14em;
+  color:var(--ocre-luz);text-transform:uppercase;white-space:nowrap}
+.stair-base{height:2px;background:linear-gradient(90deg,transparent,rgba(200,161,74,.6),transparent);margin-top:0}
+
+/* consistency chips */
+.chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(98px,1fr));gap:10px}
+.chip{background:rgba(247,240,227,.06);border:1px solid rgba(247,240,227,.16);border-radius:12px;
+  padding:12px 10px;text-align:center;transition:transform .3s var(--ease),border-color .3s}
+.chip:hover{transform:translateY(-3px);border-color:var(--granate-luz)}
+.chip .cn{font-size:11px;color:var(--marfil-2);font-weight:600;letter-spacing:.02em}
+.chip .cp{font-family:'Space Mono',monospace;font-weight:700;font-size:17px;color:var(--ocre-luz);margin-top:5px}
+
+/* hero number block */
+.heronum{font-family:'Fraunces',serif;font-weight:400;font-size:clamp(76px,15vw,210px);line-height:.8;
+  color:var(--marfil);letter-spacing:-.02em;display:flex;align-items:baseline;gap:.12em}
+.heronum .u{font-size:.28em;color:var(--ocre-luz);font-weight:500;font-family:'Space Mono',monospace;letter-spacing:0}
+
+/* tier list (sin gas) */
+.tier{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px dashed rgba(247,240,227,.14)}
+.tier:last-child{border-bottom:0}
+.tier .trange{font-family:'Space Mono',monospace;font-weight:700;font-size:clamp(14px,1.5vw,19px);color:var(--ocre-luz);min-width:128px}
+.tier .tname{font-weight:700;font-size:clamp(14px,1.4vw,17px);color:var(--marfil)}
+.tier .tdesc{font-size:13px;color:var(--marfil-2);font-weight:300}
+.tier .tbar{height:8px;border-radius:4px;flex-shrink:0}
+
+/* alert rows */
+.alert{display:flex;align-items:flex-start;gap:14px;padding:14px 16px;border-radius:13px;
+  background:rgba(247,240,227,.05);border:1px solid rgba(247,240,227,.13);border-left-width:3px}
+.alert.warn{border-left-color:var(--granate-luz)}
+.alert.down{border-left-color:#c8623b}
+.alert.up{border-left-color:var(--ocre)}
+.alert .av{font-family:'Space Mono',monospace;font-weight:700;font-size:18px;min-width:78px;text-align:center}
+.alert.warn .av{color:var(--granate-luz)} .alert.down .av{color:#e0915a} .alert.up .av{color:var(--ocre-luz)}
+.alert .at{font-weight:700;font-size:14.5px;color:var(--marfil)}
+.alert .ad{font-size:13px;color:var(--marfil-2);font-weight:300;margin-top:2px}
+
+/* conclusions */
+.conc{display:flex;gap:16px;align-items:flex-start}
+.conc .cidx{font-family:'Fraunces',serif;font-style:italic;font-weight:500;font-size:clamp(28px,3.2vw,44px);color:var(--ocre);line-height:1;flex-shrink:0;min-width:1.4em}
+.conc .ct{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(16px,1.7vw,21px);color:var(--marfil);line-height:1.15}
+.conc .cd{font-size:13.5px;color:var(--marfil-2);font-weight:300;line-height:1.5;margin-top:5px}
+
+/* next steps */
+.step-list{display:flex;flex-direction:column;gap:14px}
+.nstep{display:flex;gap:16px;align-items:center;padding:14px 18px;border-radius:14px;
+  background:rgba(247,240,227,.05);border:1px solid rgba(247,240,227,.14);transition:transform .3s var(--ease),border-color .3s}
+.nstep:hover{transform:translateX(6px);border-color:var(--granate-luz)}
+.nstep .nn{font-family:'Space Mono',monospace;font-weight:700;color:var(--granate-luz);font-size:15px}
+.nstep .nt b{display:block;font-weight:700;color:var(--marfil);font-size:15px}
+.nstep .nt span{font-size:13px;color:var(--marfil-2);font-weight:300}
+
+/* ============ NAV / CHROME ============ */
+.chrome{position:fixed;z-index:20;left:0;right:0;bottom:0;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px clamp(22px,5vw,60px);pointer-events:none}
+.progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--granate),var(--ocre));
+  z-index:30;width:0;transition:width .5s var(--ease);box-shadow:0 0 12px rgba(200,161,74,.6)}
+.dots{display:flex;gap:9px;pointer-events:auto}
+.dot{width:8px;height:8px;border-radius:50%;background:rgba(247,240,227,.25);border:0;cursor:pointer;
+  transition:all .35s var(--ease);padding:0}
+.dot:hover{background:rgba(247,240,227,.55)}
+.dot.active{background:var(--ocre-luz);width:26px;border-radius:5px}
+.navbtns{display:flex;gap:10px;pointer-events:auto}
+.nav{width:42px;height:42px;border-radius:50%;border:1px solid rgba(247,240,227,.25);
+  background:rgba(20,10,13,.4);color:var(--marfil);cursor:pointer;font-size:17px;
+  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);
+  transition:all .3s var(--ease)}
+.nav:hover{background:var(--granate);border-color:var(--granate);transform:scale(1.08)}
+.nav:disabled{opacity:.3;cursor:default;transform:none}
+.counter{position:fixed;z-index:20;top:18px;right:clamp(22px,5vw,60px);
+  font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.1em;color:var(--marfil-2);pointer-events:none}
+.counter b{color:var(--ocre-luz)}
+.brandtag{position:fixed;z-index:20;top:18px;left:clamp(22px,5vw,60px);
+  font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.22em;color:rgba(247,240,227,.55);
+  text-transform:uppercase;pointer-events:none}
+
+.footnote{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.04em;color:rgba(247,240,227,.42);margin-top:14px}
+
+/* spacing utils */
+.mt-s{margin-top:14px}.mt-m{margin-top:22px}.mt-l{margin-top:34px}
+.row-split{display:grid;grid-template-columns:1.05fr .95fr;gap:clamp(20px,3vw,48px);align-items:center}
+.stack-sm{display:flex;flex-direction:column;gap:12px}
+
+@media (max-width:780px){
+  .g4{grid-template-columns:repeat(2,1fr)}
+  .g3{grid-template-columns:1fr}
+  .row-split{grid-template-columns:1fr}
+  .stair-wrap{height:300px}
+  .step .lbl{font-size:9px}
+  .counter,.brandtag{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001s!important;transition-duration:.2s!important}
+}
+</style>
+</head>
+<body>
+<canvas id="bubbles"></canvas>
+<div class="vignette"></div>
+<div class="progress" id="progress"></div>
+<div class="brandtag">Vichy Catalan · Corporación</div>
+<div class="counter"><b id="cur">01</b> / <span id="tot">12</span></div>
+
+<div class="deck" id="deck">
+
+  <!-- 1 · PORTADA -->
+  <section class="slide is-active">
+    <div class="inner cover-inner">
+      <div class="rv wordmark">
+        <div class="wm-main">VICHY CATALAN<span class="wm-dot"></span></div>
+        <div class="wm-sub">Corporación</div>
+      </div>
+      <div class="rv"><div class="trencadis" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+      </div></div>
+      <div class="rv">
+        <div class="eyebrow">Inteligencia competitiva de mercado · Categoría aguas</div>
+        <h1 class="title">La Escalera<br><em style="font-style:italic;color:var(--ocre-luz)">de Precios</em></h1>
+      </div>
+      <p class="rv lead">Radiografía del lineal de agua mineral en el canal online: dónde se sitúa Vichy Catalán frente a la competencia, enseña por enseña, en precio por litro normalizado.</p>
+      <div class="rv cover-meta">
+        <span class="metachip"><span class="dotsep"></span><b>11</b>&nbsp;enseñas monitorizadas</span>
+        <span class="metachip"><span class="dotsep"></span><b>2</b>&nbsp;segmentos · con gas / sin gas</span>
+        <span class="metachip"><span class="dotsep"></span><b>€/L</b>&nbsp;normalizado</span>
+        <span class="metachip"><span class="dotsep"></span>Datos&nbsp;<b>abr–jun 2026</b></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · METODOLOGÍA -->
+  <section class="slide">
+    <div class="inner">
+      <div class="rv"><div class="trencadis thin" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
+      <div class="rv mt-s"><div class="eyebrow">Cómo se construye</div>
+      <h2 class="shead">Una misma vara de medir para <em>todo el lineal</em></h2></div>
+      <p class="rv lead mt-s">Cada referencia se reduce a su precio por litro para comparar formatos distintos en igualdad de condiciones. El seguimiento es mensual y trazable hasta la ficha de producto de cada e-commerce.</p>
+      <div class="rv grid g4 mt-l">
+        <div class="card"><div class="ck">Cobertura</div><div class="cnum">11</div><div class="cdesc">Enseñas: Carrefour, Mercadona, Eroski, Alcampo, DIA, Consum, Caprabo, Condis, Bonpreu, El Corte Inglés y Ahorramás.</div></div>
+        <div class="card"><div class="ck">Segmentos</div><div class="cnum">2</div><div class="cdesc">Agua <b>con gas</b> —territorio de Vichy— y agua <b>sin gas</b> como contexto de categoría.</div></div>
+        <div class="card"><div class="ck">Métrica</div><div class="cnum">€/L</div><div class="cdesc">Precio por litro normalizado, además del PVP de lineal. Comparabilidad real entre 1L, 1,2L y 1,5L.</div></div>
+        <div class="card"><div class="ck">Periodicidad</div><div class="cnum">Mens.</div><div class="cdesc">Captura mensual con variación % mes a mes y enlace directo a la fuente para auditoría.</div></div>
+      </div>
+      <p class="rv footnote">Fuente: webs de e-commerce de cada enseña · captura propia · serie abril–junio 2026.</p>
+    </div>
+  </section>
+
+  <!-- 3 · MAPA DE ENSEÑAS -->
+  <section class="slide">
+    <div class="inner">
+      <div class="rv"><div class="eyebrow">El campo de juego</div>
+      <h2 class="shead">Once enseñas, un solo <em>lineal observado</em></h2></div>
+      <p class="rv lead mt-s">Desde la gran distribución nacional hasta el regional catalán. Todas comercializan Vichy Catalán: la marca está presente en el 100% del panel.</p>
+      <div class="rv grid g4 mt-l" style="gap:12px">
+        <div class="card" style="text-align:center"><div class="cnum" style="font-size:clamp(20px,2vw,26px)">Carrefour</div><div class="cdesc mono" style="font-size:11px">Nacional · híper</div></div>
+        <div class="card" style="text-align:center"><div class="cnum" style="font-size:clamp(20px,2vw,26px)">Mercadona</div><div class="cdesc mono" style="font-size:11px">Nacional · súper</div></div>
+        <div class="card" style="text-align:center"><div class="cnum" style="font-size:clamp(20px,2vw,26px)">Eroski</div><div class="cdesc mono" style="font-size:11px">Nacional</div></div>
+        <div class="card" style="text-align:center"><div class="cnum" style="font-size:clamp(20px,2vw,26px)">Alcampo</div><div class="cdesc mono" style="font-size:11px">Híper</div></div>
+        <div class="card" style="text-align:center"><div class="cnum" style="font-size:clamp(20px,2vw,26px)">DIA</div><div class="cdesc mono" style="font-size:11px">Proximidad</div></div>
+        <div class="card" style="text-align:center"><div class="cnum" style="font-size:clamp(20px,2vw,26px)">Consum</div><div class="cdesc mono" style="font-size:11px">Levante</div></div>
+        <div class="card" style="text-align:center"><div class="cnum" style="font-size:clamp(20px,2vw,26px)">Caprabo</div><div class="cdesc mono" style="font-size:11px">Cataluña</div></div>
+        <div class="card" style="text-align:center"><div class="cnum" style="font-size:clamp(20px,2vw,26px)">Condis</div><div class="cdesc mono" style="font-size:11px">Cataluña</div></div>
+        <div class="card" style="text-align:center"><div class="cnum" style="font-size:clamp(18px,1.8vw,23px)">Bonpreu</div><div class="cdesc mono" style="font-size:11px">Esclat · Cataluña</div></div>
+        <div class="card" style="text-align:center"><div class="cnum" style="font-size:clamp(16px,1.7vw,21px)">El Corte Inglés</div><div class="cdesc mono" style="font-size:11px">Premium</div></div>
+        <div class="card" style="text-align:center"><div class="cnum" style="font-size:clamp(18px,1.8vw,23px)">Ahorramás</div><div class="cdesc mono" style="font-size:11px">Centro</div></div>
+        <div class="card" style="text-align:center;background:rgba(158,27,50,.14);border-color:var(--granate-luz)"><div class="cnum" style="font-size:clamp(28px,3vw,40px);color:var(--ocre-luz)">100%</div><div class="cdesc">Presencia de<br>Vichy Catalán</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · DIVIDER CON GAS -->
+  <section class="slide">
+    <div class="inner" style="text-align:center">
+      <div class="rv" style="display:flex;justify-content:center"><div class="trencadis" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
+      <div class="rv mt-m"><div class="eyebrow">Segmento 01 · El terreno propio</div></div>
+      <h2 class="rv title mt-s" style="font-size:clamp(38px,7vw,92px)">Agua <em style="font-style:italic;color:var(--ocre-luz)">con gas</em></h2>
+      <p class="rv lead mt-m" style="margin-left:auto;margin-right:auto">Donde Vichy Catalán no es un agua más, sino la referencia. Aquí se juega el valor de la marca: el agua con gas natural de Caldes de Malavella compitiendo en la cima del lineal.</p>
+    </div>
+  </section>
+
+  <!-- 5 · LA JOYA: CONSISTENCIA -->
+  <section class="slide">
+    <div class="inner">
+      <div class="rv"><div class="eyebrow">El dato que define la marca</div></div>
+      <div class="row-split mt-s">
+        <div class="rv stack-sm">
+          <div class="heronum">1,55<span class="u">€/L</span></div>
+          <h2 class="shead" style="font-size:clamp(22px,3vw,38px)">Cero desviación.<br><em>En todo el panel.</em></h2>
+          <p class="lead">El formato ancla —Vichy Catalán 1L vidrio— se vende exactamente al mismo precio por litro en cada enseña que lo referencia. Una disciplina de precio que blinda el valor percibido y el margen.</p>
+          <p class="footnote">1L vidrio · precio idéntico en 10/10 enseñas que lo comercializan · sin variación abr–jun.</p>
+        </div>
+        <div class="rv chips">
+          <div class="chip"><div class="cn">Caprabo</div><div class="cp">1,55</div></div>
+          <div class="chip"><div class="cn">DIA</div><div class="cp">1,55</div></div>
+          <div class="chip"><div class="cn">Consum</div><div class="cp">1,55</div></div>
+          <div class="chip"><div class="cn">Eroski</div><div class="cp">1,55</div></div>
+          <div class="chip"><div class="cn">Bonpreu</div><div class="cp">1,55</div></div>
+          <div class="chip"><div class="cn">Alcampo</div><div class="cp">1,55</div></div>
+          <div class="chip"><div class="cn">Mercadona</div><div class="cp">1,55</div></div>
+          <div class="chip"><div class="cn">El Corte Inglés</div><div class="cp">1,55</div></div>
+          <div class="chip"><div class="cn">Condis</div><div class="cp">1,55</div></div>
+          <div class="chip"><div class="cn">Ahorramás</div><div class="cp">1,55</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 · LA ESCALERA (SIGNATURE) -->
+  <section class="slide">
+    <div class="inner">
+      <div class="rv"><div class="eyebrow">La escalera · agua con gas · €/L de referencia</div>
+      <h2 class="shead">Vichy comparte la cima… y la <em>sostiene</em></h2></div>
+      <div class="rv stair-wrap" aria-hidden="true">
+        <div class="step is-vichy">
+          <div class="crown">◆ Ancla estable</div>
+          <div class="bar vichy" style="--h:92%"><span class="pv">1,55</span></div>
+          <div class="lbl">Vichy Catalán<small>1L vidrio</small></div>
+        </div>
+        <div class="step">
+          <div class="bar perrier" style="--h:92%"><span class="pv">1,55</span></div>
+          <div class="lbl">Perrier<small>importación · volátil</small></div>
+        </div>
+        <div class="step">
+          <div class="bar" style="--h:84%"><span class="pv">1,49</span></div>
+          <div class="lbl">Pedras<small>nicho</small></div>
+        </div>
+        <div class="step">
+          <div class="bar" style="--h:71%"><span class="pv">1,40</span></div>
+          <div class="lbl">Cabreiroa<small>con gas</small></div>
+        </div>
+        <div class="step">
+          <div class="bar" style="--h:70%"><span class="pv">1,39</span></div>
+          <div class="lbl">San Narciso</div>
+        </div>
+        <div class="step">
+          <div class="bar" style="--h:64%"><span class="pv">1,35</span></div>
+          <div class="lbl">S. Pellegrino<small>importación · a la baja</small></div>
+        </div>
+        <div class="step">
+          <div class="bar" style="--h:57%"><span class="pv">1,30</span></div>
+          <div class="lbl">Font Vella<small>con gas</small></div>
+        </div>
+        <div class="step">
+          <div class="bar" style="--h:29%"><span class="pv">1,10</span></div>
+          <div class="lbl">Fonter<small>valor</small></div>
+        </div>
+      </div>
+      <div class="stair-base"></div>
+      <p class="rv footnote mt-s">€/L de referencia (precio modal del panel). Solo Perrier iguala a Vichy en la parte alta —pero oscila entre 1,43 y 1,69 €/L según enseña, mientras Vichy mantiene 1,55 firme.</p>
+    </div>
+  </section>
+
+  <!-- 7 · VICHY VS PREMIUM -->
+  <section class="slide">
+    <div class="inner">
+      <div class="rv"><div class="eyebrow">Cara a cara · la cima del con gas</div>
+      <h2 class="shead">Estabilidad frente a <em>volatilidad</em></h2></div>
+      <div class="rv grid g3 mt-l">
+        <div class="card" style="border-color:var(--granate-luz);background:rgba(158,27,50,.1)">
+          <div class="ck" style="color:var(--granate-luz)">Vichy Catalán · 1L vidrio</div>
+          <div class="cnum" style="color:var(--ocre-luz)">1,55 €/L</div>
+          <div class="cdesc">Idéntico en las 10 enseñas. Recorrido del mes: <b style="color:var(--marfil)">±0%</b>. El precio no se mueve: el ancla es la marca.</div>
+        </div>
+        <div class="card">
+          <div class="ck">Perrier · importación</div>
+          <div class="cnum">1,43–1,69</div>
+          <div class="cdesc">El único que iguala en la cima, pero <b style="color:var(--marfil)">disperso</b>: +6,5% en Eroski (1,55→1,65), −7% en Carrefour. Precio sin gobierno común.</div>
+        </div>
+        <div class="card">
+          <div class="ck">S. Pellegrino · importación</div>
+          <div class="cnum">1,18–1,39</div>
+          <div class="cdesc">Empuja a la baja: <b style="color:#e0915a">−15%</b> en Caprabo, Eroski y Bonpreu este mes. Se acerca al escalón medio y estrecha el gap.</div>
+        </div>
+      </div>
+      <div class="rv card mt-m" style="background:rgba(30,130,150,.1);border-color:var(--termal)">
+        <div class="cdesc" style="font-size:15px;color:var(--marfil)"><b style="color:var(--ocre-luz)">Lectura:</b> Vichy lidera la categoría con gas no por ser la más cara, sino por ser la más <b>predecible</b>. Frente a importadores que oscilan ±15% según la semana, la marca ofrece al retailer y al shopper un precio-ancla constante —un activo difícil de replicar.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 · RADIOGRAFÍA POR ENSEÑA -->
+  <section class="slide">
+    <div class="inner">
+      <div class="rv"><div class="eyebrow">Radiografía · agua con gas por enseña (€/L · junio)</div>
+      <h2 class="shead" style="margin-bottom:4px">Vichy frente a su <em>rival más cercano</em></h2></div>
+      <div class="rv panel mt-s">
+        <table>
+          <thead><tr>
+            <th>Enseña</th><th>Vichy 1L vidrio</th><th>Vichy 1,2L PET</th><th>Rival + cercano</th><th>€/L rival</th>
+          </tr></thead>
+          <tbody>
+            <tr class="is-vichy"><td>Caprabo</td><td class="price">1,55</td><td class="price">1,55</td><td>Perrier</td><td class="price">1,69</td></tr>
+            <tr><td>Carrefour</td><td class="price">—</td><td class="price">1,55</td><td>Perrier</td><td class="price">1,63</td></tr>
+            <tr class="is-vichy"><td>Consum</td><td class="price">1,55</td><td class="price">1,55</td><td>Perrier</td><td class="price">1,55</td></tr>
+            <tr><td>Eroski</td><td class="price">1,55</td><td class="price">1,60</td><td>Perrier</td><td class="price">1,65</td></tr>
+            <tr class="is-vichy"><td>Bonpreu</td><td class="price">1,55</td><td class="price">1,55</td><td>Perrier</td><td class="price">1,54</td></tr>
+            <tr><td>Alcampo</td><td class="price">1,55</td><td class="price">1,50</td><td>Perrier</td><td class="price">1,43</td></tr>
+            <tr class="is-vichy"><td>Condis</td><td class="price">1,55</td><td class="price">1,55</td><td>Perrier</td><td class="price">1,59</td></tr>
+            <tr><td>El Corte Inglés</td><td class="price">1,55</td><td class="price">—</td><td>Perrier</td><td class="price">1,56</td></tr>
+            <tr class="is-vichy"><td>DIA</td><td class="price">1,55</td><td class="price">—</td><td>S. Pellegrino</td><td class="price">1,35</td></tr>
+            <tr><td>Mercadona</td><td class="price">1,55</td><td class="price">—</td><td>S. Pellegrino</td><td class="price">1,39</td></tr>
+            <tr class="is-vichy"><td>Ahorramás</td><td class="price">1,55</td><td class="price down">1,29</td><td>Cabreiroa</td><td class="price">1,35</td></tr>
+          </tbody>
+        </table>
+        <p class="psub" style="margin-top:12px">El 1L vidrio sostiene 1,55 €/L en todo el panel. El 1,2L PET es el formato flexible: de 1,50 (Alcampo) a 1,60 (Eroski), con bajada táctica a 1,29 en Ahorramás.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9 · MOVIMIENTOS DEL MES -->
+  <section class="slide">
+    <div class="inner">
+      <div class="rv"><div class="eyebrow">Movimientos del mes · mayo → junio</div>
+      <h2 class="shead">Dónde se mueve <em>el tablero</em></h2></div>
+      <div class="rv grid g2 mt-l" style="gap:14px">
+        <div class="alert warn">
+          <div class="av">−16,8%</div>
+          <div><div class="at">Vichy 1,2L PET en Ahorramás · 1,55 → 1,29</div><div class="ad">Activación promocional sobre el formato PET. El 1L vidrio se mantiene intacto en 1,55: la flexibilidad se gestiona sin tocar el ancla.</div></div>
+        </div>
+        <div class="alert up">
+          <div class="av">+6,5%</div>
+          <div><div class="at">Perrier en Eroski · 1,55 → 1,65</div><div class="ad">El importador sube y abre hueco por arriba. Vichy queda como la opción premium de precio más contenido y estable en esa enseña.</div></div>
+        </div>
+        <div class="alert down">
+          <div class="av">−15%</div>
+          <div><div class="at">San Pellegrino · Caprabo, Eroski, Bonpreu · 1,39 → 1,18</div><div class="ad">Recorte agresivo de la importación italiana. Presiona el escalón medio-alto y estrecha la distancia con Vichy.</div></div>
+        </div>
+        <div class="alert down">
+          <div class="av">−12%</div>
+          <div><div class="at">Fonter · Consum, Mercadona, ECI · 1,14 → 1,00</div><div class="ad">Guerra de valor en la base de la escalera. Refuerza la polaridad del lineal: marcas-valor abajo, premium arriba.</div></div>
+        </div>
+      </div>
+      <p class="rv footnote">Variaciones €/L sobre captura mensual. Cambios &gt;5% destacados.</p>
+    </div>
+  </section>
+
+  <!-- 10 · SIN GAS CONTEXTO -->
+  <section class="slide">
+    <div class="inner">
+      <div class="rv"><div class="eyebrow">Segmento 02 · contexto de categoría · sin gas (€/L)</div>
+      <h2 class="shead">El lineal del shopper, de <em>0,18 € a 1,57 €</em></h2></div>
+      <p class="rv lead mt-s">Vichy no compite en agua sin gas, pero este segmento define el marco mental de precio del comprador. Un abanico de casi 9× entre el primer precio y el premium de importación.</p>
+      <div class="rv mt-m">
+        <div class="tier"><div class="trange">1,53–1,57</div><div class="tbar" style="width:120px;background:var(--t6)"></div><div><div class="tname">Importación premium</div><div class="tdesc">Evian — el techo del lineal, referencia aspiracional.</div></div></div>
+        <div class="tier"><div class="trange">0,53–0,64</div><div class="tbar" style="width:92px;background:var(--granate)"></div><div><div class="tname">Premium nacional</div><div class="tdesc">Solán de Cabras · Cabreiroa · Lanjarón — marca con territorio de origen.</div></div></div>
+        <div class="tier"><div class="trange">0,43–0,51</div><div class="tbar" style="width:74px;background:var(--ocre)"></div><div><div class="tname">Mainstream</div><div class="tdesc">Font Vella · Bezoya · Aquabona — el corazón del volumen.</div></div></div>
+        <div class="tier"><div class="trange">0,18–0,43</div><div class="tbar" style="width:52px;background:var(--t5)"></div><div><div class="tname">Económico y MDD</div><div class="tdesc">Aquarel · Ribes · Fontseny · Teleno · Montseny · Font Agudes — primer precio.</div></div></div>
+      </div>
+      <p class="rv footnote">Rango €/L observado en el panel, junio 2026.</p>
+    </div>
+  </section>
+
+  <!-- 11 · LECTURA ESTRATÉGICA -->
+  <section class="slide">
+    <div class="inner">
+      <div class="rv"><div class="eyebrow">Lectura estratégica</div>
+      <h2 class="shead">Cuatro conclusiones <em>accionables</em></h2></div>
+      <div class="rv grid g2 mt-l" style="gap:22px 40px">
+        <div class="conc"><div class="cidx">01</div><div><div class="ct">La disciplina de precio es un activo de marca</div><div class="cd">El 1L vidrio sostiene 1,55 €/L sin una sola fisura en las 10 enseñas que lo comercializan. Esa coherencia protege el valor percibido y el margen mejor que cualquier campaña.</div></div></div>
+        <div class="conc"><div class="cidx">02</div><div><div class="ct">Liderazgo premium compartido, pero más sólido</div><div class="cd">Vichy y Perrier copan la cima del agua con gas. La diferencia: Vichy la sostiene con precio firme; Perrier oscila ±15% según enseña. Estabilidad = ventaja.</div></div></div>
+        <div class="conc"><div class="cidx">03</div><div><div class="ct">El PET 1,2L es la palanca táctica</div><div class="cd">Donde hay movimiento (Ahorramás −17%, Eroski +2%) es en PET. Es la herramienta para promoción y posicionamiento por enseña sin erosionar el ancla de vidrio.</div></div></div>
+        <div class="conc"><div class="cidx">04</div><div><div class="ct">Vigilar la presión de la importación</div><div class="cd">San Pellegrino recorta hasta −15% y se acerca. El gap de valor se estrecha: momento de reforzar la diferenciación —origen termal de Caldes de Malavella— para justificar la prima.</div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12 · CIERRE / PRÓXIMOS PASOS -->
+  <section class="slide">
+    <div class="inner">
+      <div class="rv"><div class="eyebrow">De la foto mensual al panel vivo</div>
+      <h2 class="shead">Próximos pasos</h2></div>
+      <div class="row-split mt-l">
+        <div class="rv step-list">
+          <div class="nstep"><span class="nn">01</span><div class="nt"><b>Automatizar la escalera</b><span>Captura semanal con navegador headless de las 11 enseñas → €/L normalizado, sin trabajo manual.</span></div></div>
+          <div class="nstep"><span class="nn">02</span><div class="nt"><b>Alertas de desviación</b><span>Aviso automático cuando un SKU se mueve por encima del umbral —reacción en días, no en meses.</span></div></div>
+          <div class="nstep"><span class="nn">03</span><div class="nt"><b>Ampliar cobertura</b><span>Nuevos formatos (lata, 33cl, multipack) y nuevas enseñas para cerrar el mapa competitivo.</span></div></div>
+          <div class="nstep"><span class="nn">04</span><div class="nt"><b>Dashboard en tiempo real</b><span>Del Excel mensual a un panel vivo de inteligencia de precios para toda la organización.</span></div></div>
+        </div>
+        <div class="rv" style="display:flex;flex-direction:column;gap:20px;align-items:flex-start;justify-content:center">
+          <div class="trencadis" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          <div class="wordmark">
+            <div class="wm-main">VICHY CATALAN<span class="wm-dot"></span></div>
+            <div class="wm-sub">Corporación</div>
+          </div>
+          <p class="lead" style="font-size:16px">Inteligencia de precios para sostener el liderazgo<br>de la categoría con gas —dato a dato.</p>
+          <p class="footnote">Escalera de Precios v2 · serie abril–junio 2026 · 11 enseñas.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- CHROME -->
+<div class="chrome">
+  <div class="dots" id="dots"></div>
+  <div class="navbtns">
+    <button class="nav" id="prev" aria-label="Anterior">‹</button>
+    <button class="nav" id="next" aria-label="Siguiente">›</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  /* ---------- BUBBLES ---------- */
+  const cv=document.getElementById('bubbles'),ctx=cv.getContext('2d');
+  let W,H,bubbles=[],raf;
+  const reduce=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  const COLORS=['rgba(247,240,227,','rgba(226,195,117,','rgba(120,200,215,'];
+  function resize(){W=cv.width=innerWidth*devicePixelRatio;H=cv.height=innerHeight*devicePixelRatio;
+    cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';}
+  function mk(seed){const r=(6+Math.random()*22)*devicePixelRatio;
+    return{x:Math.random()*W,y:seed?Math.random()*H:H+r,r:r,
+      sp:(.25+Math.random()*.9)*devicePixelRatio,
+      drift:(Math.random()-.5)*.5,phase:Math.random()*Math.PI*2,
+      amp:(6+Math.random()*16)*devicePixelRatio,
+      a:.05+Math.random()*.22,c:COLORS[Math.floor(Math.random()*COLORS.length)]};}
+  function init(){resize();const n=Math.min(70,Math.floor(innerWidth/22));
+    bubbles=Array.from({length:n},()=>mk(true));}
+  function draw(){ctx.clearRect(0,0,W,H);
+    for(const b of bubbles){
+      b.y-=b.sp;b.phase+=0.01;const ox=Math.sin(b.phase)*b.amp;
+      if(b.y<-b.r){Object.assign(b,mk(false));}
+      const g=ctx.createRadialGradient(b.x+ox,b.y,0,b.x+ox,b.y,b.r);
+      g.addColorStop(0,b.c+(b.a*1.1)+')');
+      g.addColorStop(.7,b.c+(b.a*.5)+')');
+      g.addColorStop(1,b.c+'0)');
+      ctx.beginPath();ctx.fillStyle=g;ctx.arc(b.x+ox,b.y,b.r,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.strokeStyle=b.c+(b.a*.6)+')';ctx.lineWidth=devicePixelRatio*.8;
+      ctx.arc(b.x+ox,b.y,b.r*.96,0,Math.PI*2);ctx.stroke();
+      ctx.beginPath();ctx.fillStyle='rgba(255,255,255,'+(b.a*.7)+')';
+      ctx.arc(b.x+ox-b.r*.32,b.y-b.r*.32,b.r*.18,0,Math.PI*2);ctx.fill();
+    }
+    raf=requestAnimationFrame(draw);}
+  function still(){ctx.clearRect(0,0,W,H);
+    for(const b of bubbles){const g=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r);
+      g.addColorStop(0,b.c+(b.a)+')');g.addColorStop(1,b.c+'0)');
+      ctx.beginPath();ctx.fillStyle=g;ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.strokeStyle=b.c+(b.a*.5)+')';ctx.lineWidth=1;ctx.arc(b.x,b.y,b.r*.95,0,Math.PI*2);ctx.stroke();}}
+  init();reduce?still():draw();
+  addEventListener('resize',()=>{init();if(reduce)still();});
+
+  /* ---------- DECK NAV ---------- */
+  const slides=Array.from(document.querySelectorAll('.slide'));
+  const N=slides.length;let i=0;
+  const dotsWrap=document.getElementById('dots');
+  const prog=document.getElementById('progress');
+  const cur=document.getElementById('cur'),tot=document.getElementById('tot');
+  const prev=document.getElementById('prev'),next=document.getElementById('next');
+  tot.textContent=String(N).padStart(2,'0');
+  slides.forEach((_,k)=>{const d=document.createElement('button');d.className='dot'+(k===0?' active':'');
+    d.setAttribute('aria-label','Diapositiva '+(k+1));d.addEventListener('click',()=>go(k));dotsWrap.appendChild(d);});
+  const dots=Array.from(dotsWrap.children);
+  function go(n){n=Math.max(0,Math.min(N-1,n));if(n===i&&slides[i].classList.contains('is-active'))return;
+    slides[i].classList.remove('is-active');dots[i].classList.remove('active');
+    i=n;
+    slides[i].classList.add('is-active');slides[i].scrollTop=0;dots[i].classList.add('active');
+    prog.style.width=((i)/(N-1)*100)+'%';
+    cur.textContent=String(i+1).padStart(2,'0');
+    prev.disabled=i===0;next.disabled=i===N-1;}
+  prev.addEventListener('click',()=>go(i-1));
+  next.addEventListener('click',()=>go(i+1));
+  addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){e.preventDefault();go(i+1);}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();go(i-1);}
+    else if(e.key==='Home'){go(0);}else if(e.key==='End'){go(N-1);}});
+  /* touch */
+  let tx=0,ty=0;
+  addEventListener('touchstart',e=>{tx=e.changedTouches[0].clientX;ty=e.changedTouches[0].clientY;},{passive:true});
+  addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;
+    if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)){go(i+(dx<0?1:-1));}},{passive:true});
+  prog.style.width='0%';prev.disabled=true;
+})();
+</script>
+</body>
+</html>
