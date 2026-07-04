@@ -310,12 +310,38 @@ sizeBackdrop();
    ========================================================================== */
 const roadMap = roadTexture();
 const road = new THREE.Mesh(
-  new THREE.PlaneGeometry(20, 900, 1, 1),
+  new THREE.PlaneGeometry(20, 900, 1, 150),
   new THREE.MeshToonMaterial({ map: roadMap, gradientMap })
 );
 road.rotation.x = -Math.PI / 2;
 road.position.set(0, 0, -400);
 scene.add(road);
+
+/* -- horizontal curves ------------------------------------------------------
+   The centreline is a sum of sines in road-distance space. Road vertices,
+   props and traffic all bend through the same roadDX(), and the tangent at
+   the player is subtracted so the road is always straight underfoot and only
+   turns ahead — the classic pseudo-3D racer trick. Curvature also pushes the
+   car outward (centrifugal drift) so you have to steer into the turns. */
+let scroll = 0;                    // road distance travelled
+const CURVE = [
+  { a: 30, f: 0.005,  p: 0.0 },
+  { a: 16, f: 0.0022, p: 1.7 },
+];
+function curveX(s)   { let v = 0; for (const c of CURVE) v += c.a * Math.sin(s * c.f + c.p); return v; }
+function curveTan(s) { let v = 0; for (const c of CURVE) v += c.a * c.f * Math.cos(s * c.f + c.p); return v; }
+function curveK(s)   { let v = 0; for (const c of CURVE) v -= c.a * c.f * c.f * Math.sin(s * c.f + c.p); return v; }
+function roadDX(d)   { return curveX(scroll + d) - curveX(scroll) - d * curveTan(scroll); }
+
+const roadPos = road.geometry.attributes.position;
+const roadBaseX = new Float32Array(roadPos.count);
+for (let i = 0; i < roadPos.count; i++) roadBaseX[i] = roadPos.getX(i);
+function bendRoad() {
+  // local +y maps to world -z after the -90° X rotation → distance ahead = y + 400
+  for (let i = 0; i < roadPos.count; i++)
+    roadPos.setX(i, roadBaseX[i] + roadDX(roadPos.getY(i) + 400));
+  roadPos.needsUpdate = true;
+}
 
 // dark "shoulder" ground either side, very low contrast
 const ground = new THREE.Mesh(
@@ -391,30 +417,46 @@ function buildRock() {
   const m = new THREE.Mesh(geo, stoneMat); m.position.y = 1.2;
   const grp = new THREE.Object3D(); grp.add(m); return grp;
 }
-function buildTraffic() {
+function buildTraffic(oncoming) {
   const cols = [0x3a2f2a, 0x4a4640, 0x2c2a27];
-  const g = buildCar(cols[(Math.random()*cols.length)|0]);
-  g.userData.traffic = true; return g;
+  const g = buildCar(cols[(Math.random()*cols.length)|0], !oncoming);
+  if (oncoming) {
+    g.rotation.y = Math.PI;
+    const head = new THREE.MeshBasicMaterial({ color: 0xf2ead2 });
+    for (const lx of [-0.6, 0.6]) {
+      const l = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.2, 0.06), head);
+      l.position.set(lx, 0.62, -2.22);           // local front → faces the player
+      g.add(l);
+    }
+  }
+  g.userData.traffic = true;
+  g.userData.v = oncoming ? -(10 + Math.random() * 8) : 8 + Math.random() * 10;
+  return g;
 }
 
 const LANE = 6.5;                 // half-width of the drivable corridor
 const SPAN = 420;                 // recycle length
 const props = [];
-function spawnProp(z) {
+function spawnProp(s) {
   const roll = Math.random();
   let side = Math.random() < 0.5 ? -1 : 1;
   let obj, offset;
   if (roll < 0.10)      { obj = buildArch();    offset = side * (LANE + 8); }
   else if (roll < 0.20) { obj = buildObelisk(); offset = side * (LANE + 6 + Math.random()*10); }
   else if (roll < 0.34) { obj = buildRock();    offset = side * (LANE + 3 + Math.random()*10); }
-  else if (roll < 0.46) { obj = buildTraffic(); offset = (Math.random() < 0.5 ? -1 : 1) * 2.4; }
+  else if (roll < 0.46) {
+    const oncoming = Math.random() < 0.5;
+    obj = buildTraffic(oncoming);
+    offset = oncoming ? -2.4 : 2.4;              // keep right: oncoming on our left
+  }
   else                  { obj = buildSlab();    offset = side * (LANE + 4 + Math.random()*16); }
-  obj.position.set(offset, 0, z);
+  obj.userData.s = s;                            // absolute distance along the road
+  obj.userData.off = offset;                     // lateral offset from the centreline
   obj.userData.baseY = obj.position.y;
   obj.userData.bob = Math.random() * 6.28;
   scene.add(obj); props.push(obj);
 }
-for (let z = -20; z > -SPAN; z -= 14 + Math.random() * 16) spawnProp(z);
+for (let d = 30; d < SPAN; d += 14 + Math.random() * 16) spawnProp(d);
 
 /* ============================================================================
    POST-PROCESS  — one full-screen GLSL3 pass: ink outlines + Bayer dither +
@@ -444,6 +486,7 @@ const postUniforms = {
   grade:      { value: new THREE.Color(1, 1, 1) },   // time-of-day tint
   exposure:   { value: 1.0 },
   rain:       { value: 0.0 },
+  impact:     { value: 0.0 },
 };
 
 const postMat = new THREE.ShaderMaterial({
@@ -460,7 +503,7 @@ const postMat = new THREE.ShaderMaterial({
     uniform sampler2D tDiffuse;
     uniform sampler2D tDepth;
     uniform vec2  resolution;
-    uniform float near, far, time, exposure, rain;
+    uniform float near, far, time, exposure, rain, impact;
     uniform vec3  inkColor, grade;
 
     const mat4 bayer = mat4(
@@ -521,6 +564,9 @@ const postMat = new THREE.ShaderMaterial({
       col = mix(col, col * (0.85 + g * 0.30), 0.5);
       col *= grade * exposure;
 
+      /* -- crash pulse: brief rust-red wash, decays in JS ------------------ */
+      col = mix(col, vec3(0.45, 0.10, 0.07), impact * 0.45);
+
       /* -- vignette ------------------------------------------------------- */
       float v = smoothstep(1.25, 0.35, length(vUv - 0.5));
       col *= mix(0.72, 1.0, v);
@@ -571,10 +617,10 @@ let speed = 0;          // m/s along the road
 let laneX = 0;          // lateral position of the car
 let steer = 0;          // smoothed steer input for body roll
 const MAX_SPEED = 60;
+let shake = 0, crashCooldown = 0, crashes = 0;
 
 /* ---------- main loop ------------------------------------------------------ */
 const clock = new THREE.Clock();
-let scroll = 0;
 document.getElementById('boot').style.opacity = 0;
 setTimeout(() => document.getElementById('boot').remove(), 700);
 
@@ -598,37 +644,65 @@ function frame() {
     let sIn = (left ? -1 : 0) + (right ? 1 : 0);
     steer = THREE.MathUtils.lerp(steer, sIn, 0.12);
     laneX += steer * (speed / MAX_SPEED) * 16 * grip * dt;
+    laneX -= curveK(scroll) * speed * speed * 1.2 * dt;   // centrifugal drift in curves
     laneX = THREE.MathUtils.clamp(laneX, -LANE, LANE);
 
-    /* scroll the world toward the camera */
+    /* scroll the world toward the camera + bend it through the curves */
     scroll += speed * dt;
     roadMap.offset.y = -scroll * 0.02;
+    bendRoad();
+    if (crashCooldown > 0) crashCooldown -= dt;
 
     for (const p of props) {
-      p.position.z += speed * dt;
+      if (p.userData.traffic) p.userData.s += p.userData.v * dt;
+      const d = p.userData.s - scroll;
+      p.position.z = -d;
+      p.position.x = p.userData.off + roadDX(d);
       p.userData.bob += dt;
       // gentle surreal float on the sky-side props (never on the road)
-      if (Math.abs(p.position.x) > LANE + 2)
+      if (Math.abs(p.userData.off) > LANE + 2)
         p.position.y = p.userData.baseY + Math.sin(p.userData.bob * 0.6) * 0.4;
-      if (p.position.z > 18) {                         // recycle behind the camera
+
+      // recycle: fell behind the camera, or a slow lead car left far ahead
+      if (d < -25 || d > SPAN + 80) {
         scene.remove(p);
         props.splice(props.indexOf(p), 1);
-        spawnProp(-SPAN + (p.position.z - 18));
+        spawnProp(scroll + SPAN - Math.random() * 60);
         break;                                         // one respawn per frame is plenty
+      }
+
+      /* collision: simple AABB against traffic in the corridor */
+      if (p.userData.traffic && crashCooldown <= 0) {
+        const dxC = p.position.x - player.position.x;
+        const dzC = p.position.z - player.position.z;
+        if (Math.abs(dxC) < 2.0 && Math.abs(dzC) < 4.3) {
+          const closing = p.userData.v < 0 ? speed - p.userData.v : Math.abs(speed - p.userData.v);
+          speed = Math.max(1.5, speed * 0.15);         // hard slowdown, never a full stop
+          laneX = THREE.MathUtils.clamp(laneX - Math.sign(dxC || 1) * 1.6, -LANE, LANE);
+          p.userData.v += (p.userData.v < 0 ? -4 : 6); // shove the other car along its way
+          shake = Math.min(1.2, 0.4 + closing / 50);
+          postUniforms.impact.value = Math.min(1, 0.4 + closing / 60);
+          crashCooldown = 0.8;
+          crashes++;
+        }
       }
     }
   }
 
   /* car body: sit in the lane, roll into the steer, squat under throttle */
   player.position.x = THREE.MathUtils.lerp(player.position.x, laneX, 0.2);
+  player.rotation.y = -steer * 0.18;
   player.rotation.z = -steer * 0.12;
   player.rotation.x = (speed / MAX_SPEED) * -0.02;
 
   /* camera chases the car laterally with lag → readable but alive */
+  shake *= Math.exp(-4 * dt);
+  postUniforms.impact.value *= Math.exp(-3 * dt);
   camera.position.x = THREE.MathUtils.lerp(camera.position.x, laneX * 0.55, 0.06);
-  camera.lookAt(laneX * 0.35, 2.0, -40);
-  // parallax the flat backdrop slightly against steering
-  backdropRig.position.x = -laneX * 0.15;
+  camera.position.y = 3.1 + (Math.random() - 0.5) * shake * 0.5;
+  camera.lookAt(laneX * 0.35 + (Math.random() - 0.5) * shake * 2.5, 2.0, -40);
+  // parallax the flat backdrop against steering and the road's tangent
+  backdropRig.position.x = -laneX * 0.15 - curveTan(scroll) * 6.0;
 
   /* HUD */
   document.querySelector('#hud .spd').textContent = Math.round(speed * 3.6);
@@ -640,6 +714,9 @@ function frame() {
   renderer.render(postScene, postCam);
 }
 frame();
+
+/* debug/tuning handle (read-only snapshot) */
+window.__dbg = () => ({ speed, laneX, scroll, crashes, impact: postUniforms.impact.value });
 
 /* ---------- resize --------------------------------------------------------- */
 addEventListener('resize', () => {

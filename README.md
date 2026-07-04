@@ -46,6 +46,15 @@ simulación dinámica no compitan.
      velocidad y del agarre, balanceo de carrocería).
    - Carretera euclidiana legible: strip largo con doble amarilla, la textura
      hace scroll para fingir avance; los props se reciclan → conducción infinita.
+   - **Curvas**: la línea central es una suma de senos en espacio de distancia;
+     carretera, props y tráfico se doblan con el mismo `roadDX()`, restando la
+     tangente en el jugador (truco pseudo-3D clásico: recta bajo las ruedas,
+     curva en el horizonte). La curvatura empuja el coche hacia fuera (deriva
+     centrífuga) y hay que contravolantear.
+   - **Tráfico con colisión**: coches en tu sentido (carril derecho, más lentos)
+     y en contra (carril izquierdo, con faros); AABB simple contra el jugador →
+     frenazo brusco, empujón lateral, sacudida de cámara y pulso rojo óxido en
+     el pase litográfico.
    - Mid-ground surreal **en 3D real** hacia el que conduces (arco, obelisco,
      losas de collage, rocas, tráfico) + un **skybox-collage plano** con el
      sol-sello, esfera y diamante flotantes, nubes de papel rasgado y montañas.
@@ -75,7 +84,8 @@ de la calzada. Es la regla "la carretera es real, el mundo no".
 - **Fase 2** — validar estabilidad del dither/hatching en un ciclo día/noche
   completo bajo lluvia/niebla en el hardware objetivo (aquí ya se sostiene, pero
   no está medido); probar *hatching* con Tonal Art Maps como alternativa al dither.
-- **Fase 3** — playtest de legibilidad de la carretera con curvas reales.
+- **Fase 3** — las curvas y el tráfico ya están; falta el playtest de
+  legibilidad con jugadores y un fail state real (daño, respawn).
 - **Fase 4** — sistema social asíncrono (monólogos de voz como "signos" tipo
   Death Stranding).
 - Migración a motor real (UE5 + Chaos Vehicles o Unity + RCC) si el corte de
@@ -84,8 +94,10 @@ de la calzada. Es la regla "la carretera es real, el mundo no".
 ## Estructura
 
 ```
-index.html                 prototipo completo (sim + post)
-vendor/three.module.js      Three.js r160 vendorizado (offline)
-docs/preview*.png           capturas
-docs/DESIGN.md              diseño técnico condensado desde el informe
+index.html                    prototipo completo (sim + post)
+dist/dalinian-standalone.html versión de un solo archivo — se abre con doble
+                              clic, sin servidor (Three.js embebido)
+vendor/three.module.js        Three.js r160 vendorizado (offline)
+docs/preview*.png             capturas
+docs/DESIGN.md                diseño técnico condensado desde el informe
 ```
