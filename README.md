@@ -25,7 +25,8 @@ aparece de repente.
 |------|--------|
 | `W` / `S` | gas / freno |
 | `A` / `D` | volante (muerde con velocidad; menos agarre con lluvia o en la grava) |
-| `E` | cambiar emisora de radio (RNE 1, Radio 3, Los 40, Cadena SER…) |
+| `ratón` | arrastrar para mirar la cabina, el asiento o por la ventanilla |
+| `E` | cambiar emisora — cada una suena distinta (RNE 1, Radio 3, Los 40, SER, onda media, apagada) |
 | `T` | grabar con la emisora del macuto (● REC) |
 | `N` | hora del día (día → atardecer → noche) |
 | `R` | lluvia on/off |
@@ -33,7 +34,18 @@ aparece de repente.
 
 ## Qué hay dentro
 
-**Cabina del taxi** (parentada a la cámara, todo cel shading):
+**Cámara libre:** arrastra el ratón para mirar la radio, el asiento con el
+macuto, por las ventanillas o hacia atrás; al soltar, la vista vuelve sola a la
+carretera. La cabina está montada en un rig estable (tu cabeza gira dentro del
+coche, no el coche contigo).
+
+**Sonido (WebAudio, 100% procedural, sin assets):** el motor ronronea siguiendo
+el acelerador, y la radio **suena de verdad**: cada emisora genera su programa
+en vivo — tertulia (RNE 1), rock (Radio 3), synth-pop (Los 40), tertulia
+nerviosa (Cadena SER) y copla en onda media — a través de una cadena AM con
+siseo y ráfaga de estática al girar el dial. La sexta posición la apaga.
+
+**Cabina del taxi** (montada en el rig, todo cel shading):
 - Volante que gira con la dirección y cuadro con **velocímetro de aguja viva**.
 - **Radio de época** en el salpicadero: dial con banda de frecuencias, aguja
   que se mueve al cambiar de emisora y display verde con el nombre.
@@ -41,7 +53,9 @@ aparece de repente.
 - **Macuto** verde oliva en el lado del copiloto con una **emisora CB de
   camionero** encima: micro de mano con cable rizado y LED rojo de grabación
   (`T`) — la semilla del sistema de podcasts/monólogos de la Fase 4.
-- Retrovisor, pilares A, marco del parabrisas, capó blanco con limpiaparabrisas.
+- Retrovisor, pilares A y B, techo, puertas con manilla, suelo con túnel de
+  transmisión y palanca de cambios, asiento del copiloto, banqueta trasera y
+  bandeja — una cabina completa para mirar alrededor.
 
 **Mundo — España interior, años 80** (todo procedural, cero assets externos):
 - Nacional de asfalto desgastado con **línea central blanca discontinua**,
@@ -51,13 +65,17 @@ aparece de repente.
   caperuza roja, matorral, parcelas de cultivo de colores… y el
   **toro de Osborne** en su valla.
 - Montañas 3D reales en capas hasta el horizonte.
-- El **sol rojo** — la única firma surrealista que queda del brief original.
+- Cielo real: una esfera envolvente con nubes (el sol-sello rojo se retiró).
 
 **Distancia de dibujado / sin pop-in:** el campo de props abarca ~2,1 km de
 carretera; la niebla se vuelve opaca antes del punto donde se recicla y
 aparece la geometría nueva, así que **nunca ves nacer un objeto**. Los
 contornos de tinta se desvanecen dentro de la calima para que las siluetas
 lejanas queden suaves.
+
+**Movimiento real:** las marcas viales fluyen hacia el conductor exactamente a
+la velocidad del mundo (línea discontinua a ~3,5 m de trazo / ~9 m de hueco), el
+morro cabecea al acelerar y frenar, y el rig guiña hacia el interior de la curva.
 
 **Curvas y tráfico:** línea central como suma de senos (recta bajo las ruedas,
 curva en el horizonte, deriva centrífuga real que obliga a contravolantear;
@@ -83,8 +101,8 @@ docs/DESIGN.md                diseño técnico del informe original
 
 ## Qué falta
 
-- Sonido: motor, lluvia, y las emisoras de radio con audio real.
 - Grabación de voz real con `MediaRecorder` para los podcasts del walkie
   (Fase 4: sistema social asíncrono tipo Death Stranding).
+- Música/locución real por emisora (ahora es síntesis procedural en vivo).
 - Fail state real en colisiones (daño, recaudación del taxi).
 - Pasajeros y paradas (es un taxi…).

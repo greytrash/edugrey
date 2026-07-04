@@ -3,12 +3,14 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<link rel="icon" href="data:," />
 <title>Dalinian Roads · España 80s — prototipo cel shading</title>
 <style>
   :root { color-scheme: dark; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: #191510; }
-  canvas { display: block; }
+  canvas { display: block; cursor: grab; }
+  canvas:active { cursor: grabbing; }
 
   #ui {
     position: fixed; inset: 0; pointer-events: none;
@@ -47,10 +49,10 @@
 <div id="ui">
   <div id="title">
     <h1>Dalinian Roads · España 80s</h1>
-    <p>Prototipo cel shading — taxi blanco por una nacional de los 80. Radio, taxímetro y un macuto con emisora para grabar. Todo el horizonte existe de verdad.</p>
+    <p>Taxi blanco por una nacional de los 80. Arrastra el ratón para mirar la cabina, el asiento o por la ventanilla. La radio suena: cambia de emisora con E.</p>
   </div>
   <div id="help">
-    <b>W</b>/<b>S</b> gas · freno &nbsp; <b>A</b>/<b>D</b> volante &nbsp; <b>E</b> emisora &nbsp; <b>T</b> grabar &nbsp; <b>N</b> hora &nbsp; <b>R</b> lluvia &nbsp; <b>P</b> pausa
+    <b>W</b>/<b>S</b> gas · freno &nbsp; <b>A</b>/<b>D</b> volante &nbsp; <b>ratón</b> mirar &nbsp; <b>E</b> emisora &nbsp; <b>T</b> grabar &nbsp; <b>N</b> hora &nbsp; <b>R</b> lluvia &nbsp; <b>P</b> pausa
   </div>
   <div id="hud">
     <div><span class="spd">0</span> <span class="unit">km/h</span></div>
@@ -67,29 +69,26 @@
 import * as THREE from 'three';
 
 /* ============================================================================
-   Dalinian Roads · España 80s — cel-shaded driving prototype
+   Dalinian Roads · España 80s — cel-shaded taxi prototype
    ----------------------------------------------------------------------------
-   Sim layer  : arcade taxi physics, curved N-road, Spanish-80s roadside
-                (olivos, cipreses, casas blancas, toro de Osborne, postes,
-                señales), real 3D mountains. EVERYTHING on the horizon exists
-                in the scene; new objects enter behind an opaque fog wall so
-                nothing ever pops into view.
-   Cockpit    : white-taxi interior parented to the camera — wheel, gauges
-                with a live speedo needle, period radio with switchable
-                stations, taxímetro, and a macuto with a trucker CB handset
-                to record (T toggles REC).
-   Post layer : clean cel look — depth+luminance ink outlines, faint grain,
-                vignette, time-of-day grade, rain streaks, crash pulse.
+   - Real road motion: markings scroll toward the driver at world speed with
+     realistic dash spacing (~3.5 m dash / ~9 m gap).
+   - Free-look cockpit: the camera sits in a rig; drag the mouse to look at
+     the radio, the passenger seat with the macuto+CB, out the windows or
+     back at the bench. Release and the view eases back to the road.
+   - Sky is a real inside-out sphere (no camera-glued backdrop, no red sun).
+   - WebAudio radio: five stations, each procedurally generated live (talk
+     shows, synth-pop, rock, copla) through an AM-style band-passed chain
+     with hiss and a static burst on retune. Plus an engine hum tied to speed.
+   - Everything on the horizon exists in 3D; recycling happens behind an
+     opaque fog wall so nothing pops into view.
    ========================================================================== */
 
 const PALETTE = {
   skyTop:   '#7fa8c9',
   horizon:  '#e7d8c2',
   ground:   0xb5a06e,
-  asphalt:  '#5c5852',
   gravel:   '#a8996f',
-  white:    '#e8e2d2',
-  red:      '#b53528',
   olive:    0x6b7345,
   cypress:  0x3c5232,
   terracotta: 0xa3502f,
@@ -98,7 +97,7 @@ const PALETTE = {
   dashDark: 0x241f1a,
 };
 
-/* ---------- renderer / scene / camera -------------------------------------- */
+/* ---------- renderer / scene / rig / camera -------------------------------- */
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.setSize(innerWidth, innerHeight);
@@ -110,11 +109,15 @@ const FOG_NEAR = 740, FOG_FAR = 2020;
 scene.fog = new THREE.Fog(new THREE.Color(PALETTE.horizon), FOG_NEAR, FOG_FAR);
 
 const camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.25, 2600);
-camera.position.set(0, 1.24, 0);          // driver's eyes, seated in the taxi
-camera.lookAt(0, 1.05, -40);
-scene.add(camera);
+camera.rotation.order = 'YXZ';
 
-/* toon gradient map — 4 hard bands for a richer cel read ------------------- */
+// the rig is the taxi: it carries the camera (head) and the whole cockpit
+const rig = new THREE.Object3D();
+rig.position.set(0, 1.24, 0);
+rig.add(camera);
+scene.add(rig);
+
+/* toon gradient map — 4 hard bands -------------------------------------------*/
 const gradColors = new Uint8Array([60, 120, 190, 255]);
 const gradientMap = new THREE.DataTexture(gradColors, gradColors.length, 1, THREE.RedFormat);
 gradientMap.minFilter = gradientMap.magFilter = THREE.NearestFilter;
@@ -127,11 +130,11 @@ sun.position.set(-6, 10, -8);
 scene.add(sun);
 const hemi = new THREE.HemisphereLight(0xf6ecd8, 0x8a765a, 0.95);
 scene.add(hemi);
-const amb  = new THREE.AmbientLight(0xffffff, 0.4);
+const amb  = new THREE.AmbientLight(0xffffff, 0.5);
 scene.add(amb);
 
 /* ============================================================================
-   CANVAS TEXTURE FACTORIES  (all art procedural — zero external assets)
+   CANVAS TEXTURE FACTORIES
    ========================================================================== */
 function makeCanvas(w, h) {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
@@ -154,16 +157,14 @@ function texFrom(c, rx = 1, ry = 1) {
   return t;
 }
 
-/* Spanish N-road: sun-bleached asphalt, dashed white centre, solid white
-   edge lines, gravel shoulders. Plane is 22 units wide → 256px maps 22u. */
+/* Spanish N-road. One texture tile = 88.46 world units (2300 / 26 repeats),
+   so the centre line gets 7 dashes per tile → ~3.5 m dash / ~9 m gap. */
 function roadTexture() {
   const W = 256, H = 1024, { c, x } = makeCanvas(W, H);
   x.fillStyle = PALETTE.gravel; x.fillRect(0, 0, W, H);          // shoulders
   x.fillStyle = '#6b6660'; x.fillRect(20, 0, 216, H);            // sun-bleached asphalt
-  // subtle wear: darker wheel tracks per lane
   x.fillStyle = 'rgba(0,0,0,0.07)';
   for (const cx of [62, 96, 160, 194]) x.fillRect(cx - 7, 0, 14, H);
-  // cracks
   x.strokeStyle = 'rgba(0,0,0,0.35)'; x.lineWidth = 1;
   for (let i = 0; i < 30; i++) {
     x.beginPath();
@@ -172,69 +173,62 @@ function roadTexture() {
     x.lineTo(px + (Math.random() - 0.5) * 26, Math.random() * H);
     x.stroke();
   }
-  // solid white edge lines
   x.fillStyle = 'rgba(238,232,214,0.85)';
-  x.fillRect(30, 0, 5, H); x.fillRect(221, 0, 5, H);
-  // dashed white centre line
-  for (let y = 0; y < H; y += 128) x.fillRect(124, y, 8, 46);
+  x.fillRect(30, 0, 5, H); x.fillRect(221, 0, 5, H);             // edge lines
+  for (let y = 0; y < H; y += 146) x.fillRect(124, y, 8, 40);    // centre dashes
   grain(x, W, H, 0.22);
   return texFrom(c, 1, 26);
 }
 
-/* sky-only backdrop: gradient, torn clouds, the red sun stamp --------------- */
+/* sky for an inside-out sphere: blue at both poles, warm cream band at the
+   equator (the horizon), clouds mirrored so either pole-up mapping works. */
 function skyTexture() {
   const W = 2048, H = 1024, { c, x } = makeCanvas(W, H);
   const g = x.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0.00, PALETTE.skyTop);
-  g.addColorStop(0.55, '#b9c6c4');
-  g.addColorStop(0.80, PALETTE.horizon);
-  g.addColorStop(1.00, PALETTE.horizon);
+  g.addColorStop(0.30, '#a9becb');
+  g.addColorStop(0.44, PALETTE.horizon);
+  g.addColorStop(0.56, PALETTE.horizon);
+  g.addColorStop(0.70, '#a9becb');
+  g.addColorStop(1.00, PALETTE.skyTop);
   x.fillStyle = g; x.fillRect(0, 0, W, H);
 
   function cloud(cx, cy, s, tone) {
     x.fillStyle = tone;
-    for (let i = 0; i < 26; i++) {
+    for (let i = 0; i < 24; i++) {
       const a = Math.random() * 6.28, r = Math.random() * s;
-      x.beginPath(); x.arc(cx + Math.cos(a)*r, cy + Math.sin(a)*r*0.45, s*(0.28 + Math.random()*0.38), 0, 7); x.fill();
+      x.beginPath(); x.arc(cx + Math.cos(a)*r, cy + Math.sin(a)*r*0.4, s*(0.26 + Math.random()*0.36), 0, 7); x.fill();
     }
   }
-  cloud(700, 240, 150, 'rgba(248,244,234,0.95)');
-  cloud(1220, 320, 190, 'rgba(243,238,226,0.92)');
-  cloud(380, 420, 110, 'rgba(246,241,230,0.8)');
-  cloud(1620, 430, 130, 'rgba(242,236,224,0.85)');
-
-  // the red sun — the one surreal signature kept from the litho brief
-  const sx = 1024, sy = 330, sr = 130;
-  const halo = x.createRadialGradient(sx, sy, sr*0.6, sx, sy, sr*2.2);
-  halo.addColorStop(0, 'rgba(248,240,224,0.85)'); halo.addColorStop(1, 'rgba(248,240,224,0)');
-  x.fillStyle = halo; x.beginPath(); x.arc(sx, sy, sr*2.2, 0, 7); x.fill();
-  x.fillStyle = PALETTE.red; x.beginPath(); x.arc(sx, sy, sr, 0, 7); x.fill();
-
-  grain(x, W, H, 0.10);
+  for (const [cx, cy, s] of [[420, 300, 120], [1040, 250, 150], [1560, 330, 110], [760, 380, 90]]) {
+    cloud(cx, cy, s, 'rgba(246,241,230,0.92)');
+    cloud(cx, H - cy, s, 'rgba(246,241,230,0.92)');   // mirrored copy
+  }
+  grain(x, W, H, 0.08);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
-  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.ClampToEdgeWrapping;
   return t;
 }
+const sky = new THREE.Mesh(
+  new THREE.SphereGeometry(2300, 24, 12),
+  new THREE.MeshBasicMaterial({ map: skyTexture(), side: THREE.BackSide, fog: false, depthWrite: false })
+);
+scene.add(sky);
 
 /* Osborne bull silhouette (cutout) ------------------------------------------ */
 function bullTexture() {
   const W = 256, H = 160, { c, x } = makeCanvas(W, H);
   x.clearRect(0, 0, W, H);
   x.fillStyle = '#161310'; x.strokeStyle = '#161310';
-  // body
   x.beginPath(); x.ellipse(138, 72, 66, 36, -0.05, 0, 7); x.fill();
-  // hump + neck + head
   x.beginPath(); x.ellipse(84, 52, 30, 26, 0.3, 0, 7); x.fill();
   x.beginPath(); x.ellipse(58, 62, 16, 20, 0.1, 0, 7); x.fill();
-  // horns
   x.lineWidth = 6; x.lineCap = 'round';
   x.beginPath(); x.moveTo(52, 46); x.quadraticCurveTo(36, 24, 46, 12); x.stroke();
   x.beginPath(); x.moveTo(64, 44); x.quadraticCurveTo(78, 24, 70, 10); x.stroke();
-  // legs
   for (const [lx, lw] of [[92, 10], [116, 9], [162, 9], [186, 10]])
     x.fillRect(lx, 96, lw, 56);
-  // tail
   x.lineWidth = 7;
   x.beginPath(); x.moveTo(200, 52); x.quadraticCurveTo(224, 60, 220, 96); x.stroke();
   return texFrom(c, 1, 1);
@@ -263,27 +257,26 @@ function curveSignTexture() {
 }
 
 /* cockpit textures ------------------------------------------------------------ */
-const STATIONS = ['RNE 1', 'RADIO 3', 'LOS 40', 'CADENA SER', 'ONDA MEDIA'];
+const STATIONS = ['RNE 1', 'RADIO 3', 'LOS 40', 'CADENA SER', 'ONDA MEDIA', 'APAGADA'];
 let stationIdx = 1, recOn = false;
 const radioCanvas = makeCanvas(256, 96);
 function drawRadioFace() {
-  const { c, x } = radioCanvas, W = 256, H = 96;
-  x.fillStyle = '#1c1915'; x.fillRect(0, 0, W, H);
-  // dial band
+  const { x } = radioCanvas, W = 256;
+  x.fillStyle = '#1c1915'; x.fillRect(0, 0, W, 96);
   x.fillStyle = '#efe6cf'; x.fillRect(14, 12, 228, 30);
   x.fillStyle = '#3a352c'; x.font = '12px monospace'; x.textAlign = 'center';
-  const freqs = ['88', '92', '96', '100', '104', '108'];
-  freqs.forEach((f, i) => x.fillText(f, 32 + i * 39, 33));
-  // needle position per station
-  x.fillStyle = '#c23a2a';
-  x.fillRect(28 + stationIdx * 42, 12, 3, 30);
-  // green LED station name
-  x.fillStyle = '#71d98a'; x.font = 'bold 16px monospace';
+  ['88', '92', '96', '100', '104', '108'].forEach((f, i) => x.fillText(f, 32 + i * 39, 33));
+  if (stationIdx < 5) {
+    x.fillStyle = '#c23a2a';
+    x.fillRect(26 + stationIdx * 42, 12, 3, 30);
+  }
+  x.fillStyle = stationIdx < 5 ? '#71d98a' : '#4a463c';
+  x.font = 'bold 16px monospace';
   x.fillText(STATIONS[stationIdx], W / 2, 72);
   return radioCanvas.c;
 }
 const radioTex = texFrom(drawRadioFace(), 1, 1);
-function setStation(i) { stationIdx = (i + STATIONS.length) % STATIONS.length; drawRadioFace(); radioTex.needsUpdate = true; }
+function refreshRadioFace() { drawRadioFace(); radioTex.needsUpdate = true; }
 
 function taximeterTexture() {
   const { c, x } = makeCanvas(128, 64);
@@ -314,27 +307,8 @@ function gaugeTexture() {
 }
 
 /* ============================================================================
-   SKY BACKDROP — forced background: depthTest off, rendered first.
-   Real 3D terrain and mountains live in the scene in front of it.
-   ========================================================================== */
-const backdropMat = new THREE.MeshBasicMaterial({ map: skyTexture(), depthWrite: false, depthTest: false, fog: false });
-const backdrop = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), backdropMat);
-backdrop.renderOrder = -99;
-backdrop.frustumCulled = false;
-const backdropRig = new THREE.Object3D();
-backdropRig.add(backdrop);
-camera.add(backdropRig);
-function sizeBackdrop() {
-  const d = 480;
-  const h = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * d;
-  backdrop.position.set(0, 60 / d, -d);
-  backdrop.scale.set(h * camera.aspect * 1.2, h * 1.2, 1);
-}
-sizeBackdrop();
-
-/* ============================================================================
-   CURVES — sum-of-sines centreline; tangent subtracted at the player.
-   Beyond BEND_MAX the bend continues linearly so far geometry stays sane.
+   CURVES — sum-of-sines centreline; tangent subtracted at the player;
+   linear extension past BEND_MAX keeps far geometry sane.
    ========================================================================== */
 let scroll = 0;
 const CURVE = [
@@ -353,9 +327,9 @@ function roadDX(d) {
 }
 
 /* ============================================================================
-   ROAD + GROUND — long enough that the far end sits inside the fog wall
+   ROAD + GROUND
    ========================================================================== */
-const WORLD = 2150;                 // road-space span; > FOG_FAR so entries are invisible
+const WORLD = 2150;
 const roadMap = roadTexture();
 const road = new THREE.Mesh(new THREE.PlaneGeometry(22, 2300, 1, 288), toon({ map: roadMap }));
 road.rotation.x = -Math.PI / 2;
@@ -371,7 +345,6 @@ const roadPos = road.geometry.attributes.position;
 const roadBaseX = new Float32Array(roadPos.count);
 for (let i = 0; i < roadPos.count; i++) roadBaseX[i] = roadPos.getX(i);
 function bendRoad() {
-  // local +y maps to world -z; road centre sits at z −1040 → d = y + 1040
   for (let i = 0; i < roadPos.count; i++)
     roadPos.setX(i, roadBaseX[i] + roadDX(roadPos.getY(i) + 1040));
   roadPos.needsUpdate = true;
@@ -416,7 +389,7 @@ function buildCypressRow() {
   for (let i = 0; i < n; i++) {
     const h = 4.5 + Math.random() * 2.8;
     const c = new THREE.Mesh(new THREE.ConeGeometry(0.55, h, 6), cypressMat);
-    c.position.set((Math.random() - 0.5) * 3, h / 2, i * 3.4);   // row runs along the road
+    c.position.set((Math.random() - 0.5) * 3, h / 2, i * 3.4);
     grp.add(c);
   }
   return grp;
@@ -435,14 +408,13 @@ function buildHouseCluster() {
       slope.rotation.z = -sgn * 0.5;
       house.add(slope);
     }
-    // door + windows (dark inserts on the road-facing wall)
     const door = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.5, 0.08), darkMat);
     door.position.set(-w * 0.22, 0.75, dp / 2 + 0.02); house.add(door);
     for (const wx of [w * 0.12, w * 0.32]) {
       const win = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.08), darkMat);
       win.position.set(wx, 1.5, dp / 2 + 0.02); house.add(win);
     }
-    house.position.set((Math.random() - 0.5) * 6, 0, i * (w + 3));  // row runs along the road
+    house.position.set((Math.random() - 0.5) * 6, 0, i * (w + 3));
     house.rotation.y = (Math.random() - 0.5) * 0.5;
     grp.add(house);
   }
@@ -478,7 +450,7 @@ function buildSign() {
   grp.add(face);
   return grp;
 }
-function buildHito() {                       // white km marker with red cap
+function buildHito() {
   const grp = new THREE.Object3D();
   const body = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.9, 0.2), toon({ color: 0xe9e4d4 }));
   body.position.y = 0.45; grp.add(body);
@@ -496,7 +468,7 @@ function buildScrub() {
   }
   return grp;
 }
-function buildField() {                      // flat crop/soil patch, never touches the road
+function buildField() {
   const tones = [0xc9a84c, 0x9a8f4e, 0xa0603a, 0x8e9457];
   const m = new THREE.Mesh(
     new THREE.PlaneGeometry(60 + Math.random() * 100, 50 + Math.random() * 120),
@@ -517,7 +489,6 @@ function buildMountain() {
   return grp;
 }
 
-/* traffic: boxy 80s sedans, SEAT-ish colours ------------------------------- */
 function buildCarMesh(bodyColor, tail) {
   const g = new THREE.Group();
   const paint = toon({ color: bodyColor });
@@ -563,9 +534,9 @@ function buildTraffic(oncoming) {
 }
 
 /* ============================================================================
-   PROP FIELD — the whole horizon exists; recycling happens inside the fog
+   PROP FIELD
    ========================================================================== */
-const LANE = 8.0;                  // clamp: asphalt + shoulder
+const LANE = 8.0;
 const props = [];
 function spawnProp(s) {
   const roll = Math.random();
@@ -593,17 +564,30 @@ function spawnProp(s) {
 for (let d = 25; d < WORLD; d += 13 + Math.random() * 15) spawnProp(d);
 
 /* ============================================================================
-   COCKPIT — white taxi interior, parented to the camera
+   COCKPIT — full cabin, attached to the rig (NOT the camera) so free-look
+   moves your head inside a stable car.
    ========================================================================== */
 const cab = new THREE.Group();
-camera.add(cab);
+rig.add(cab);
 
 const vinyl  = toon({ color: PALETTE.dashDark });
 const vinyl2 = toon({ color: 0x383026 });
 const whitePaint = toon({ color: 0xeae6da });
-const chrome = toon({ color: 0xb9b6ac });
+const chromeMat = toon({ color: 0xb9b6ac });
+const headliner = toon({ color: 0xd8d2c2 });
+const seatMat = toon({ color: 0x8f6b4e });
 
-// hood (white, with a resting wiper)
+// floor pan + transmission tunnel + gear lever (visible looking down)
+const floorPan = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.04, 2.8), toon({ color: 0x1c1916 }));
+floorPan.position.set(0, -0.80, -0.15); cab.add(floorPan);
+const tunnel = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.16, 2.0), toon({ color: 0x241f1a }));
+tunnel.position.set(0.30, -0.72, -0.25); cab.add(tunnel);
+const gearStick = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.016, 0.26, 8), toon({ color: 0x232019 }));
+gearStick.position.set(0.30, -0.52, -0.42); gearStick.rotation.x = -0.25; cab.add(gearStick);
+const gearKnob = new THREE.Mesh(new THREE.SphereGeometry(0.032, 10, 8), toon({ color: 0x161310 }));
+gearKnob.position.set(0.30, -0.40, -0.455); cab.add(gearKnob);
+
+// hood + wiper
 const hood = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.05, 2.4), whitePaint);
 hood.position.set(0, -0.62, -2.25); hood.rotation.x = -0.055; cab.add(hood);
 const wiper = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.015, 0.03), darkMat);
@@ -615,7 +599,7 @@ dash.position.set(0, -0.50, -0.92); dash.rotation.x = 0.10; cab.add(dash);
 const dashTop = new THREE.Mesh(new THREE.BoxGeometry(2.15, 0.06, 0.5), vinyl2);
 dashTop.position.set(0, -0.36, -0.95); cab.add(dashTop);
 
-// instrument binnacle: two gauges + a live speedo needle
+// binnacle: two gauges + live speedo needle
 const gaugeTex = gaugeTexture();
 const binnacle = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.20, 0.06), vinyl2);
 binnacle.position.set(0, -0.30, -0.88); binnacle.rotation.x = 0.12; cab.add(binnacle);
@@ -629,7 +613,7 @@ const needle = new THREE.Mesh(new THREE.BoxGeometry(0.007, 0.062, 0.004),
   new THREE.MeshBasicMaterial({ color: 0xd94b32 }));
 needle.position.y = 0.026; needlePivot.add(needle); cab.add(needlePivot);
 
-// steering wheel (thin rim, three spokes), rotates with input
+// steering wheel
 const wheelGrp = new THREE.Object3D();
 wheelGrp.position.set(0, -0.37, -0.68); wheelGrp.rotation.x = 0.42; cab.add(wheelGrp);
 const wheelSpin = new THREE.Object3D(); wheelGrp.add(wheelSpin);
@@ -646,7 +630,7 @@ hub.rotation.x = Math.PI / 2; wheelSpin.add(hub);
 const column = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.3, 8), vinyl2);
 column.position.set(0, -0.05, 0.12); column.rotation.x = 1.2; wheelGrp.add(column);
 
-// period car radio, mounted on the dash top angled at the driver (taxi style)
+// radio on the dash top, angled at the driver — E cycles emisoras (with sound)
 const radioGrp = new THREE.Object3D();
 radioGrp.position.set(0.44, -0.30, -0.88);
 radioGrp.rotation.x = 0.42; radioGrp.rotation.y = -0.15;
@@ -658,64 +642,72 @@ const radioFace = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.09),
 radioFace.position.z = 0.032;
 radioGrp.add(radioFace);
 for (const kx of [-0.095, 0.095]) {
-  const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.02, 10), chrome);
+  const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.02, 10), chromeMat);
   knob.rotation.x = Math.PI / 2;
   knob.position.set(kx, -0.068, 0.02);
   radioGrp.add(knob);
 }
 
-// taxímetro on the dash top
+// taxímetro
 const taxiMeter = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.075, 0.06), vinyl2);
 taxiMeter.position.set(0.22, -0.315, -0.9); taxiMeter.rotation.x = 0.15; cab.add(taxiMeter);
 const meterFace = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 0.06),
   new THREE.MeshBasicMaterial({ map: taximeterTexture() }));
 meterFace.position.set(0.22, -0.312, -0.868); meterFace.rotation.x = 0.15; cab.add(meterFace);
 
-// macuto (olive duffel) on the passenger side, with the CB on top
+// passenger seat with the macuto + CB on it (look right to see it)
+const seatBase = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.16, 0.68), seatMat);
+seatBase.position.set(0.72, -0.60, -0.18); cab.add(seatBase);
+const seatBack = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.78, 0.15), seatMat);
+seatBack.position.set(0.72, -0.22, 0.16); seatBack.rotation.x = -0.16; cab.add(seatBack);
+const headrest = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.18, 0.12), seatMat);
+headrest.position.set(0.72, 0.24, 0.22); cab.add(headrest);
+
 const canvasMat = toon({ color: 0x6d6a45 });
 const duffel = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.4, 12), canvasMat);
-duffel.rotation.z = Math.PI / 2 - 0.15; duffel.rotation.y = 0.35;
-duffel.position.set(0.68, -0.44, -0.92); cab.add(duffel);
+duffel.rotation.z = Math.PI / 2 - 0.1; duffel.rotation.y = 0.5;
+duffel.position.set(0.72, -0.45, -0.20); cab.add(duffel);
 for (const ex of [-0.2, 0.2]) {
   const cap = new THREE.Mesh(new THREE.SphereGeometry(0.128, 10, 8), canvasMat);
-  cap.position.set(0.68 + ex * Math.cos(0.35), -0.44 - ex * 0.15, -0.92 - ex * Math.sin(0.35));
+  cap.position.set(0.72 + ex * Math.cos(0.5), -0.45 - ex * 0.1, -0.20 - ex * Math.sin(0.5));
   cab.add(cap);
 }
 const strap = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.09, 0.28), toon({ color: 0x4a4630 }));
-strap.position.set(0.68, -0.40, -0.92); strap.rotation.y = 0.35; cab.add(strap);
+strap.position.set(0.72, -0.41, -0.20); strap.rotation.y = 0.5; cab.add(strap);
 
-// CB emisora (trucker-style) resting on the macuto; T toggles REC
+// CB emisora on the macuto; REC led lights up with T
 const cbBox = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.055, 0.12), toon({ color: 0x1b1916 }));
-cbBox.position.set(0.66, -0.335, -0.90); cbBox.rotation.y = -0.4; cab.add(cbBox);
-const cbKnob = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.018, 10), chrome);
-cbKnob.rotation.x = Math.PI / 2; cbKnob.position.set(0.63, -0.335, -0.845); cab.add(cbKnob);
+cbBox.position.set(0.70, -0.34, -0.20); cbBox.rotation.y = -0.5; cab.add(cbBox);
+const cbKnob = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.018, 10), chromeMat);
+cbKnob.rotation.x = Math.PI / 2; cbKnob.position.set(0.645, -0.34, -0.155); cab.add(cbKnob);
 const recLedMat = new THREE.MeshBasicMaterial({ color: 0x3a1512 });
 const recLed = new THREE.Mesh(new THREE.SphereGeometry(0.009, 8, 6), recLedMat);
-recLed.position.set(0.70, -0.33, -0.845); cab.add(recLed);
+recLed.position.set(0.745, -0.335, -0.16); cab.add(recLed);
 
-// handset + coiled cord back to the CB — resting on the dash top, in view
+// handset clipped by the radio; coiled cord runs back to the CB on the seat
 const handset = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.11, 0.035), toon({ color: 0x232019 }));
 handset.position.set(0.585, -0.315, -0.88); handset.rotation.z = 0.35; handset.rotation.x = 1.15;
 cab.add(handset);
-const handsetBtn = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.03, 0.01), chrome);
+const handsetBtn = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.03, 0.01), chromeMat);
 handsetBtn.position.set(0.575, -0.292, -0.873); handsetBtn.rotation.x = 1.15; cab.add(handsetBtn);
 {
-  const A = new THREE.Vector3(0.60, -0.325, -0.90), B = new THREE.Vector3(0.66, -0.35, -0.90);
+  const A = new THREE.Vector3(0.60, -0.33, -0.86), B = new THREE.Vector3(0.70, -0.36, -0.26);
   const pts = [];
-  for (let i = 0; i <= 30; i++) {
-    const t = i / 30;
+  for (let i = 0; i <= 40; i++) {
+    const t = i / 40;
     const p = A.clone().lerp(B, t);
-    p.y += Math.sin(t * Math.PI * 8) * 0.012;
-    p.z += Math.cos(t * Math.PI * 8) * 0.012;
+    p.y += Math.sin(t * Math.PI) * -0.08;                    // sag
+    p.x += Math.cos(t * Math.PI * 14) * 0.012;               // coil
+    p.y += Math.sin(t * Math.PI * 14) * 0.012;
     pts.push(p);
   }
   const cord = new THREE.Mesh(
-    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, 0.005, 5),
+    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 60, 0.005, 5),
     toon({ color: 0x191713 }));
   cab.add(cord);
 }
 
-// rearview mirror (small, dark glass), A-pillars framing the windshield, roof
+// mirror, windshield frame, roof, doors, rear bench — a cabin worth looking at
 const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.055, 0.018), vinyl2);
 mirror.position.set(0.22, 0.275, -0.70); mirror.rotation.y = 0.12; cab.add(mirror);
 const mirrorGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.155, 0.042),
@@ -728,14 +720,32 @@ for (const sgn of [-1, 1]) {
   pillar.position.set(sgn * 0.72, 0.0, -0.66);
   pillar.rotation.z = sgn * 0.28; pillar.rotation.x = 0.08;
   cab.add(pillar);
+  const bPillar = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.0, 0.12), whitePaint);
+  bPillar.position.set(sgn * 0.92, 0.02, 0.28);
+  cab.add(bPillar);
+  const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.62, 1.5), vinyl);
+  doorPanel.position.set(sgn * 0.94, -0.42, -0.35); cab.add(doorPanel);
+  const doorSill = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 1.5), vinyl2);
+  doorSill.position.set(sgn * 0.93, -0.10, -0.35); cab.add(doorSill);
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.16), chromeMat);
+  handle.position.set(sgn * 0.90, -0.22, -0.45); cab.add(handle);
 }
-const header = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.10, 0.12), toon({ color: 0xd8d2c2 }));
+const header = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.10, 0.12), headliner);
 header.position.set(0, 0.35, -0.68); cab.add(header);
-const doorCard = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.6, 0.9), vinyl);
-doorCard.position.set(-0.9, -0.35, -0.85); cab.add(doorCard);
+const roofPanel = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.04, 2.0), headliner);
+roofPanel.position.set(0, 0.44, 0.25); cab.add(roofPanel);
+const bench = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.42, 0.55), seatMat);
+bench.position.set(0, -0.62, 1.05); cab.add(bench);
+const benchBack = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.6, 0.14), seatMat);
+benchBack.position.set(0, -0.22, 1.32); cab.add(benchBack);
+const rearShelf = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.05, 0.35), vinyl2);
+rearShelf.position.set(0, 0.10, 1.42); cab.add(rearShelf);
+// driver seat back (visible when looking behind)
+const mySeatBack = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.14), seatMat);
+mySeatBack.position.set(-0.02, -0.25, 0.30); mySeatBack.rotation.x = -0.14; cab.add(mySeatBack);
 
 /* ============================================================================
-   POST-PROCESS — clean cel pass: ink outlines + faint grain + grade + rain
+   POST-PROCESS — cel pass: ink outlines + faint grain + grade + rain + impact
    ========================================================================== */
 function makeTargets() {
   const dpr = renderer.getPixelRatio();
@@ -795,7 +805,6 @@ const postMat = new THREE.ShaderMaterial({
       vec2 px = 1.0 / resolution;
       vec3 col = texture(tDiffuse, vUv).rgb;
 
-      /* -- cel ink outlines: depth discontinuity + luminance sobel --------- */
       float dc = linDepth(vUv);
       float dEdge =
         abs(dc - linDepth(vUv + vec2( px.x,0))) + abs(dc - linDepth(vUv + vec2(-px.x,0))) +
@@ -807,12 +816,10 @@ const postMat = new THREE.ShaderMaterial({
         abs(lum(texture(tDiffuse, vUv+vec2(0,px.y)).rgb) - lum(texture(tDiffuse, vUv-vec2(0,px.y)).rgb));
       lEdge = smoothstep(0.34, 0.80, lEdge);
 
-      /* fade outlines into the haze so fogged silhouettes stay soft */
       float hazeFade = 1.0 - smoothstep(fogNear * 0.8, fogFar * 0.95, dc);
       float edge = clamp(max(dEdge, lEdge*0.85), 0.0, 1.0) * hazeFade;
       col = mix(col, inkColor, edge * 0.85);
 
-      /* -- rain: diagonal streaks ------------------------------------------ */
       if (rain > 0.01){
         vec2 rp = vUv * vec2(resolution.x/resolution.y, 1.0) * 24.0;
         rp.x += rp.y * 0.35;
@@ -822,15 +829,11 @@ const postMat = new THREE.ShaderMaterial({
         col *= 1.0 - 0.10 * rain;
       }
 
-      /* -- faint film grain + grade ---------------------------------------- */
       float g = hash(gl_FragCoord.xy * 0.5);
       col = mix(col, col * (0.92 + g * 0.16), 0.5);
       col *= grade * exposure;
-
-      /* -- crash pulse ------------------------------------------------------ */
       col = mix(col, vec3(0.45, 0.10, 0.07), impact * 0.45);
 
-      /* -- gentle vignette --------------------------------------------------- */
       float v = smoothstep(1.35, 0.4, length(vUv - 0.5));
       col *= mix(0.86, 1.0, v);
 
@@ -866,15 +869,202 @@ function applyTOD() {
 }
 applyTOD();
 
+/* ============================================================================
+   AUDIO — engine hum + five procedural radio stations through an AM chain.
+   Everything is synthesized live: no audio assets.
+   ========================================================================== */
+let AC = null, noiseBuf = null;
+let engineOsc, engineGain;
+let radioBus, radioBP, radioOut, hissGain;
+let radioNextT = 0, radioStep = 0, leadDeg = 4;
+
+const RADIO_PROG = [
+  { type: 'talk',  formants: [520, 1550], pace: 1.0,  bp: 1100, hiss: 0.020 },  // RNE 1 — tertulia
+  { type: 'music', style: 'rock',  bpm: 142, root: 82.41,  bp: 1500, hiss: 0.014 }, // RADIO 3
+  { type: 'music', style: 'pop',   bpm: 118, root: 110.0,  bp: 1600, hiss: 0.012 }, // LOS 40
+  { type: 'talk',  formants: [430, 2300], pace: 1.35, bp: 1300, hiss: 0.018 },  // CADENA SER — más nervioso
+  { type: 'music', style: 'copla', bpm: 102, root: 98.0,   bp:  950, hiss: 0.030 }, // ONDA MEDIA
+  { type: 'off' },                                                               // APAGADA
+];
+const SCALES = {
+  rock:  [0, 3, 5, 7, 10],            // pentatónica menor
+  pop:   [0, 2, 3, 5, 7, 8, 10],      // menor natural
+  copla: [0, 2, 3, 5, 7, 8, 11],      // menor armónica
+};
+
+function initAudio() {
+  if (AC) return;
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return;
+  AC = new Ctx();
+
+  const nb = AC.createBuffer(1, AC.sampleRate * 2, AC.sampleRate);
+  const nd = nb.getChannelData(0);
+  for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+  noiseBuf = nb;
+
+  // engine: saw through a lowpass, pitch & volume follow speed
+  engineOsc = AC.createOscillator(); engineOsc.type = 'sawtooth';
+  engineOsc.frequency.value = 42;
+  const engLP = AC.createBiquadFilter(); engLP.type = 'lowpass'; engLP.frequency.value = 170;
+  engineGain = AC.createGain(); engineGain.gain.value = 0;
+  engineOsc.connect(engLP); engLP.connect(engineGain); engineGain.connect(AC.destination);
+  engineOsc.start();
+
+  // radio chain: instruments → soft clip → AM bandpass → out
+  radioBus = AC.createGain(); radioBus.gain.value = 1.0;
+  const shaper = AC.createWaveShaper();
+  const curve = new Float32Array(256);
+  for (let i = 0; i < 256; i++) { const v = i / 128 - 1; curve[i] = Math.tanh(2.2 * v); }
+  shaper.curve = curve;
+  radioBP = AC.createBiquadFilter(); radioBP.type = 'bandpass';
+  radioBP.frequency.value = 1500; radioBP.Q.value = 0.42;
+  radioOut = AC.createGain(); radioOut.gain.value = 0.42;
+  radioBus.connect(shaper); shaper.connect(radioBP); radioBP.connect(radioOut);
+  radioOut.connect(AC.destination);
+
+  const hiss = AC.createBufferSource(); hiss.buffer = noiseBuf; hiss.loop = true;
+  hissGain = AC.createGain(); hissGain.gain.value = 0;
+  hiss.connect(hissGain); hissGain.connect(radioOut);
+  hiss.start();
+
+  radioNextT = AC.currentTime + 0.1;
+  setInterval(scheduleRadio, 60);
+  tuneRadio(false);
+}
+
+function noiseHit(t, dur, filterType, freq, q, gain) {
+  const src = AC.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+  const f = AC.createBiquadFilter(); f.type = filterType; f.frequency.value = freq; f.Q.value = q;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(gain, t + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  src.connect(f); f.connect(g); g.connect(radioBus);
+  src.start(t); src.stop(t + dur + 0.05);
+}
+function tone(t, freq, dur, type, gain, lpFreq) {
+  const o = AC.createOscillator(); o.type = type; o.frequency.value = freq;
+  const f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lpFreq || 3200;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(gain, t + 0.012);
+  g.gain.setValueAtTime(gain, t + dur * 0.6);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(f); f.connect(g); g.connect(radioBus);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+function kick(t) {
+  const o = AC.createOscillator(); o.type = 'sine';
+  o.frequency.setValueAtTime(130, t);
+  o.frequency.exponentialRampToValueAtTime(46, t + 0.11);
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.85, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+  o.connect(g); g.connect(radioBus);
+  o.start(t); o.stop(t + 0.2);
+}
+function talkSyllable(t, dur, st) {
+  const src = AC.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(0.5, t + 0.018);
+  g.gain.setValueAtTime(0.5, t + dur * 0.7);
+  g.gain.linearRampToValueAtTime(0, t + dur + 0.03);
+  for (const base of st.formants) {
+    const f = AC.createBiquadFilter(); f.type = 'bandpass';
+    f.frequency.value = base * (0.8 + Math.random() * 0.45);
+    f.Q.value = 7;
+    src.connect(f); f.connect(g);
+  }
+  g.connect(radioBus);
+  src.start(t); src.stop(t + dur + 0.06);
+}
+function musicStep(t, i, st) {
+  const scale = SCALES[st.style], stepDur = 60 / st.bpm / 2;
+  const degF = d => st.root * 2 * Math.pow(2, (scale[d % scale.length] + 12 * ((d / scale.length) | 0)) / 12);
+  if (st.style === 'pop') {
+    if (i % 4 === 0) kick(t);
+    if (i % 2 === 1) noiseHit(t, 0.04, 'highpass', 6500, 1, 0.10);
+    tone(t, st.root * (i % 8 < 4 ? 1 : 0.75), stepDur * 0.85, 'square', 0.20, 700);
+    if (i % 2 === 0) {
+      leadDeg = Math.max(0, Math.min(scale.length * 2 - 1, leadDeg + ((Math.random() * 5) | 0) - 2));
+      tone(t, degF(leadDeg), stepDur * 0.8, 'sawtooth', 0.13, 2600);
+    }
+  } else if (st.style === 'rock') {
+    if (i % 8 === 0 || i % 8 === 6) kick(t);
+    if (i % 8 === 4) noiseHit(t, 0.09, 'bandpass', 1900, 1.2, 0.22);       // caja
+    const RIFF = [0, 0, 3, 0, 5, 5, 3, 0, 0, 0, 3, 3, 7, 5, 3, 0];
+    const semi = RIFF[i];
+    const f = st.root * Math.pow(2, semi / 12);
+    tone(t, f, stepDur * 0.95, 'sawtooth', 0.20, 1300);
+    tone(t, f * 1.5, stepDur * 0.95, 'sawtooth', 0.10, 1300);              // quinta
+  } else { // copla
+    if (i % 4 === 0) tone(t, st.root * 0.5, stepDur * 1.6, 'triangle', 0.30, 500);
+    if (i % 4 === 2) tone(t, st.root * 0.75, stepDur * 1.4, 'triangle', 0.26, 500);
+    if (i % 4 === 2) noiseHit(t, 0.05, 'highpass', 7000, 1, 0.06);         // pandereta
+    if (i % 2 === 0) {
+      leadDeg = Math.max(0, Math.min(scale.length * 2 - 1, leadDeg + ((Math.random() * 5) | 0) - 2));
+      tone(t, degF(leadDeg), stepDur * (Math.random() < 0.3 ? 1.7 : 0.85), 'sawtooth', 0.15, 2000);
+    }
+  }
+}
+function scheduleRadio() {
+  if (!AC || paused) return;
+  const st = RADIO_PROG[stationIdx];
+  if (!st || st.type === 'off') return;
+  const horizon = AC.currentTime + 0.22;
+  if (radioNextT < AC.currentTime - 0.5) radioNextT = AC.currentTime + 0.05;  // catch up after tab sleep
+  if (st.type === 'talk') {
+    while (radioNextT < horizon) {
+      const dur = (0.07 + Math.random() * 0.15) / st.pace;
+      talkSyllable(radioNextT, dur, st);
+      radioNextT += dur + (0.02 + Math.random() * 0.05) / st.pace;
+      if (Math.random() < 0.11) radioNextT += 0.25 + Math.random() * 0.7;   // fin de frase
+    }
+  } else {
+    const stepDur = 60 / st.bpm / 2;
+    while (radioNextT < horizon) {
+      musicStep(radioNextT, radioStep, st);
+      radioStep = (radioStep + 1) % 16;
+      radioNextT += stepDur;
+    }
+  }
+}
+function tuneRadio(withStatic = true) {
+  if (!AC) return;
+  const st = RADIO_PROG[stationIdx];
+  const t = AC.currentTime;
+  if (withStatic) {                                    // ráfaga de estática al girar el dial
+    const src = AC.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+    const g = AC.createGain();
+    g.gain.setValueAtTime(0.30, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+    src.connect(g); g.connect(radioOut);
+    src.start(t); src.stop(t + 0.2);
+  }
+  if (st.type === 'off') {
+    hissGain.gain.setTargetAtTime(0, t, 0.05);
+    radioBus.gain.setTargetAtTime(0, t, 0.02);
+  } else {
+    hissGain.gain.setTargetAtTime(st.hiss, t, 0.08);
+    radioBus.gain.setTargetAtTime(1.0, t, 0.05);
+    radioBP.frequency.setTargetAtTime(st.bp, t, 0.05);
+    radioNextT = t + 0.18;
+    radioStep = 0; leadDeg = 4;
+  }
+}
+
 /* ---------- input ---------------------------------------------------------- */
 const keys = {};
 addEventListener('keydown', e => {
+  initAudio();
   const k = e.key.toLowerCase();
   keys[k] = true;
   if (k === 'n') { todIndex = (todIndex + 1) % TOD.length; applyTOD(); }
   if (k === 'r') { rainOn = !rainOn; updateModeline(); }
   if (k === 'p') { paused = !paused; }
-  if (k === 'e') { setStation(stationIdx + 1); updateModeline(); }
+  if (k === 'e') { stationIdx = (stationIdx + 1) % STATIONS.length; refreshRadioFace(); tuneRadio(); updateModeline(); }
   if (k === 't') {
     recOn = !recOn;
     recLedMat.color.setHex(recOn ? 0xe33020 : 0x3a1512);
@@ -884,13 +1074,33 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 
+/* free-look: drag to look around the cabin; release → view eases back ------- */
+let lookYaw = 0, lookPitch = 0, lookYawT = 0, lookPitchT = 0, dragging = false;
+let lastPX = 0, lastPY = 0;
+renderer.domElement.addEventListener('pointerdown', e => {
+  initAudio();
+  if (AC && AC.state === 'suspended') AC.resume();
+  dragging = true; lastPX = e.clientX; lastPY = e.clientY;
+  renderer.domElement.setPointerCapture(e.pointerId);
+});
+addEventListener('pointermove', e => {
+  if (!dragging) return;
+  lookYawT   += (e.clientX - lastPX) * 0.0034;   // drag right → look right
+  lookPitchT += (e.clientY - lastPY) * 0.0030;   // drag down → look down
+  lookYawT   = THREE.MathUtils.clamp(lookYawT, -2.2, 2.2);
+  lookPitchT = THREE.MathUtils.clamp(lookPitchT, -0.55, 1.0);
+  lastPX = e.clientX; lastPY = e.clientY;
+});
+addEventListener('pointerup', () => { dragging = false; });
+addEventListener('pointercancel', () => { dragging = false; });
+
 /* ---------- car state ------------------------------------------------------ */
-let speed = 0;          // m/s along the road
-let laneX = 0;          // lateral position of the taxi
-let steer = 0;          // smoothed steer input
-const MAX_SPEED = 47;   // ~170 km/h, generous for an 80s taxi
-const TAXI_Z = -3.5;    // taxi body centre, relative to the camera at z=0
-let carX = 0;           // smoothed body x (collision reference)
+let speed = 0;
+let laneX = 0;
+let steer = 0;
+const MAX_SPEED = 47;
+const TAXI_Z = -3.5;
+let carX = 0;
 let shake = 0, crashCooldown = 0, crashes = 0;
 
 /* ---------- main loop ------------------------------------------------------ */
@@ -903,18 +1113,16 @@ function frame() {
   const dt = Math.min(clock.getDelta(), 0.05);
   postUniforms.time.value += dt;
 
+  const up = keys['w'] || keys['arrowup'], down = keys['s'] || keys['arrowdown'];
   if (!paused) {
-    /* throttle / brake / drag */
-    const up = keys['w'] || keys['arrowup'], down = keys['s'] || keys['arrowdown'];
     if (up)   speed += 24 * dt;
     if (down) speed -= 42 * dt;
     speed -= speed * 0.32 * dt;
     if (rainOn) speed -= speed * 0.10 * dt;
     const offRoad = Math.abs(laneX) > 7.2;
-    if (offRoad) speed -= speed * 0.5 * dt;            // gravel drags hard
+    if (offRoad) speed -= speed * 0.5 * dt;
     speed = THREE.MathUtils.clamp(speed, 0, MAX_SPEED);
 
-    /* steering + centrifugal drift */
     const grip = (rainOn ? 0.7 : 1.0) * (offRoad ? 0.6 : 1.0);
     const left = keys['a'] || keys['arrowleft'], right = keys['d'] || keys['arrowright'];
     let sIn = (left ? -1 : 0) + (right ? 1 : 0);
@@ -924,9 +1132,9 @@ function frame() {
     laneX = THREE.MathUtils.clamp(laneX, -LANE, LANE);
     if (offRoad) shake = Math.max(shake, 0.10 * (speed / MAX_SPEED));
 
-    /* advance + bend the world */
     scroll += speed * dt;
-    roadMap.offset.y = -scroll * (26 / 2300);   // texture tiles track world units exactly
+    // markings flow toward the driver at exactly world speed
+    roadMap.offset.y = scroll * (26 / 2300);
     bendRoad();
     if (crashCooldown > 0) crashCooldown -= dt;
     carX = THREE.MathUtils.lerp(carX, laneX, 0.2);
@@ -937,15 +1145,13 @@ function frame() {
       p.position.z = -d;
       p.position.x = p.userData.off + roadDX(d);
 
-      // recycle inside the fog wall — never visible
       if (d < -30 || d > WORLD + 100) {
         scene.remove(p);
         props.splice(props.indexOf(p), 1);
         spawnProp(scroll + WORLD - Math.random() * 60);
-        break;                                         // one respawn per frame is plenty
+        break;
       }
 
-      /* collision: AABB against traffic */
       if (p.userData.traffic && crashCooldown <= 0) {
         const dxC = p.position.x - carX;
         const dzC = p.position.z - TAXI_Z;
@@ -963,20 +1169,37 @@ function frame() {
     }
   }
 
-  /* cockpit life: wheel, needle, sway, vibration */
+  /* cockpit life */
   wheelSpin.rotation.z = -steer * 1.5;
   needlePivot.rotation.z = 2.25 - (speed / MAX_SPEED) * 2.9;
   cab.rotation.z = steer * 0.035;
-  cab.position.y = Math.sin(postUniforms.time.value * 34) * 0.0022 * (speed / MAX_SPEED)
-                 + (offRoadNow() ? Math.sin(postUniforms.time.value * 60) * 0.004 : 0);
+  const spdN = speed / MAX_SPEED;
+  cab.position.y = Math.sin(postUniforms.time.value * 34) * 0.0022 * spdN
+                 + (Math.abs(laneX) > 7.2 && speed > 2 ? Math.sin(postUniforms.time.value * 60) * 0.004 : 0);
 
-  /* camera: laterally chases the lane, jitters on impact */
+  /* vehicle rig: position, cornering yaw, accel/brake pitch */
   shake *= Math.exp(-4 * dt);
   postUniforms.impact.value *= Math.exp(-3 * dt);
-  camera.position.x = THREE.MathUtils.lerp(camera.position.x, laneX, 0.25);
-  camera.position.y = 1.24 + (Math.random() - 0.5) * shake * 0.3;
-  camera.lookAt(camera.position.x + steer * 1.2 + (Math.random() - 0.5) * shake * 2.0, 1.02, -40);
-  backdropRig.position.x = -curveTan(scroll) * 6.0;
+  rig.position.x = THREE.MathUtils.lerp(rig.position.x, laneX, 0.25);
+  rig.rotation.y = -steer * 0.05 - (curveTan(scroll + 25) - curveTan(scroll)) * 1.2;
+  const pitchT = (up ? -0.006 : 0) + (down && speed > 1 ? 0.012 : 0);
+  rig.rotation.x = THREE.MathUtils.lerp(rig.rotation.x, pitchT, 0.1);
+
+  /* head: free look eases back to the road when released */
+  if (!dragging) { lookYawT *= Math.exp(-2.6 * dt); lookPitchT *= Math.exp(-2.6 * dt); }
+  lookYaw   = THREE.MathUtils.lerp(lookYaw, lookYawT, 0.18);
+  lookPitch = THREE.MathUtils.lerp(lookPitch, lookPitchT, 0.18);
+  camera.rotation.y = -lookYaw + (Math.random() - 0.5) * shake * 0.02;
+  camera.rotation.x = -lookPitch * 0.9 + (Math.random() - 0.5) * shake * 0.02;
+  camera.position.y = (Math.random() - 0.5) * shake * 0.06;
+
+  sky.position.x = rig.position.x;
+
+  /* engine sound follows the throttle */
+  if (AC) {
+    engineOsc.frequency.setTargetAtTime(42 + speed * 1.9 + (up ? 6 : 0), AC.currentTime, 0.06);
+    engineGain.gain.setTargetAtTime(speed > 0.3 ? 0.030 + spdN * 0.034 : 0.012, AC.currentTime, 0.1);
+  }
 
   document.querySelector('#hud .spd').textContent = Math.round(speed * 3.6);
 
@@ -985,18 +1208,26 @@ function frame() {
   renderer.setRenderTarget(null);
   renderer.render(postScene, postCam);
 }
-function offRoadNow() { return Math.abs(laneX) > 7.2 && speed > 2; }
 frame();
 
 /* debug/tuning handle (read-only snapshot) */
-window.__dbg = () => ({ speed, laneX, scroll, crashes, impact: postUniforms.impact.value,
-                        station: STATIONS[stationIdx], rec: recOn });
+window.__dbg = () => {
+  let nearest = null;
+  for (const p of props) {
+    if (!p.userData.traffic) continue;
+    const d = p.userData.s - scroll;
+    if (d > 0 && (!nearest || d < nearest.d))
+      nearest = { d: Math.round(d), x: +(p.userData.off + roadDX(d)).toFixed(2), v: +p.userData.v.toFixed(1) };
+  }
+  return { speed, laneX, scroll, crashes, impact: postUniforms.impact.value,
+           station: STATIONS[stationIdx], rec: recOn,
+           lookYaw, lookPitch, audio: !!AC, nearest };
+};
 
 /* ---------- resize --------------------------------------------------------- */
 addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
-  sizeBackdrop();
   sceneRT.dispose(); sceneRT = makeTargets();
   postUniforms.tDiffuse.value = sceneRT.texture;
   postUniforms.tDepth.value = sceneRT.depthTexture;
