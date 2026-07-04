@@ -1,0 +1,112 @@
+/* Spanish Road Anomaly — night-drive chrome.
+   One committed visual world: wet tarmac black, sodium amber, signal green. */
+
+:root {
+  --ink: #0a0c0e;
+  --bone: #d8d4c8;
+  --amber: #d9a028;
+  --signal: #7fae6a;
+  --blood: #8e2f22;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: var(--ink);
+  font-family: "Courier New", ui-monospace, monospace;
+  color: var(--bone);
+}
+
+#app, #app canvas { position: fixed; inset: 0; display: block; }
+
+/* windshield / dashboard overlay canvas sits above the 3D canvas */
+#overlay {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* film grain + vignette, always on, very quiet */
+#grain {
+  position: fixed; inset: 0; z-index: 3; pointer-events: none;
+  opacity: 0.08; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='240' height='240' filter='url(%23n)' opacity='0.9'/></svg>");
+}
+#vignette {
+  position: fixed; inset: 0; z-index: 3; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 46%, transparent 52%, rgba(0,0,0,0.55) 100%);
+}
+
+/* HUD --------------------------------------------------------------- */
+#hud {
+  position: fixed; left: 22px; bottom: 18px; z-index: 4;
+  pointer-events: none;
+  font-size: 12px; line-height: 1.7; letter-spacing: 0.06em;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+}
+#hud .row { opacity: 0.85; }
+#hud .dim { opacity: 0.45; }
+#hud .radio-on { color: var(--signal); }
+#hud .radio-bad { color: var(--blood); }
+
+#caption {
+  position: fixed; left: 50%; bottom: 12%; transform: translateX(-50%);
+  z-index: 4; pointer-events: none;
+  font-size: 13px; letter-spacing: 0.28em; text-transform: uppercase;
+  color: var(--bone); opacity: 0;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+  transition: opacity 1.4s ease;
+}
+#caption.show { opacity: 0.75; transition: opacity 0.3s ease; }
+
+/* intro ------------------------------------------------------------- */
+#intro {
+  position: fixed; inset: 0; z-index: 10;
+  display: grid; place-items: center;
+  background:
+    radial-gradient(ellipse at 50% 120%, rgba(217,160,40,0.10), transparent 55%),
+    var(--ink);
+  transition: opacity 1.1s ease;
+}
+#intro.hidden { opacity: 0; pointer-events: none; }
+
+.intro-card {
+  max-width: 44ch; padding: 0 24px;
+  text-align: left;
+}
+.intro-card .eyebrow {
+  font-size: 11px; letter-spacing: 0.42em; color: var(--amber);
+  margin-bottom: 18px;
+}
+.intro-card h1 {
+  font-size: clamp(26px, 5vw, 44px);
+  font-weight: 700; letter-spacing: 0.02em;
+  color: var(--bone);
+  text-wrap: balance;
+  margin-bottom: 14px;
+}
+.intro-card p { font-size: 13px; opacity: 0.75; margin-bottom: 16px; }
+.intro-card .controls {
+  font-size: 12px; line-height: 2.0; opacity: 0.6;
+  border-left: 2px solid rgba(216,212,200,0.18);
+  padding-left: 14px;
+}
+.intro-card .small {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--amber); opacity: 0.9;
+  animation: breathe 2.6s ease-in-out infinite;
+}
+@keyframes breathe { 0%,100% { opacity: 0.35; } 50% { opacity: 0.95; } }
+@media (prefers-reduced-motion: reduce) {
+  .intro-card .small { animation: none; }
+}
+
+/* anomaly glitch: flickered onto <body> for a few frames at a time */
+body.glitch #app canvas {
+  filter: invert(1) hue-rotate(140deg) contrast(1.5) saturate(0.4);
+}
+body.glitch2 #app canvas {
+  filter: hue-rotate(-60deg) contrast(2.2) brightness(1.3);
+}
