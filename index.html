@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Dalinian Roads · Lithograph Dream — style prototype</title>
+<style>
+  :root { color-scheme: dark; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #14110d; }
+  canvas { display: block; }
+
+  #ui {
+    position: fixed; inset: 0; pointer-events: none;
+    font-family: "Courier New", ui-monospace, monospace;
+    color: #efe7d3; text-shadow: 0 1px 2px rgba(0,0,0,.6);
+  }
+  #title {
+    position: absolute; top: 22px; left: 26px;
+    letter-spacing: .04em;
+  }
+  #title h1 { font-size: 15px; font-weight: 700; text-transform: uppercase; }
+  #title p  { font-size: 11px; opacity: .7; margin-top: 3px; max-width: 42ch; }
+
+  #hud {
+    position: absolute; right: 26px; bottom: 22px; text-align: right;
+    font-size: 12px; line-height: 1.5;
+  }
+  #hud .spd { font-size: 30px; font-weight: 700; letter-spacing: .05em; }
+  #hud .unit { font-size: 11px; opacity: .6; }
+  #hud .mode { opacity: .75; }
+
+  #help {
+    position: absolute; left: 26px; bottom: 22px;
+    font-size: 11px; line-height: 1.7; opacity: .8;
+  }
+  #help b { color: #d9553f; font-weight: 700; }
+
+  #boot {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    background: #14110d; transition: opacity .6s ease; z-index: 5;
+  }
+  #boot span { font-size: 12px; letter-spacing: .3em; text-transform: uppercase; opacity: .6; }
+</style>
+</head>
+<body>
+<div id="ui">
+  <div id="title">
+    <h1>Dalinian Roads · Lithograph Dream</h1>
+    <p>Fase 0 style prototype — real road, unreal world. Cel + ink outlines + ordered dither + paper grain, over live driving physics.</p>
+  </div>
+  <div id="help">
+    <b>W</b>/<b>S</b> throttle · brake &nbsp; <b>A</b>/<b>D</b> steer &nbsp; <b>N</b> time of day &nbsp; <b>R</b> rain &nbsp; <b>P</b> pause
+  </div>
+  <div id="hud">
+    <div><span class="spd">0</span> <span class="unit">km/h</span></div>
+    <div class="mode" id="modeline">day · clear</div>
+  </div>
+</div>
+<div id="boot"><span>loading press…</span></div>
+
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ============================================================================
+   Dalinian Roads · Lithograph Dream — Phase-0 style prototype
+   ----------------------------------------------------------------------------
+   Two decoupled layers, exactly as the technical report prescribes:
+     (1) a live sim layer  : arcade car physics + scrolling euclidean road +
+                             surreal 3D mid-ground you actually drive toward.
+     (2) a print post layer: cel shading underneath, then a full-screen pass
+                             doing depth+luminance ink outlines, ordered (Bayer)
+                             dither in the shadows, and paper grain / grade.
+   The style lives entirely in post, so day/night + rain move underneath it
+   without the flat graphic look ever fighting the dynamic lighting.
+   ========================================================================== */
+
+const PALETTE = {
+  cream:  '#e9e0cb',
+  paper:  '#efe7d3',
+  pink:   '#d3a29b',
+  gold:   '#c69a44',
+  grey:   '#9b978c',
+  ink:    '#221f1b',
+  red:    '#b53528',
+  stone:  '#8c877c',
+  mtnA:   '#7c6a86',
+  mtnB:   '#b98a90',
+};
+
+/* ---------- renderer / scene / camera -------------------------------------- */
+const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+const scene  = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(56, innerWidth / innerHeight, 0.1, 700);
+camera.position.set(0, 3.1, 0);
+camera.lookAt(0, 2.1, -40);
+
+/* toon gradient map (3 hard bands) shared by every lit material ------------- */
+const gradColors = new Uint8Array([70, 150, 255]);
+const gradientMap = new THREE.DataTexture(gradColors, gradColors.length, 1, THREE.RedFormat);
+gradientMap.minFilter = gradientMap.magFilter = THREE.NearestFilter;
+gradientMap.needsUpdate = true;
+
+/* ---------- lights (driven by time-of-day) --------------------------------- */
+const sun  = new THREE.DirectionalLight(0xffffff, 2.1);
+sun.position.set(-6, 10, -8);
+scene.add(sun);
+const hemi = new THREE.HemisphereLight(0xf2e8e0, 0x3a2f2a, 0.9);
+scene.add(hemi);
+const amb  = new THREE.AmbientLight(0xffffff, 0.25);
+scene.add(amb);
+
+/* ============================================================================
+   CANVAS TEXTURE FACTORIES  (everything procedural — zero external assets)
+   ========================================================================== */
+function makeCanvas(w, h) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  return { c, x: c.getContext('2d') };
+}
+function grain(x, w, h, amt, dark) {
+  const img = x.getImageData(0, 0, w, h), d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const n = (Math.random() - 0.5) * amt * (dark ? 255 : 60);
+    d[i] += n; d[i+1] += n; d[i+2] += n;
+  }
+  x.putImageData(img, 0, 0);
+}
+function texFrom(c, rx = 1, ry = 1) {
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(rx, ry);
+  t.anisotropy = 4;
+  return t;
+}
+
+/* road: dark wet asphalt, solid double-yellow centre, worn white edges ------ */
+function roadTexture() {
+  const W = 256, H = 1024, { c, x } = makeCanvas(W, H);
+  x.fillStyle = '#1b1915'; x.fillRect(0, 0, W, H);
+  // faint wet sheen down the centre
+  const g = x.createLinearGradient(0, 0, W, 0);
+  g.addColorStop(0, 'rgba(255,255,255,0)');
+  g.addColorStop(0.5, 'rgba(150,160,180,0.10)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  // cracks / streaks
+  x.strokeStyle = 'rgba(0,0,0,0.5)'; x.lineWidth = 1;
+  for (let i = 0; i < 40; i++) {
+    x.beginPath();
+    const px = Math.random() * W;
+    x.moveTo(px, Math.random() * H);
+    x.lineTo(px + (Math.random() - 0.5) * 30, Math.random() * H);
+    x.stroke();
+  }
+  // worn white edge lines
+  x.fillStyle = 'rgba(220,214,196,0.55)';
+  x.fillRect(18, 0, 6, H); x.fillRect(W - 24, 0, 6, H);
+  // solid double yellow centre
+  x.fillStyle = '#c8a23a';
+  x.fillRect(W/2 - 16, 0, 9, H); x.fillRect(W/2 + 7, 0, 9, H);
+  grain(x, W, H, 0.35, false);
+  return texFrom(c, 1, 26);
+}
+
+/* torn pastel "collage" slab used for the roadside framing structures ------- */
+function slabTexture(base) {
+  const W = 256, H = 256, { c, x } = makeCanvas(W, H);
+  x.fillStyle = base; x.fillRect(0, 0, W, H);
+  // torn darker border
+  x.strokeStyle = 'rgba(30,26,22,0.6)'; x.lineWidth = 10;
+  x.beginPath();
+  for (let a = 0; a <= 64; a++) {
+    const t = a / 64, px = t * W + (Math.random() - 0.5) * 14, py = (a % 2) ? -4 : 4;
+    a ? x.lineTo(px, py) : x.moveTo(px, py);
+  }
+  x.stroke();
+  // occasional halftone dot patch
+  if (Math.random() < 0.5) {
+    x.fillStyle = 'rgba(30,26,22,0.55)';
+    const ox = Math.random() * W * 0.5, oy = Math.random() * H * 0.5, s = 10;
+    for (let i = 0; i < 9; i++) for (let j = 0; j < 9; j++)
+      { x.beginPath(); x.arc(ox + i*s, oy + j*s, 2.4, 0, 7); x.fill(); }
+  }
+  // handwriting scribbles
+  if (Math.random() < 0.5) {
+    x.strokeStyle = 'rgba(30,26,22,0.35)'; x.lineWidth = 1.4;
+    for (let r = 0; r < 6; r++) {
+      x.beginPath(); let py = 40 + r * 22; x.moveTo(20, py);
+      for (let sx = 20; sx < W - 20; sx += 8) x.lineTo(sx, py + (Math.random() - 0.5) * 6);
+      x.stroke();
+    }
+  }
+  grain(x, W, H, 0.25, false);
+  return texFrom(c, 1, 1);
+}
+
+/* veined stone for arch / obelisk ------------------------------------------- */
+function stoneTexture() {
+  const W = 256, H = 256, { c, x } = makeCanvas(W, H);
+  x.fillStyle = PALETTE.stone; x.fillRect(0, 0, W, H);
+  x.fillStyle = 'rgba(20,18,15,0.85)';
+  for (let i = 0; i < 60; i++) { x.beginPath(); x.arc(Math.random()*W, Math.random()*H, Math.random()*18, 0, 7); x.fill(); }
+  x.strokeStyle = 'rgba(198,154,68,0.6)'; x.lineWidth = 2;   // gold veins
+  for (let i = 0; i < 10; i++) {
+    x.beginPath(); x.moveTo(Math.random()*W, Math.random()*H);
+    x.bezierCurveTo(Math.random()*W, Math.random()*H, Math.random()*W, Math.random()*H, Math.random()*W, Math.random()*H);
+    x.stroke();
+  }
+  grain(x, W, H, 0.3, false);
+  return texFrom(c, 1, 1);
+}
+
+/* ============================================================================
+   BACKDROP  — a flat collage skybox parented to the camera.
+   Sun-stamp, torn clouds, floating sphere + diamond, layered mountains.
+   ========================================================================== */
+function backdropTexture() {
+  const W = 2048, H = 1024, { c, x } = makeCanvas(W, H);
+  // sky gradient: cool grey up top → warm cream/pink at the horizon
+  const g = x.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0.00, '#9fa7ad');
+  g.addColorStop(0.45, '#c9c6bd');
+  g.addColorStop(0.68, '#e7d9c4');
+  g.addColorStop(0.82, '#e3b9ac');
+  g.addColorStop(1.00, '#d99f95');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+
+  // torn-paper clouds
+  function cloud(cx, cy, s, tone) {
+    x.fillStyle = tone;
+    for (let i = 0; i < 26; i++) {
+      const a = Math.random() * 6.28, r = Math.random() * s;
+      x.beginPath(); x.arc(cx + Math.cos(a)*r, cy + Math.sin(a)*r*0.5, s*(0.3 + Math.random()*0.4), 0, 7); x.fill();
+    }
+  }
+  cloud(760, 250, 150, 'rgba(244,238,226,0.95)');
+  cloud(1180, 300, 190, 'rgba(238,231,216,0.95)');
+  cloud(430, 380, 120, 'rgba(240,233,220,0.85)');
+  cloud(1520, 360, 140, 'rgba(236,228,214,0.9)');
+
+  // the red sun — a solid stamp with cream halo, cracks and grain
+  const sx = 1024, sy = 300, sr = 150;
+  const halo = x.createRadialGradient(sx, sy, sr*0.6, sx, sy, sr*2.4);
+  halo.addColorStop(0, 'rgba(244,238,226,0.9)'); halo.addColorStop(1, 'rgba(244,238,226,0)');
+  x.fillStyle = halo; x.beginPath(); x.arc(sx, sy, sr*2.4, 0, 7); x.fill();
+  x.fillStyle = PALETTE.red; x.beginPath(); x.arc(sx, sy, sr, 0, 7); x.fill();
+  x.strokeStyle = 'rgba(20,15,12,0.30)'; x.lineWidth = 1.6;   // cracks on the stamp
+  for (let i = 0; i < 14; i++) {
+    x.beginPath(); x.moveTo(sx, sy);
+    x.lineTo(sx + Math.cos(i)*sr*Math.random(), sy + Math.sin(i*1.7)*sr*Math.random()); x.stroke();
+  }
+
+  // floating dark sphere + floating diamond
+  const sph = x.createRadialGradient(560, 470, 8, 560, 470, 70);
+  sph.addColorStop(0, '#4a4642'); sph.addColorStop(1, '#1d1a17');
+  x.fillStyle = sph; x.beginPath(); x.arc(560, 470, 66, 0, 7); x.fill();
+  x.fillStyle = '#242019';
+  x.beginPath(); x.moveTo(1360, 430); x.lineTo(1398, 486); x.lineTo(1360, 542); x.lineTo(1322, 486); x.closePath(); x.fill();
+
+  // layered mountains near the horizon
+  function ridge(baseY, amp, tone) {
+    x.fillStyle = tone; x.beginPath(); x.moveTo(0, H);
+    x.lineTo(0, baseY);
+    for (let px = 0; px <= W; px += 40)
+      x.lineTo(px, baseY - Math.abs(Math.sin(px*0.013) + Math.sin(px*0.031)) * amp);
+    x.lineTo(W, H); x.closePath(); x.fill();
+  }
+  ridge(700, 90, PALETTE.mtnA);
+  ridge(730, 60, PALETTE.mtnB);
+
+  // an obelisk + a slim tower painted into the far distance (unreachable)
+  x.fillStyle = '#3a342d';
+  x.beginPath(); x.moveTo(900, 700); x.lineTo(912, 470); x.lineTo(924, 700); x.closePath(); x.fill();
+  x.fillRect(1040, 520, 26, 180);
+
+  grain(x, W, H, 0.18, false);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  return t;
+}
+const backdropMat = new THREE.MeshBasicMaterial({ map: backdropTexture(), depthWrite: false, fog: false });
+const backdrop = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), backdropMat);
+// place it as a screen-filling far plane, parented to the camera
+backdrop.position.set(0, 0, -1);
+const backdropRig = new THREE.Object3D();
+backdropRig.add(backdrop);
+camera.add(backdropRig);
+scene.add(camera);
+function sizeBackdrop() {
+  const d = 480;                              // distance in front of camera
+  const h = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov/2)) * d;
+  backdrop.position.set(0, 0, -d);
+  backdrop.scale.set(h * camera.aspect * 1.15, h * 1.15, 1);
+}
+sizeBackdrop();
+
+/* ============================================================================
+   ROAD  — long euclidean strip, texture scrolls to fake forward motion
+   ========================================================================== */
+const roadMap = roadTexture();
+const road = new THREE.Mesh(
+  new THREE.PlaneGeometry(20, 900, 1, 1),
+  new THREE.MeshToonMaterial({ map: roadMap, gradientMap })
+);
+road.rotation.x = -Math.PI / 2;
+road.position.set(0, 0, -400);
+scene.add(road);
+
+// dark "shoulder" ground either side, very low contrast
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(400, 900),
+  new THREE.MeshToonMaterial({ color: 0x2a2620, gradientMap })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.set(0, -0.02, -400);
+scene.add(ground);
+
+/* ============================================================================
+   PLAYER CAR  — boxy sedan seen from behind, dark body, red tail-lights
+   ========================================================================== */
+function buildCar(bodyColor, tail = true) {
+  const g = new THREE.Group();
+  const paint = new THREE.MeshToonMaterial({ color: bodyColor, gradientMap });
+  const glass = new THREE.MeshToonMaterial({ color: 0x15130f, gradientMap });
+  const body  = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.7, 4.4), paint);
+  body.position.y = 0.55; g.add(body);
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.6, 2.2), glass);
+  cabin.position.set(0, 1.05, -0.1); g.add(cabin);
+  const wheelGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.3, 16);
+  const rubber = new THREE.MeshToonMaterial({ color: 0x121110, gradientMap });
+  for (const [wx, wz] of [[-1, 1.4], [1, 1.4], [-1, -1.4], [1, -1.4]]) {
+    const w = new THREE.Mesh(wheelGeo, rubber);
+    w.rotation.z = Math.PI / 2; w.position.set(wx, 0.42, wz); g.add(w);
+  }
+  if (tail) {
+    const lightMat = new THREE.MeshBasicMaterial({ color: 0xd9553f });
+    for (const lx of [-0.66, 0.66]) {
+      const l = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.22, 0.06), lightMat);
+      l.position.set(lx, 0.62, 2.22); g.add(l);
+    }
+  }
+  return g;
+}
+const player = buildCar(0x2c2a27);
+player.position.set(0, 0, -9);
+scene.add(player);
+
+/* ============================================================================
+   SURREAL MID-GROUND PROP POOL  — real 3D you drive toward, then recycles.
+   Landmarks (arch, obelisk) stay stable & readable; slabs frame the corridor.
+   ========================================================================== */
+const stoneMat = new THREE.MeshToonMaterial({ map: stoneTexture(), gradientMap });
+
+function buildArch() {
+  const shape = new THREE.Shape();
+  shape.moveTo(-5, 0); shape.lineTo(-5, 14); shape.lineTo(5, 14); shape.lineTo(5, 0);
+  shape.lineTo(3.2, 0); shape.lineTo(3.2, 7); shape.absarc(0, 7, 3.2, 0, Math.PI, false);
+  shape.lineTo(-3.2, 0); shape.lineTo(-5, 0);
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: 3.4, bevelEnabled: false });
+  geo.center();
+  const m = new THREE.Mesh(geo, stoneMat); m.scale.set(1.1, 1.1, 1.1);
+  const grp = new THREE.Object3D(); m.position.y = 8; grp.add(m); return grp;
+}
+function buildObelisk() {
+  const m = new THREE.Mesh(new THREE.ConeGeometry(0.9, 16, 4), stoneMat);
+  m.rotation.y = Math.PI / 4; m.position.y = 8;
+  const grp = new THREE.Object3D(); grp.add(m); return grp;
+}
+function buildSlab() {
+  const bases = [PALETTE.cream, PALETTE.pink, PALETTE.gold, PALETTE.grey, PALETTE.paper];
+  const h = 6 + Math.random() * 14, w = 3 + Math.random() * 4;
+  const m = new THREE.Mesh(
+    new THREE.BoxGeometry(w, h, 1.2 + Math.random() * 2),
+    new THREE.MeshToonMaterial({ map: slabTexture(bases[(Math.random()*bases.length)|0]), gradientMap })
+  );
+  m.position.y = h / 2; const grp = new THREE.Object3D(); grp.add(m); return grp;
+}
+function buildRock() {
+  const geo = new THREE.IcosahedronGeometry(2.4 + Math.random() * 2, 0);
+  const m = new THREE.Mesh(geo, stoneMat); m.position.y = 1.2;
+  const grp = new THREE.Object3D(); grp.add(m); return grp;
+}
+function buildTraffic() {
+  const cols = [0x3a2f2a, 0x4a4640, 0x2c2a27];
+  const g = buildCar(cols[(Math.random()*cols.length)|0]);
+  g.userData.traffic = true; return g;
+}
+
+const LANE = 6.5;                 // half-width of the drivable corridor
+const SPAN = 420;                 // recycle length
+const props = [];
+function spawnProp(z) {
+  const roll = Math.random();
+  let side = Math.random() < 0.5 ? -1 : 1;
+  let obj, offset;
+  if (roll < 0.10)      { obj = buildArch();    offset = side * (LANE + 8); }
+  else if (roll < 0.20) { obj = buildObelisk(); offset = side * (LANE + 6 + Math.random()*10); }
+  else if (roll < 0.34) { obj = buildRock();    offset = side * (LANE + 3 + Math.random()*10); }
+  else if (roll < 0.46) { obj = buildTraffic(); offset = (Math.random() < 0.5 ? -1 : 1) * 2.4; }
+  else                  { obj = buildSlab();    offset = side * (LANE + 4 + Math.random()*16); }
+  obj.position.set(offset, 0, z);
+  obj.userData.baseY = obj.position.y;
+  obj.userData.bob = Math.random() * 6.28;
+  scene.add(obj); props.push(obj);
+}
+for (let z = -20; z > -SPAN; z -= 14 + Math.random() * 16) spawnProp(z);
+
+/* ============================================================================
+   POST-PROCESS  — one full-screen GLSL3 pass: ink outlines + Bayer dither +
+   paper grain + colour grade + optional rain.  This is the "litho" layer.
+   ========================================================================== */
+function makeTargets() {
+  const dpr = renderer.getPixelRatio();
+  const w = Math.floor(innerWidth * dpr), h = Math.floor(innerHeight * dpr);
+  const rt = new THREE.WebGLRenderTarget(w, h, {
+    minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter,
+    depthBuffer: true, colorSpace: THREE.SRGBColorSpace
+  });
+  rt.depthTexture = new THREE.DepthTexture(w, h);
+  rt.depthTexture.type = THREE.UnsignedShortType;
+  return rt;
+}
+let sceneRT = makeTargets();
+
+const postUniforms = {
+  tDiffuse:   { value: sceneRT.texture },
+  tDepth:     { value: sceneRT.depthTexture },
+  resolution: { value: new THREE.Vector2(innerWidth, innerHeight) },
+  near:       { value: camera.near },
+  far:        { value: camera.far },
+  time:       { value: 0 },
+  inkColor:   { value: new THREE.Color(0x1a1712) },
+  grade:      { value: new THREE.Color(1, 1, 1) },   // time-of-day tint
+  exposure:   { value: 1.0 },
+  rain:       { value: 0.0 },
+};
+
+const postMat = new THREE.ShaderMaterial({
+  glslVersion: THREE.GLSL3,
+  uniforms: postUniforms,
+  vertexShader: /* glsl */`
+    out vec2 vUv;
+    void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }
+  `,
+  fragmentShader: /* glsl */`
+    precision highp float;
+    in vec2 vUv;
+    out vec4 fragColor;
+    uniform sampler2D tDiffuse;
+    uniform sampler2D tDepth;
+    uniform vec2  resolution;
+    uniform float near, far, time, exposure, rain;
+    uniform vec3  inkColor, grade;
+
+    const mat4 bayer = mat4(
+       0.0,  8.0,  2.0, 10.0,
+      12.0,  4.0, 14.0,  6.0,
+       3.0, 11.0,  1.0,  9.0,
+      15.0,  7.0, 13.0,  5.0) / 16.0;
+
+    float hash(vec2 p){ p = fract(p*vec2(123.34,456.21)); p += dot(p,p+45.32); return fract(p.x*p.y); }
+    float linDepth(vec2 uv){
+      float d = texture(tDepth, uv).x;
+      float z = 2.0*d - 1.0;
+      return (2.0*near*far) / (far + near - z*(far-near));
+    }
+    float lum(vec3 c){ return dot(c, vec3(0.299,0.587,0.114)); }
+
+    void main(){
+      vec2 px = 1.0 / resolution;
+      vec3 col = texture(tDiffuse, vUv).rgb;
+
+      /* -- ink outlines: depth discontinuity + luminance sobel ------------ */
+      float dc = linDepth(vUv);
+      float dEdge =
+        abs(dc - linDepth(vUv + vec2( px.x,0))) + abs(dc - linDepth(vUv + vec2(-px.x,0))) +
+        abs(dc - linDepth(vUv + vec2(0, px.y))) + abs(dc - linDepth(vUv + vec2(0,-px.y)));
+      dEdge = smoothstep(0.8, 2.4, dEdge / max(dc,1.0) * 40.0);
+
+      float lEdge =
+        abs(lum(texture(tDiffuse, vUv+vec2(px.x,0)).rgb) - lum(texture(tDiffuse, vUv-vec2(px.x,0)).rgb)) +
+        abs(lum(texture(tDiffuse, vUv+vec2(0,px.y)).rgb) - lum(texture(tDiffuse, vUv-vec2(0,px.y)).rgb));
+      lEdge = smoothstep(0.30, 0.75, lEdge);
+
+      float edge = clamp(max(dEdge, lEdge*0.9), 0.0, 1.0);
+      col = mix(col, inkColor, edge);
+
+      /* -- ordered Bayer dither: stipple ink into the shadow tones -------- */
+      int bx = int(mod(gl_FragCoord.x, 4.0));
+      int by = int(mod(gl_FragCoord.y, 4.0));
+      float th = bayer[bx][by];
+      float shade = smoothstep(0.62, 0.10, lum(col));      // more ink where darker
+      float ink = step(th, shade*0.92);
+      col = mix(col, inkColor, ink * 0.45 * (1.0 - edge));
+
+      /* -- rain: moving diagonal graphite streaks ------------------------- */
+      if (rain > 0.01){
+        vec2 rp = vUv * vec2(resolution.x/resolution.y, 1.0) * 22.0;
+        rp.x += rp.y * 0.35;
+        rp.y += time * 2.4;
+        float streak = step(0.90, hash(vec2(floor(rp.x), floor(rp.y))));
+        col = mix(col, inkColor, streak * 0.35 * rain);
+        col *= 1.0 - 0.12 * rain;
+      }
+
+      /* -- paper grain (anchored to screen → no temporal boil) + grade ---- */
+      float g = hash(gl_FragCoord.xy * 0.5);
+      float mottle = 0.94 + 0.06 * hash(floor(gl_FragCoord.xy / 26.0));
+      col *= mottle;
+      col = mix(col, col * (0.85 + g * 0.30), 0.5);
+      col *= grade * exposure;
+
+      /* -- vignette ------------------------------------------------------- */
+      float v = smoothstep(1.25, 0.35, length(vUv - 0.5));
+      col *= mix(0.72, 1.0, v);
+
+      fragColor = vec4(col, 1.0);
+    }
+  `
+});
+
+const postScene = new THREE.Scene();
+const postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), postMat));
+
+/* ============================================================================
+   TIME OF DAY + WEATHER  — moves under the print layer, per the report's
+   central risk: remap what the style shaders receive instead of fighting it.
+   ========================================================================== */
+const TOD = [
+  { name:'day',  light:0xfff4e0, li:2.1, amb:0.28, grade:[1.00,0.99,0.95], exp:1.00, sun:[-6,10,-8] },
+  { name:'dusk', light:0xff9d5c, li:1.7, amb:0.22, grade:[1.02,0.90,0.82], exp:0.92, sun:[-9, 4,-6] },
+  { name:'night',light:0x8aa0d6, li:0.8, amb:0.16, grade:[0.72,0.78,0.98], exp:0.80, sun:[ 4, 7,-9] },
+];
+let todIndex = 0, rainOn = false, paused = false;
+function applyTOD() {
+  const t = TOD[todIndex];
+  sun.color.setHex(t.light); sun.intensity = t.li;
+  sun.position.set(...t.sun); amb.intensity = t.amb;
+  postUniforms.grade.value.setRGB(...t.grade);
+  postUniforms.exposure.value = t.exp;
+  document.getElementById('modeline').textContent = `${t.name} · ${rainOn ? 'rain' : 'clear'}`;
+}
+applyTOD();
+
+/* ---------- input ---------------------------------------------------------- */
+const keys = {};
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  keys[k] = true;
+  if (k === 'n') { todIndex = (todIndex + 1) % TOD.length; applyTOD(); }
+  if (k === 'r') { rainOn = !rainOn; applyTOD(); }
+  if (k === 'p') { paused = !paused; }
+  if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
+});
+addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+/* ---------- car state ------------------------------------------------------ */
+let speed = 0;          // m/s along the road
+let laneX = 0;          // lateral position of the car
+let steer = 0;          // smoothed steer input for body roll
+const MAX_SPEED = 60;
+
+/* ---------- main loop ------------------------------------------------------ */
+const clock = new THREE.Clock();
+let scroll = 0;
+document.getElementById('boot').style.opacity = 0;
+setTimeout(() => document.getElementById('boot').remove(), 700);
+
+function frame() {
+  requestAnimationFrame(frame);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  postUniforms.time.value += dt;
+
+  if (!paused) {
+    /* throttle / brake / natural drag */
+    const up = keys['w'] || keys['arrowup'], down = keys['s'] || keys['arrowdown'];
+    if (up)   speed += 34 * dt;
+    if (down) speed -= 46 * dt;
+    speed -= speed * 0.35 * dt;                       // drag
+    if (rainOn) speed -= speed * 0.10 * dt;           // wet drag
+    speed = THREE.MathUtils.clamp(speed, 0, MAX_SPEED);
+
+    /* steering — only bites with some speed, like a real car */
+    const grip = rainOn ? 0.7 : 1.0;
+    const left = keys['a'] || keys['arrowleft'], right = keys['d'] || keys['arrowright'];
+    let sIn = (left ? -1 : 0) + (right ? 1 : 0);
+    steer = THREE.MathUtils.lerp(steer, sIn, 0.12);
+    laneX += steer * (speed / MAX_SPEED) * 16 * grip * dt;
+    laneX = THREE.MathUtils.clamp(laneX, -LANE, LANE);
+
+    /* scroll the world toward the camera */
+    scroll += speed * dt;
+    roadMap.offset.y = -scroll * 0.02;
+
+    for (const p of props) {
+      p.position.z += speed * dt;
+      p.userData.bob += dt;
+      // gentle surreal float on the sky-side props (never on the road)
+      if (Math.abs(p.position.x) > LANE + 2)
+        p.position.y = p.userData.baseY + Math.sin(p.userData.bob * 0.6) * 0.4;
+      if (p.position.z > 18) {                         // recycle behind the camera
+        scene.remove(p);
+        props.splice(props.indexOf(p), 1);
+        spawnProp(-SPAN + (p.position.z - 18));
+        break;                                         // one respawn per frame is plenty
+      }
+    }
+  }
+
+  /* car body: sit in the lane, roll into the steer, squat under throttle */
+  player.position.x = THREE.MathUtils.lerp(player.position.x, laneX, 0.2);
+  player.rotation.z = -steer * 0.12;
+  player.rotation.x = (speed / MAX_SPEED) * -0.02;
+
+  /* camera chases the car laterally with lag → readable but alive */
+  camera.position.x = THREE.MathUtils.lerp(camera.position.x, laneX * 0.55, 0.06);
+  camera.lookAt(laneX * 0.35, 2.0, -40);
+  // parallax the flat backdrop slightly against steering
+  backdropRig.position.x = -laneX * 0.15;
+
+  /* HUD */
+  document.querySelector('#hud .spd').textContent = Math.round(speed * 3.6);
+
+  /* --- render sim to target, then the print pass to screen --- */
+  renderer.setRenderTarget(sceneRT);
+  renderer.render(scene, camera);
+  renderer.setRenderTarget(null);
+  renderer.render(postScene, postCam);
+}
+frame();
+
+/* ---------- resize --------------------------------------------------------- */
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  sizeBackdrop();
+  sceneRT.dispose(); sceneRT = makeTargets();
+  postUniforms.tDiffuse.value = sceneRT.texture;
+  postUniforms.tDepth.value = sceneRT.depthTexture;
+  postUniforms.resolution.value.set(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
