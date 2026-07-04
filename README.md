@@ -1,10 +1,14 @@
-# Dalinian Roads · España 80s — prototipo cel shading
+# Spanish Road Anomaly
 
-Prototipo jugable en el navegador: conduces un **taxi blanco por una carretera
-nacional de la España de los años 80**, con **cámara interior detallada**,
-**cel shading** limpio con contornos de tinta, curvas, tráfico con colisión,
-clima y ciclo día/noche — y un **horizonte donde todo existe de verdad**: nada
-aparece de repente.
+> **La carretera no termina.** Coche viejo. Asfalto mojado. España rural.
+> Interferencias en la radio.
+
+Prototipo jugable en el navegador: conduces un **taxi blanco por una nacional
+de la España de los años 80**, con cámara interior y exterior, **cel shading**
+con contornos de tinta, curvas, tráfico con colisión, faros reales, clima y
+ciclo día/noche — y un **horizonte donde todo existe de verdad**: nada aparece
+de repente. Arranca al atardecer, con lluvia y los faros encendidos; cada
+20–55 s una interferencia se traga la emisora que estés escuchando.
 
 > La versión anterior (estética litografía/grabado con dithering Bayer) está en
 > el historial de git; el diseño técnico original sigue en `docs/DESIGN.md`.
@@ -25,11 +29,14 @@ aparece de repente.
 |------|--------|
 | `W` / `S` | gas / freno |
 | `A` / `D` | volante (muerde con velocidad; menos agarre con lluvia o en la grava) |
+| `C` | cámara: interior ⇄ exterior (taxi visible, con su franja roja y cartel) |
+| `R` | cambiar emisora — cada una suena distinta (RNE 1, Radio 3, Los 40, SER, onda media, apagada) |
+| `L` | faros (foco real que ilumina la carretera) |
+| `V` | lluvia + limpiaparabrisas animado |
+| `Espacio` | freno de mano (bloquea las ruedas, la trasera se suelta) |
 | `ratón` | arrastrar para mirar la cabina, el asiento o por la ventanilla |
-| `E` | cambiar emisora — cada una suena distinta (RNE 1, Radio 3, Los 40, SER, onda media, apagada) |
 | `T` | grabar con la emisora del macuto (● REC) |
 | `N` | hora del día (día → atardecer → noche) |
-| `R` | lluvia on/off |
 | `P` | pausa |
 
 ## Qué hay dentro
