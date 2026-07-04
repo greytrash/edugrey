@@ -1186,7 +1186,7 @@ function frame() {
   shake *= Math.exp(-4 * dt);
   postUniforms.impact.value *= Math.exp(-3 * dt);
   rig.position.x = THREE.MathUtils.lerp(rig.position.x, laneX, 0.25);
-  rig.rotation.y = -steer * 0.05 - (curveTan(scroll + 25) - curveTan(scroll)) * 1.2;
+  rig.rotation.y = (-steer * 0.05 - (curveTan(scroll + 40) - curveTan(scroll)) * 3.0) * (0.3 + 0.7 * spdN);
   const pitchT = (up ? -0.006 : 0) + (down && speed > 1 ? 0.012 : 0);
   rig.rotation.x = THREE.MathUtils.lerp(rig.rotation.x, pitchT, 0.1);
 
@@ -1199,6 +1199,13 @@ function frame() {
   camera.position.y = (Math.random() - 0.5) * shake * 0.06;
 
   sky.position.x = rig.position.x;
+
+  /* speed widens the FOV slightly — classic racing speed cue */
+  const targetFov = 58 + spdN * 7;
+  if (Math.abs(camera.fov - targetFov) > 0.05) {
+    camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, 0.08);
+    camera.updateProjectionMatrix();
+  }
 
   /* engine sound follows the throttle */
   if (AC) {
