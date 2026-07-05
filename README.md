@@ -1,10 +1,11 @@
 # Spanish Road Anomaly
 
-> **La carretera no termina.** Coche viejo. Asfalto mojado. España rural.
+> **La carretera no termina.** Coche viejo. Asfalto mojado. Euskadi rural.
 > Interferencias en la radio.
 
-Prototipo jugable en el navegador: conduces un **taxi blanco por una nacional
-de la España de los años 80**, con cámara interior y exterior, **cel shading**
+Prototipo jugable en el navegador: conduces un **taxi blanco por las
+comarcales del País Vasco en los años 80** — donde se desarrolla la historia —
+con cámara interior y exterior, **cel shading**
 con contornos de tinta, curvas, tráfico con colisión, faros reales, clima y
 ciclo día/noche — y un **horizonte donde todo existe de verdad**: nada aparece
 de repente. Arranca al atardecer, con lluvia y los faros encendidos; cada
@@ -65,15 +66,20 @@ siseo y ráfaga de estática al girar el dial. La sexta posición la apaga.
   transmisión y palanca de cambios, asiento del copiloto, banqueta trasera y
   bandeja — una cabina completa para mirar alrededor.
 
-**Mundo — España interior, años 80** (todo procedural, cero assets externos):
-- Nacional de asfalto desgastado con **línea central blanca discontinua**,
-  líneas de borde y arcenes de grava (salirte de la carretera frena y sacude).
-- Olivares, hileras de cipreses, casas blancas con teja, postes de teléfono,
-  señales españolas (limite 100, curva peligrosa), hitos kilométricos con
-  caperuza roja, matorral, parcelas de cultivo de colores… y el
-  **toro de Osborne** en su valla.
-- Montañas 3D reales en capas hasta el horizonte.
-- Cielo real: una esfera envolvente con nubes (el sol-sello rojo se retiró).
+**Mundo — País Vasco, años 80** (todo procedural, cero assets externos):
+- Comarcal de montaña **muy revirada** (tres senos superpuestos, deriva
+  centrífuga real), asfalto desgastado con línea blanca discontinua y arcenes
+  de grava.
+- **Caseríos** con entramado de madera en el hastial, alero grande y tejado a
+  dos aguas; **pueblos** con iglesia de torre cuadrada o **frontón** con su
+  raya verde.
+- **Gasolineras CAMPSA** de época: marquesina, surtidores rojos, kiosco y
+  rótulo azul.
+- Carteles de entrada a pueblo (Gernika, Lekeitio, Oñati, Azpeitia, Elorrio,
+  Zumarraga, Tolosa, Mutriku), señales, hitos, postes.
+- Robles, pinos de repoblación, helechos, prados verdes y **montes verdes** en
+  capas hasta el horizonte, con la niebla atlántica más cerrada.
+- Cielo encapotado (esfera envolvente con nubes) y el toro de Osborne, raro.
 
 **Distancia de dibujado / sin pop-in:** el campo de props abarca ~2,1 km de
 carretera; la niebla se vuelve opaca antes del punto donde se recicla y

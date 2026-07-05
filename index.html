@@ -91,7 +91,7 @@
 <div id="ui">
   <div id="title">
     <h1>Spanish Road Anomaly</h1>
-    <p>La carretera no termina. Coche viejo, asfalto mojado, España rural, interferencias en la radio.</p>
+    <p>La carretera no termina. Un taxi viejo por las comarcales del País Vasco: niebla, caseríos, gasolineras y una radio con interferencias.</p>
   </div>
   <div id="help">
     <b>W</b>/<b>S</b> gas · freno &nbsp; <b>A</b>/<b>D</b> volante &nbsp; <b>C</b> cámara &nbsp; <b>R</b> radio &nbsp; <b>L</b> luces &nbsp; <b>V</b> limpia/lluvia &nbsp; <b>Espacio</b> freno de mano &nbsp; <b>ratón</b> mirar &nbsp; <b>T</b> grabar &nbsp; <b>N</b> hora &nbsp; <b>P</b> pausa
@@ -121,7 +121,7 @@
   <div class="intro-card">
     <p class="eyebrow">SPANISH ROAD ANOMALY</p>
     <h1>La carretera no termina.</h1>
-    <p>Coche viejo. Asfalto mojado. España rural. Interferencias en la radio.</p>
+    <p>Coche viejo. Asfalto mojado. Euskadi rural. Interferencias en la radio.</p>
     <p class="controls">
       W/S · acelerar / frenar<br />
       A/D · girar<br />
@@ -160,15 +160,15 @@ import * as THREE from 'three';
    ========================================================================== */
 
 const PALETTE = {
-  skyTop:   '#7fa8c9',
-  horizon:  '#e7d8c2',
-  ground:   0xb5a06e,
-  gravel:   '#a8996f',
-  olive:    0x6b7345,
-  cypress:  0x3c5232,
-  terracotta: 0xa3502f,
-  wall:     0xe8e0cf,
-  mtn:      0x8f8a76,
+  skyTop:   '#8fa3b2',      // overcast Basque grey-blue
+  horizon:  '#dfdfd6',      // pale mist
+  ground:   0x6f8f55,       // meadow green
+  gravel:   '#9a9478',
+  olive:    0x4e6b3a,       // oak crown green
+  cypress:  0x39543b,       // pine
+  terracotta: 0x9d4f30,
+  wall:     0xe8e4d8,       // caserío whitewash
+  mtn:      0x66805c,       // green mounts
   dashDark: 0x241f1a,
 };
 
@@ -180,7 +180,7 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
 
 const scene  = new THREE.Scene();
-const FOG_NEAR = 740, FOG_FAR = 2020;
+const FOG_NEAR = 520, FOG_FAR = 1750;   // Basque mist sits closer
 scene.fog = new THREE.Fog(new THREE.Color(PALETTE.horizon), FOG_NEAR, FOG_FAR);
 
 const camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.25, 2600);
@@ -275,9 +275,10 @@ function skyTexture() {
       x.beginPath(); x.arc(cx + Math.cos(a)*r, cy + Math.sin(a)*r*0.4, s*(0.26 + Math.random()*0.36), 0, 7); x.fill();
     }
   }
-  for (const [cx, cy, s] of [[420, 300, 120], [1040, 250, 150], [1560, 330, 110], [760, 380, 90]]) {
-    cloud(cx, cy, s, 'rgba(246,241,230,0.92)');
-    cloud(cx, H - cy, s, 'rgba(246,241,230,0.92)');   // mirrored copy
+  for (const [cx, cy, s] of [[300, 280, 140], [760, 340, 110], [1060, 240, 170],
+                             [1400, 350, 130], [1740, 280, 120], [560, 420, 90]]) {
+    cloud(cx, cy, s, 'rgba(238,236,228,0.94)');
+    cloud(cx, H - cy, s, 'rgba(238,236,228,0.94)');   // mirrored copy
   }
   grain(x, W, H, 0.08);
   const t = new THREE.CanvasTexture(c);
@@ -386,9 +387,10 @@ function gaugeTexture() {
    linear extension past BEND_MAX keeps far geometry sane.
    ========================================================================== */
 let scroll = 0;
-const CURVE = [
-  { a: 30, f: 0.005,  p: 0.0 },
-  { a: 16, f: 0.0022, p: 1.7 },
+const CURVE = [               // comarcal de montaña: mucho más revirada
+  { a: 38, f: 0.0055, p: 0.0 },
+  { a: 20, f: 0.0028, p: 1.7 },
+  { a: 7,  f: 0.010,  p: 0.9 },
 ];
 const BEND_MAX = 500;
 function curveX(s)   { let v = 0; for (const c of CURVE) v += c.a * Math.sin(s * c.f + c.p); return v; }
@@ -439,18 +441,18 @@ const poleMat   = toon({ color: 0x4c4136 });
 const bullMat   = toon({ map: bullTexture(), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, color: 0xffffff });
 const speedTex  = speedSignTexture(), curveTex = curveSignTexture();
 
-function buildOliveCluster() {
+function buildOakGrove() {                    // robles: tronco corto, copa grande
   const grp = new THREE.Object3D();
   const n = 3 + (Math.random() * 4 | 0);
   for (let i = 0; i < n; i++) {
     const t = new THREE.Object3D();
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.22, 1.3, 6), trunkMat);
-    trunk.position.y = 0.65; t.add(trunk);
-    for (let k = 0; k < 2 + (Math.random() * 2 | 0); k++) {
-      const s = 0.8 + Math.random() * 0.7;
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.3, 1.8, 6), trunkMat);
+    trunk.position.y = 0.9; t.add(trunk);
+    for (let k = 0; k < 3 + (Math.random() * 2 | 0); k++) {
+      const s = 1.2 + Math.random() * 1.1;
       const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), oliveMat);
-      crown.scale.y = 0.72;
-      crown.position.set((Math.random() - 0.5) * 1.1, 1.5 + Math.random() * 0.7, (Math.random() - 0.5) * 1.1);
+      crown.scale.y = 0.85;
+      crown.position.set((Math.random() - 0.5) * 1.6, 2.4 + Math.random() * 1.2, (Math.random() - 0.5) * 1.6);
       t.add(crown);
     }
     t.position.set((Math.random() - 0.5) * 16, 0, (Math.random() - 0.5) * 14);
@@ -458,41 +460,160 @@ function buildOliveCluster() {
   }
   return grp;
 }
-function buildCypressRow() {
+function buildPineRow() {                     // pinos de repoblación, altos
   const grp = new THREE.Object3D();
-  const n = 2 + (Math.random() * 4 | 0);
+  const n = 3 + (Math.random() * 5 | 0);
   for (let i = 0; i < n; i++) {
-    const h = 4.5 + Math.random() * 2.8;
-    const c = new THREE.Mesh(new THREE.ConeGeometry(0.55, h, 6), cypressMat);
-    c.position.set((Math.random() - 0.5) * 3, h / 2, i * 3.4);
+    const h = 7 + Math.random() * 4;
+    const c = new THREE.Mesh(new THREE.ConeGeometry(1.0, h, 7), cypressMat);
+    c.position.set((Math.random() - 0.5) * 3, h / 2 + 0.8, i * 3.2);
     grp.add(c);
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 1.6, 5), trunkMat);
+    trunk.position.set(c.position.x, 0.8, c.position.z);
+    grp.add(trunk);
   }
   return grp;
 }
-function buildHouseCluster() {
-  const grp = new THREE.Object3D();
-  const n = 1 + (Math.random() * 3 | 0);
-  for (let i = 0; i < n; i++) {
-    const w = 4 + Math.random() * 3.5, h = 2.6 + Math.random() * 1.2, dp = 3.6 + Math.random() * 2;
-    const house = new THREE.Object3D();
-    const base = new THREE.Mesh(new THREE.BoxGeometry(w, h, dp), wallMat);
-    base.position.y = h / 2; house.add(base);
-    for (const sgn of [-1, 1]) {
-      const slope = new THREE.Mesh(new THREE.BoxGeometry(w * 0.62, 0.1, dp + 0.35), roofMat);
-      slope.position.set(sgn * w * 0.24, h + w * 0.13, 0);
-      slope.rotation.z = -sgn * 0.5;
-      house.add(slope);
-    }
-    const door = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.5, 0.08), darkMat);
-    door.position.set(-w * 0.22, 0.75, dp / 2 + 0.02); house.add(door);
-    for (const wx of [w * 0.12, w * 0.32]) {
-      const win = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.08), darkMat);
-      win.position.set(wx, 1.5, dp / 2 + 0.02); house.add(win);
-    }
-    house.position.set((Math.random() - 0.5) * 6, 0, i * (w + 3));
-    house.rotation.y = (Math.random() - 0.5) * 0.5;
-    grp.add(house);
+const timberMat = toon({ color: 0x5a3d28 });   // entramado de madera del caserío
+
+function buildCaserio() {
+  const w = 8 + Math.random() * 3, h = 4.4 + Math.random() * 1.2, dp = 7 + Math.random() * 2;
+  const house = new THREE.Object3D();
+  const base = new THREE.Mesh(new THREE.BoxGeometry(w, h, dp), wallMat);
+  base.position.y = h / 2; house.add(base);
+  // tejado a dos aguas, poco inclinado y con alero grande
+  for (const sgn of [-1, 1]) {
+    const slope = new THREE.Mesh(new THREE.BoxGeometry(w * 0.62, 0.12, dp + 1.2), roofMat);
+    slope.position.set(sgn * w * 0.26, h + w * 0.09, 0);
+    slope.rotation.z = -sgn * 0.36;
+    house.add(slope);
   }
+  // entramado en la fachada del hastial (cara a la carretera)
+  const face = dp / 2 + 0.03;
+  for (const bx of [-w * 0.3, 0, w * 0.3]) {
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(0.22, h * 0.85, 0.08), timberMat);
+    beam.position.set(bx, h * 0.52, face); house.add(beam);
+  }
+  const beamH = new THREE.Mesh(new THREE.BoxGeometry(w * 0.72, 0.22, 0.08), timberMat);
+  beamH.position.set(0, h * 0.62, face); house.add(beamH);
+  // portalón y ventanucos
+  const door = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.2, 0.1), darkMat);
+  door.position.set(-w * 0.14, 1.1, face); house.add(door);
+  for (const [wx, wy] of [[w * 0.18, 1.6], [-w * 0.3, 3.2], [w * 0.3, 3.2]]) {
+    const win = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.7, 0.1), darkMat);
+    win.position.set(wx, wy, face); house.add(win);
+  }
+  return house;
+}
+function buildChurch() {
+  const grp = new THREE.Object3D();
+  const nave = new THREE.Mesh(new THREE.BoxGeometry(6, 5, 10), wallMat);
+  nave.position.y = 2.5; grp.add(nave);
+  const naveRoof = new THREE.Mesh(new THREE.ConeGeometry(4.6, 2.6, 4), roofMat);
+  naveRoof.rotation.y = Math.PI / 4; naveRoof.scale.z = 1.9;
+  naveRoof.position.y = 6.3; grp.add(naveRoof);
+  const tower = new THREE.Mesh(new THREE.BoxGeometry(2.6, 9, 2.6), wallMat);
+  tower.position.set(0, 4.5, 6.2); grp.add(tower);
+  const spire = new THREE.Mesh(new THREE.ConeGeometry(2.1, 2.4, 4), roofMat);
+  spire.rotation.y = Math.PI / 4; spire.position.set(0, 10.2, 6.2); grp.add(spire);
+  const bell = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.4, 0.2), darkMat);
+  bell.position.set(0, 7.6, 7.51); grp.add(bell);
+  return grp;
+}
+function buildFronton() {
+  const grp = new THREE.Object3D();
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(0.7, 9, 11), toon({ color: 0xd9d4c4 }));
+  wall.position.y = 4.5; grp.add(wall);
+  const side = new THREE.Mesh(new THREE.BoxGeometry(9, 7, 0.7), toon({ color: 0xd9d4c4 }));
+  side.position.set(4.6, 3.5, -5.2); grp.add(side);
+  // la raya verde del frontón
+  const line = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.25, 11), toon({ color: 0x3f7a4d }));
+  line.position.set(0.38, 1.1, 0); grp.add(line);
+  const court = new THREE.Mesh(new THREE.PlaneGeometry(10, 11), toon({ color: 0x8f9a90 }));
+  court.rotation.x = -Math.PI / 2; court.position.set(5.2, 0.015, 0); grp.add(court);
+  return grp;
+}
+function buildPueblo() {                       // caseríos + iglesia o frontón
+  const grp = new THREE.Object3D();
+  const n = 2 + (Math.random() * 3 | 0);
+  for (let i = 0; i < n; i++) {
+    const c = buildCaserio();
+    c.position.set((Math.random() - 0.5) * 10, 0, i * 13);
+    c.rotation.y = (Math.random() - 0.5) * 0.6;
+    grp.add(c);
+  }
+  const roll = Math.random();
+  if (roll < 0.4) { const ch = buildChurch(); ch.position.set(10, 0, 6); ch.rotation.y = Math.random() * 3; grp.add(ch); }
+  else if (roll < 0.7) { const f = buildFronton(); f.position.set(11, 0, n * 6); grp.add(f); }
+  return grp;
+}
+
+/* gasolinera CAMPSA de los 80 ------------------------------------------------ */
+function campsaTexture() {
+  const { c, x } = makeCanvas(256, 128);
+  x.fillStyle = '#16457e'; x.fillRect(0, 0, 256, 128);
+  x.fillStyle = '#f2ece0'; x.font = 'bold 44px sans-serif';
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText('CAMPSA', 128, 56);
+  x.fillStyle = '#c23a2a'; x.fillRect(24, 92, 208, 12);
+  return texFrom(c, 1, 1);
+}
+const campsaTex = campsaTexture();
+function buildGasolinera() {
+  const grp = new THREE.Object3D();
+  // marquesina sobre postes
+  const canopy = new THREE.Mesh(new THREE.BoxGeometry(7, 0.45, 11), toon({ color: 0xe4dfd2 }));
+  canopy.position.y = 4.6; grp.add(canopy);
+  for (const [px, pz] of [[-2.4, -4], [2.4, -4], [-2.4, 4], [2.4, 4]]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 4.6, 6), toon({ color: 0x8b8b85 }));
+    post.position.set(px, 2.3, pz); grp.add(post);
+  }
+  // surtidores sobre isleta
+  const isle = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.18, 7), toon({ color: 0xa9a494 }));
+  isle.position.y = 0.09; grp.add(isle);
+  for (const pz of [-2, 0.4, 2.8]) {
+    const pump = new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.15, 0.45), toon({ color: 0xb8382e }));
+    pump.position.set(0, 0.75, pz); grp.add(pump);
+    const pumpTop = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.3, 0.45), toon({ color: 0xe8e2d2 }));
+    pumpTop.position.set(0, 1.45, pz); grp.add(pumpTop);
+  }
+  // kiosco y rótulo
+  const kiosk = new THREE.Mesh(new THREE.BoxGeometry(3.4, 2.6, 2.6), wallMat);
+  kiosk.position.set(-4.6, 1.3, 2); grp.add(kiosk);
+  const kioskRoof = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.15, 3.0), roofMat);
+  kioskRoof.position.set(-4.6, 2.7, 2); grp.add(kioskRoof);
+  const signPost = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 6.5, 6), toon({ color: 0x8b8b85 }));
+  signPost.position.set(0, 3.25, -6.5); grp.add(signPost);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.3),
+    toon({ map: campsaTex, side: THREE.DoubleSide }));
+  sign.position.set(0, 6.0, -6.5); sign.rotation.y = Math.PI / 2;
+  grp.add(sign);
+  return grp;
+}
+
+/* cartel de entrada a pueblo -------------------------------------------------- */
+const TOWN_NAMES = ['GERNIKA', 'LEKEITIO', 'OÑATI', 'AZPEITIA', 'ELORRIO', 'ZUMARRAGA', 'TOLOSA', 'MUTRIKU'];
+function townSignTexture(name) {
+  const { c, x } = makeCanvas(256, 128);
+  x.fillStyle = '#f2ece0'; x.fillRect(0, 0, 256, 128);
+  x.strokeStyle = '#c23a2a'; x.lineWidth = 12; x.strokeRect(8, 8, 240, 112);
+  x.fillStyle = '#221f1a';
+  x.font = `bold ${name.length > 7 ? 30 : 36}px sans-serif`;
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText(name, 128, 64);
+  return texFrom(c, 1, 1);
+}
+const townTexes = TOWN_NAMES.map(townSignTexture);
+function buildTownSign() {
+  const grp = new THREE.Object3D();
+  for (const px of [-0.7, 0.7]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.4, 6), toon({ color: 0x8b8b85 }));
+    post.position.set(0, 1.2, px); grp.add(post);
+  }
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 0.95),
+    toon({ map: townTexes[(Math.random() * townTexes.length) | 0], side: THREE.DoubleSide }));
+  face.position.y = 2.4; face.rotation.y = Math.PI / 2;
+  grp.add(face);
   return grp;
 }
 function buildBull() {
@@ -536,7 +657,7 @@ function buildHito() {
 function buildScrub() {
   const grp = new THREE.Object3D();
   for (let i = 0; i < 3 + (Math.random() * 4 | 0); i++) {
-    const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.35 + Math.random() * 0.5, 0), toon({ color: 0x7a7f4a }));
+    const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.35 + Math.random() * 0.5, 0), toon({ color: 0x557a3d }));
     b.position.set((Math.random() - 0.5) * 6, 0.3, (Math.random() - 0.5) * 6);
     b.scale.y = 0.6;
     grp.add(b);
@@ -544,7 +665,7 @@ function buildScrub() {
   return grp;
 }
 function buildField() {
-  const tones = [0xc9a84c, 0x9a8f4e, 0xa0603a, 0x8e9457];
+  const tones = [0x86a45c, 0x5e7d46, 0x9aa86a, 0x77935a];   // prados y helechales
   const m = new THREE.Mesh(
     new THREE.PlaneGeometry(60 + Math.random() * 100, 50 + Math.random() * 120),
     toon({ color: tones[(Math.random() * tones.length) | 0] })
@@ -617,19 +738,21 @@ function spawnProp(s) {
   const roll = Math.random();
   const side = Math.random() < 0.5 ? -1 : 1;
   let obj, offset;
-  if (roll < 0.16)      { obj = buildOliveCluster(); offset = side * (22 + Math.random() * 60); }
-  else if (roll < 0.24) { obj = buildCypressRow();   offset = side * (12 + Math.random() * 30); }
-  else if (roll < 0.34) { obj = buildPole();         offset = side * 9.6; }
-  else if (roll < 0.44) {
+  if (roll < 0.14)      { obj = buildOakGrove();     offset = side * (22 + Math.random() * 60); }
+  else if (roll < 0.23) { obj = buildPineRow();      offset = side * (13 + Math.random() * 35); }
+  else if (roll < 0.32) { obj = buildPole();         offset = side * 9.6; }
+  else if (roll < 0.42) {
     const oncoming = Math.random() < 0.5;
     obj = buildTraffic(oncoming);
     offset = oncoming ? -2.2 : 2.2;
   }
-  else if (roll < 0.52) { obj = buildHouseCluster(); offset = side * (16 + Math.random() * 50); }
-  else if (roll < 0.56) { obj = buildBull();         offset = side * (14 + Math.random() * 12); }
-  else if (roll < 0.63) { obj = buildSign();         offset = side * 9.2; }
-  else if (roll < 0.70) { obj = buildHito();         offset = side * 8.6; }
-  else if (roll < 0.78) { obj = buildScrub();        offset = side * (14 + Math.random() * 25); }
+  else if (roll < 0.50) { obj = buildPueblo();       offset = side * (16 + Math.random() * 45); }
+  else if (roll < 0.535){ obj = buildGasolinera();   offset = side * 15.5; }
+  else if (roll < 0.55) { obj = buildBull();         offset = side * (14 + Math.random() * 12); }
+  else if (roll < 0.60) { obj = buildTownSign();     offset = side * 9.4; }
+  else if (roll < 0.66) { obj = buildSign();         offset = side * 9.2; }
+  else if (roll < 0.72) { obj = buildHito();         offset = side * 8.6; }
+  else if (roll < 0.79) { obj = buildScrub();        offset = side * (14 + Math.random() * 25); }
   else if (roll < 0.93) { obj = buildField();        offset = side * (100 + Math.random() * 150); }
   else                  { obj = buildMountain();     offset = side * (420 + Math.random() * 550); }
   obj.userData.s = s;
@@ -1190,6 +1313,13 @@ function dismissIntro() {
   setTimeout(() => introEl.remove(), 550);
 }
 
+// any tap/click ANYWHERE (including on the intro card itself) starts the game —
+// the intro overlay used to swallow touches on mobile
+addEventListener('pointerdown', () => {
+  initAudio(); dismissIntro();
+  if (AC && AC.state === 'suspended') AC.resume();
+}, { capture: true });
+
 const keys = {};
 addEventListener('keydown', e => {
   initAudio(); dismissIntro();
@@ -1310,7 +1440,7 @@ function frame() {
     let sIn = (left ? -1 : 0) + (right ? 1 : 0);
     steer = THREE.MathUtils.lerp(steer, sIn, 0.12);
     laneX += steer * (speed / MAX_SPEED) * 15 * grip * (handbrake ? 1.6 : 1.0) * dt;  // loose rear
-    laneX -= curveK(scroll) * speed * speed * 1.3 * dt;
+    laneX -= curveK(scroll) * speed * speed * 1.05 * dt;
     laneX = THREE.MathUtils.clamp(laneX, -LANE, LANE);
     if (offRoad) shake = Math.max(shake, 0.10 * (speed / MAX_SPEED));
 
