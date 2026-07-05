@@ -9,8 +9,30 @@
   :root { color-scheme: dark; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: #191510; }
-  canvas { display: block; cursor: grab; }
+  canvas { display: block; cursor: grab; touch-action: none; }
   canvas:active { cursor: grabbing; }
+
+  /* --- touch controls (shown only on coarse pointers) --- */
+  #touch { position: fixed; inset: 0; pointer-events: none; z-index: 4; display: none;
+           font-family: "Courier New", ui-monospace, monospace; }
+  #touch.on { display: block; }
+  .tbtn {
+    position: absolute; pointer-events: auto; display: grid; place-items: center;
+    background: rgba(22,17,12,.55); border: 1px solid rgba(243,236,219,.4);
+    color: #f3ecdb; border-radius: 12px; font-size: 22px; font-weight: 700;
+    touch-action: none; user-select: none; -webkit-user-select: none;
+  }
+  .tbtn.pressed { background: rgba(217,85,63,.5); border-color: #d9553f; }
+  #t-left  { left: 16px;  bottom: 22px; width: 78px; height: 78px; }
+  #t-right { left: 102px; bottom: 22px; width: 78px; height: 78px; }
+  #t-gas   { right: 16px; bottom: 22px; width: 78px; height: 104px; }
+  #t-brake { right: 102px; bottom: 22px; width: 78px; height: 78px; }
+  #t-hand  { right: 16px; bottom: 136px; width: 60px; height: 48px; font-size: 18px; }
+  .trow {
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 8px; pointer-events: none;
+  }
+  .trow .tbtn { position: static; width: 54px; height: 40px; font-size: 11px; font-weight: 700; }
 
   #ui {
     position: fixed; inset: 0; pointer-events: none;
@@ -79,6 +101,21 @@
     <div class="mode" id="modeline">día · despejado</div>
   </div>
 </div>
+<div id="touch">
+  <div class="trow">
+    <div class="tbtn" id="t-cam">CAM</div>
+    <div class="tbtn" id="t-radio">RADIO</div>
+    <div class="tbtn" id="t-lights">LUZ</div>
+    <div class="tbtn" id="t-rain">LLUVIA</div>
+    <div class="tbtn" id="t-hora">HORA</div>
+    <div class="tbtn" id="t-rec">REC</div>
+  </div>
+  <div class="tbtn" id="t-left">◀</div>
+  <div class="tbtn" id="t-right">▶</div>
+  <div class="tbtn" id="t-hand">✋</div>
+  <div class="tbtn" id="t-brake">▼</div>
+  <div class="tbtn" id="t-gas">▲</div>
+</div>
 <div id="boot"><span>arrancando el taxi…</span></div>
 <div id="intro">
   <div class="intro-card">
@@ -92,9 +129,10 @@
       R · radio<br />
       L · luces<br />
       V · limpiaparabrisas<br />
-      Espacio · freno de mano
+      Espacio · freno de mano<br />
+      Móvil · botones en pantalla
     </p>
-    <p class="small">Pulsa cualquier tecla para arrancar el audio y conducir.</p>
+    <p class="small">Pulsa cualquier tecla (o toca la pantalla) para arrancar el audio y conducir.</p>
   </div>
 </div>
 
@@ -1196,6 +1234,46 @@ addEventListener('pointermove', e => {
 });
 addEventListener('pointerup', () => { dragging = false; });
 addEventListener('pointercancel', () => { dragging = false; });
+
+/* ---------- touch controls (mobile) ----------------------------------------
+   Hold buttons drive the same `keys` flags as the keyboard; tap buttons
+   synthesize keydown/keyup so every action shares one code path. */
+const touchUI = document.getElementById('touch');
+const isCoarse = matchMedia('(pointer: coarse)').matches
+  || 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+if (isCoarse && touchUI) {
+  touchUI.classList.add('on');
+  document.getElementById('hud').style.bottom = '150px';
+  document.getElementById('help').style.display = 'none';
+
+  const hold = (id, key) => {
+    const el = document.getElementById(id);
+    el.addEventListener('pointerdown', e => {
+      e.preventDefault(); initAudio(); dismissIntro();
+      if (AC && AC.state === 'suspended') AC.resume();
+      keys[key] = true; el.classList.add('pressed');
+      try { el.setPointerCapture(e.pointerId); } catch {}
+    });
+    const off = () => { keys[key] = false; el.classList.remove('pressed'); };
+    el.addEventListener('pointerup', off);
+    el.addEventListener('pointercancel', off);
+  };
+  hold('t-left', 'a'); hold('t-right', 'd');
+  hold('t-gas', 'w');  hold('t-brake', 's');
+  hold('t-hand', ' ');
+
+  const tap = (id, key) => {
+    const el = document.getElementById(id);
+    el.addEventListener('pointerdown', e => {
+      e.preventDefault(); el.classList.add('pressed');
+      dispatchEvent(new KeyboardEvent('keydown', { key }));
+      dispatchEvent(new KeyboardEvent('keyup', { key }));
+      setTimeout(() => el.classList.remove('pressed'), 150);
+    });
+  };
+  tap('t-cam', 'c'); tap('t-radio', 'r'); tap('t-lights', 'l');
+  tap('t-rain', 'v'); tap('t-hora', 'n'); tap('t-rec', 't');
+}
 
 /* ---------- car state ------------------------------------------------------ */
 let speed = 0;

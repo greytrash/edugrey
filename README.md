@@ -35,6 +35,7 @@ de repente. Arranca al atardecer, con lluvia y los faros encendidos; cada
 | `V` | lluvia + limpiaparabrisas animado |
 | `Espacio` | freno de mano (bloquea las ruedas, la trasera se suelta) |
 | `ratón` | arrastrar para mirar la cabina, el asiento o por la ventanilla |
+| **móvil** | botonera táctil automática: ◀ ▶ volante, ▲ gas, ▼ freno, ✋ freno de mano, y fila CAM · RADIO · LUZ · LLUVIA · HORA · REC; arrastra el dedo por la escena para mirar |
 | `T` | grabar con la emisora del macuto (● REC) |
 | `N` | hora del día (día → atardecer → noche) |
 | `P` | pausa |
