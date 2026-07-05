@@ -39,15 +39,21 @@
     font-family: "Courier New", ui-monospace, monospace;
     color: #f3ecdb; text-shadow: 0 1px 2px rgba(0,0,0,.6);
   }
+  .cine {
+    position: fixed; left: 0; right: 0; height: 4vh;
+    background: #0a0807; z-index: 3; pointer-events: none;
+  }
+  #cineTop { top: 0; } #cineBot { bottom: 0; }
+
   #title {
-    position: absolute; top: 22px; left: 26px;
+    position: absolute; top: calc(4vh + 14px); left: 26px;
     letter-spacing: .04em;
   }
   #title h1 { font-size: 15px; font-weight: 700; text-transform: uppercase; }
   #title p  { font-size: 11px; opacity: .7; margin-top: 3px; max-width: 46ch; }
 
   #hud {
-    position: absolute; right: 26px; bottom: 22px; text-align: right;
+    position: absolute; right: 26px; bottom: calc(4vh + 14px); text-align: right;
     font-size: 12px; line-height: 1.5;
   }
   #hud .spd { font-size: 30px; font-weight: 700; letter-spacing: .05em; }
@@ -55,7 +61,7 @@
   #hud .mode { opacity: .75; }
 
   #help {
-    position: absolute; left: 26px; bottom: 22px;
+    position: absolute; left: 26px; bottom: calc(4vh + 14px);
     font-size: 11px; line-height: 1.7; opacity: .8;
   }
   #help b { color: #d9553f; font-weight: 700; }
@@ -101,6 +107,8 @@
     <div class="mode" id="modeline">día · despejado</div>
   </div>
 </div>
+<div class="cine" id="cineTop"></div>
+<div class="cine" id="cineBot"></div>
 <div id="touch">
   <div class="trow">
     <div class="tbtn" id="t-cam">CAM</div>
@@ -468,7 +476,7 @@ function buildOakGrove() {                    // robles: tronco corto, copa gran
     trunk.position.y = 0.9; t.add(trunk);
     for (let k = 0; k < 3 + (Math.random() * 2 | 0); k++) {
       const s = 1.2 + Math.random() * 1.1;
-      const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), oliveMat);
+      const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 1), oliveMat);
       crown.scale.y = 0.85;
       crown.position.set((Math.random() - 0.5) * 1.6, 2.4 + Math.random() * 1.2, (Math.random() - 0.5) * 1.6);
       t.add(crown);
@@ -867,12 +875,26 @@ function buildBull() {
   }
   return grp;
 }
-function buildPole() {
+function buildPole() {                        // par de postes CON sus cables
   const grp = new THREE.Object3D();
-  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 7, 6), poleMat);
-  post.position.y = 3.5; grp.add(post);
-  const arm = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.09, 0.09), poleMat);
-  arm.position.y = 6.6; grp.add(arm);
+  grp.userData.tail = 34;
+  const wireMat = toon({ color: 0x1f1c18 });
+  for (const pz of [0, -32]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 7, 8), poleMat);
+    post.position.set(0, 3.5, pz); grp.add(post);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.09, 0.09), poleMat);
+    arm.position.set(0, 6.6, pz); grp.add(arm);
+  }
+  for (const wx of [-0.6, 0, 0.6]) {          // catenarias con seno
+    const pts = [];
+    for (let i = 0; i <= 10; i++) {
+      const t = i / 10;
+      pts.push(new THREE.Vector3(wx, 6.62 - Math.sin(t * Math.PI) * 0.55, -t * 32));
+    }
+    const wire = new THREE.Mesh(
+      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, 0.014, 4), wireMat);
+    grp.add(wire);
+  }
   return grp;
 }
 function buildSign() {
@@ -913,14 +935,86 @@ function buildField() {
   m.rotation.x = -Math.PI / 2; m.position.y = 0.06;   // clear of the ground plane
   const grp = new THREE.Object3D(); grp.add(m); return grp;
 }
+/* domos suaves con normales continuas: montes pintados, no low-poly ---------- */
+const domeGeo = new THREE.SphereGeometry(1, 22, 12, 0, Math.PI * 2, 0, Math.PI / 2);
+const mtnMats = [toon({ color: 0x66805c }), toon({ color: 0x5d7a58 }), toon({ color: 0x70876a })];
 function buildMountain() {
   const grp = new THREE.Object3D();
   const n = 2 + (Math.random() * 3 | 0);
   for (let i = 0; i < n; i++) {
-    const h = 70 + Math.random() * 150, r = 90 + Math.random() * 190;
-    const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, 7), mtnMat);
-    m.position.set((Math.random() - 0.5) * 160, h / 2 - 2, (Math.random() - 0.5) * 300);
+    const h = 70 + Math.random() * 130, r = 110 + Math.random() * 180;
+    const m = new THREE.Mesh(domeGeo, mtnMats[i % 3]);
+    m.scale.set(r, h, r * (0.65 + Math.random() * 0.3));
+    m.position.set((Math.random() - 0.5) * 140, -2, (Math.random() - 0.5) * 300);
     grp.add(m);
+  }
+  return grp;
+}
+const hillMat = toon({ color: 0x76995e });
+function buildHills() {                       // colinas intermedias, suaves
+  const grp = new THREE.Object3D();
+  const n = 1 + (Math.random() * 3 | 0);
+  for (let i = 0; i < n; i++) {
+    const m = new THREE.Mesh(domeGeo, hillMat);
+    m.scale.set(45 + Math.random() * 60, 10 + Math.random() * 18, 35 + Math.random() * 45);
+    m.position.set((Math.random() - 0.5) * 90, -1, (Math.random() - 0.5) * 120);
+    grp.add(m);
+  }
+  return grp;
+}
+function buildFlock() {                       // ovejas latxas pastando
+  const grp = new THREE.Object3D();
+  const wool = toon({ color: 0xe4ded0 }), dark = toon({ color: 0x3a332c });
+  const n = 5 + (Math.random() * 5 | 0);
+  for (let i = 0; i < n; i++) {
+    const s = new THREE.Object3D();
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8), wool);
+    body.scale.set(1, 0.72, 1.35); body.position.y = 0.48; s.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), dark);
+    head.position.set(0, 0.34, 0.62); s.add(head);        // cabeza gacha, pastando
+    for (const [lx, lz] of [[-0.2, 0.35], [0.2, 0.35], [-0.2, -0.35], [0.2, -0.35]]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.3, 0.07), dark);
+      leg.position.set(lx, 0.15, lz); s.add(leg);
+    }
+    s.position.set((Math.random() - 0.5) * 14, 0, (Math.random() - 0.5) * 12);
+    s.rotation.y = Math.random() * 6.28;
+    grp.add(s);
+  }
+  return grp;
+}
+function buildHay() {                         // fardos de heno
+  const grp = new THREE.Object3D();
+  const hayMat = toon({ color: 0xc9a95c });
+  const n = 2 + (Math.random() * 3 | 0);
+  for (let i = 0; i < n; i++) {
+    const bale = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 1.15, 18), hayMat);
+    bale.rotation.z = Math.PI / 2; bale.rotation.y = Math.random() * 3;
+    bale.position.set((Math.random() - 0.5) * 12, 0.75, (Math.random() - 0.5) * 10);
+    grp.add(bale);
+  }
+  return grp;
+}
+const hedgeMat = toon({ color: 0x44603a });
+function buildHedge() {                       // seto entre prados
+  const grp = new THREE.Object3D();
+  const n = 6 + (Math.random() * 5 | 0);
+  grp.userData.tail = n * 2.2;
+  for (let i = 0; i < n; i++) {
+    const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.9 + Math.random() * 0.5, 1), hedgeMat);
+    b.scale.y = 0.7;
+    b.position.set((Math.random() - 0.5) * 0.8, 0.55, -i * 2.2);
+    grp.add(b);
+  }
+  return grp;
+}
+function buildGuardrail() {                   // quitamiedos en las curvas
+  const grp = new THREE.Object3D();
+  grp.userData.tail = 16;
+  const rail = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.3, 16), toon({ color: 0x9d9d94 }));
+  rail.position.set(0, 0.62, -8); grp.add(rail);
+  for (let z = 0; z >= -16; z -= 4) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.62, 0.12), toon({ color: 0x6d6d66 }));
+    post.position.set(0, 0.31, z); grp.add(post);
   }
   return grp;
 }
@@ -938,7 +1032,7 @@ function buildCarMesh(bodyColor, tail) {
     const b = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.16, 0.14), bumperMat);
     b.position.set(0, 0.32, bz); g.add(b);
   }
-  const wheelGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.28, 12);
+  const wheelGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.28, 20);
   const rubber = toon({ color: 0x15130f });
   for (const [wx, wz] of [[-0.95, 1.35], [0.95, 1.35], [-0.95, -1.35], [0.95, -1.35]]) {
     const w = new THREE.Mesh(wheelGeo, rubber);
@@ -978,25 +1072,30 @@ function spawnProp(s) {
   const roll = Math.random();
   const side = Math.random() < 0.5 ? -1 : 1;
   let obj, offset;
-  if (roll < 0.13)      { obj = buildOakGrove();     offset = side * (22 + Math.random() * 60); }
-  else if (roll < 0.21) { obj = buildPineRow();      offset = side * (13 + Math.random() * 35); }
-  else if (roll < 0.30) { obj = buildPole();         offset = side * 9.6; }
-  else if (roll < 0.40) {
+  if (roll < 0.11)      { obj = buildOakGrove();     offset = side * (22 + Math.random() * 60); }
+  else if (roll < 0.18) { obj = buildPineRow();      offset = side * (13 + Math.random() * 35); }
+  else if (roll < 0.26) { obj = buildPole();         offset = side * 9.8; }
+  else if (roll < 0.36) {
     const oncoming = Math.random() < 0.5;
     obj = buildTraffic(oncoming);
     offset = oncoming ? -2.2 : 2.2;
   }
-  else if (roll < 0.45) { obj = buildCyclists();     offset = 6.3; }          // en tu carril, a adelantar
-  else if (roll < 0.51) { obj = buildVillage();      offset = 0; }            // travesía completa
-  else if (roll < 0.545){ obj = buildGasolinera();   offset = side * 15.5; }
-  else if (roll < 0.575){ obj = buildBridge();       offset = 0; }
-  else if (roll < 0.59) { obj = buildBull();         offset = side * (14 + Math.random() * 12); }
-  else if (roll < 0.62) { obj = buildMuralWall();    offset = side * (11 + Math.random() * 8); }
-  else if (roll < 0.66) { obj = buildSign();         offset = side * 9.2; }
-  else if (roll < 0.72) { obj = buildHito();         offset = side * 8.6; }
-  else if (roll < 0.80) { obj = buildScrub();        offset = side * (14 + Math.random() * 25); }
-  else if (roll < 0.94) { obj = buildField();        offset = side * (100 + Math.random() * 150); }
-  else                  { obj = buildMountain();     offset = side * (420 + Math.random() * 550); }
+  else if (roll < 0.41) { obj = buildCyclists();     offset = 6.3; }          // en tu carril, a adelantar
+  else if (roll < 0.47) { obj = buildVillage();      offset = 0; }            // travesía completa
+  else if (roll < 0.505){ obj = buildGasolinera();   offset = side * 15.5; }
+  else if (roll < 0.535){ obj = buildBridge();       offset = 0; }
+  else if (roll < 0.55) { obj = buildBull();         offset = side * (14 + Math.random() * 12); }
+  else if (roll < 0.58) { obj = buildMuralWall();    offset = side * (11 + Math.random() * 8); }
+  else if (roll < 0.615){ obj = buildSign();         offset = side * 9.2; }
+  else if (roll < 0.65) { obj = buildHito();         offset = side * 8.6; }
+  else if (roll < 0.685){ obj = buildGuardrail();    offset = side * 8.8; }
+  else if (roll < 0.72) { obj = buildHedge();        offset = side * (24 + Math.random() * 50); }
+  else if (roll < 0.755){ obj = buildHay();          offset = side * (20 + Math.random() * 50); }
+  else if (roll < 0.79) { obj = buildFlock();        offset = side * (18 + Math.random() * 45); }
+  else if (roll < 0.83) { obj = buildScrub();        offset = side * (14 + Math.random() * 25); }
+  else if (roll < 0.89) { obj = buildHills();        offset = side * (130 + Math.random() * 230); obj.userData.bendMul = 0.3; }
+  else if (roll < 0.97) { obj = buildField();        offset = side * (100 + Math.random() * 150); obj.userData.bendMul = 0.5; }
+  else                  { obj = buildMountain();     offset = side * (430 + Math.random() * 550); obj.userData.bendMul = 0.12; }
   obj.userData.s = s;
   obj.userData.off = offset;
   scene.add(obj); props.push(obj);
@@ -1218,6 +1317,55 @@ rearShelf.position.set(0, 0.10, 1.42); cab.add(rearShelf);
 const mySeatBack = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.14), seatMat);
 mySeatBack.position.set(-0.02, -0.25, 0.30); mySeatBack.rotation.x = -0.14; cab.add(mySeatBack);
 
+/* -- el parabrisas como personaje: reflejos suaves y lluvia sobre el cristal - */
+function glassTexture() {
+  const { c, x } = makeCanvas(512, 256);
+  x.clearRect(0, 0, 512, 256);
+  for (const [p0, p1, a] of [[0.30, 0.44, 0.11], [0.62, 0.70, 0.06]]) {
+    const g = x.createLinearGradient(0, 0, 512, 256);
+    g.addColorStop(Math.max(0, p0 - 0.08), 'rgba(255,255,255,0)');
+    g.addColorStop((p0 + p1) / 2, `rgba(255,255,255,${a})`);
+    g.addColorStop(Math.min(1, p1 + 0.08), 'rgba(255,255,255,0)');
+    x.fillStyle = g; x.fillRect(0, 0, 512, 256);
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+function dropletsTexture() {
+  const W = 512, { c, x } = makeCanvas(W, W);
+  x.clearRect(0, 0, W, W);
+  for (let i = 0; i < 240; i++) {
+    const dx = Math.random() * W, dy = Math.random() * W, r = 1.4 + Math.random() * 3.2;
+    const g = x.createRadialGradient(dx, dy, 0, dx, dy, r);
+    g.addColorStop(0, 'rgba(235,240,245,0.55)');
+    g.addColorStop(0.7, 'rgba(220,228,236,0.28)');
+    g.addColorStop(1, 'rgba(220,228,236,0)');
+    x.fillStyle = g; x.beginPath(); x.arc(dx, dy, r, 0, 7); x.fill();
+    // regueros ocasionales
+    if (Math.random() < 0.18) {
+      x.strokeStyle = 'rgba(225,232,240,0.20)'; x.lineWidth = 1.2;
+      x.beginPath(); x.moveTo(dx, dy); x.lineTo(dx + (Math.random() - 0.5) * 4, dy + 8 + Math.random() * 18); x.stroke();
+    }
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2.4, 1.1);
+  return t;
+}
+const windshield = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.95),
+  new THREE.MeshBasicMaterial({ map: glassTexture(), transparent: true, opacity: 0.5, depthWrite: false }));
+windshield.position.set(0, -0.05, -0.975); windshield.rotation.x = 0.15;
+cab.add(windshield);
+const dropletTex = dropletsTexture();
+const dropletMat = new THREE.MeshBasicMaterial({ map: dropletTex, transparent: true, opacity: 0, depthWrite: false });
+const droplets = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.95), dropletMat);
+droplets.position.set(0, -0.05, -0.968); droplets.rotation.x = 0.15;
+cab.add(droplets);
+
+// luz cálida de cabina — protagonista al anochecer
+const cabinGlow = new THREE.PointLight(0xffb070, 0, 3.5, 1.8);
+cabinGlow.position.set(0.2, -0.2, -0.7);
+cab.add(cabinGlow);
+
 /* ============================================================================
    EXTERIOR TAXI (chase cam), HEADLIGHTS, CAMERA MODES
    ========================================================================== */
@@ -1300,6 +1448,7 @@ const postUniforms = {
   time:       { value: 0 },
   inkColor:   { value: new THREE.Color(0x2a221a) },
   grade:      { value: new THREE.Color(1, 1, 1) },
+  lift:       { value: new THREE.Color(0, 0, 0) },   // tinte de sombras (grade cine)
   exposure:   { value: 1.0 },
   rain:       { value: 0.0 },
   impact:     { value: 0.0 },
@@ -1320,7 +1469,7 @@ const postMat = new THREE.ShaderMaterial({
     uniform sampler2D tDepth;
     uniform vec2  resolution;
     uniform float near, far, fogNear, fogFar, time, exposure, rain, impact;
-    uniform vec3  inkColor, grade;
+    uniform vec3  inkColor, grade, lift;
 
     float hash(vec2 p){ p = fract(p*vec2(123.34,456.21)); p += dot(p,p+45.32); return fract(p.x*p.y); }
     float linDepth(vec2 uv){
@@ -1361,6 +1510,7 @@ const postMat = new THREE.ShaderMaterial({
       float g = hash(gl_FragCoord.xy * 0.5);
       col = mix(col, col * (0.92 + g * 0.16), 0.5);
       col *= grade * exposure;
+      col += lift * (1.0 - smoothstep(0.0, 0.55, lum(col)));   // sombras tintadas
       col = mix(col, vec3(0.45, 0.10, 0.07), impact * 0.45);
 
       float v = smoothstep(1.35, 0.4, length(vUv - 0.5));
@@ -1379,11 +1529,12 @@ postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), postMat));
    TIME OF DAY + WEATHER
    ========================================================================== */
 const TOD = [
-  { name:'día',       light:0xfff2dd, li:2.6, amb:0.50, grade:[1.02,1.00,0.94], exp:1.08, sun:[-6,10,-8] },
-  { name:'atardecer', light:0xffb066, li:2.0, amb:0.30, grade:[1.06,0.88,0.78], exp:0.95, sun:[-9, 4,-6] },
-  { name:'noche',     light:0x9fb4e8, li:0.8, amb:0.20, grade:[0.62,0.70,1.00], exp:0.72, sun:[ 4, 7,-9] },
+  { name:'amanecer',  light:0xffc9a0, li:1.9, amb:0.34, grade:[1.06,0.93,0.92], lift:[0.10,0.05,0.10], exp:1.00, sun:[ 8, 4,-6], glow:0.5 },
+  { name:'día',       light:0xfff2dd, li:2.6, amb:0.50, grade:[1.02,1.00,0.94], lift:[0.02,0.03,0.06], exp:1.08, sun:[-6,10,-8], glow:0.0 },
+  { name:'atardecer', light:0xffb066, li:2.0, amb:0.30, grade:[1.08,0.88,0.78], lift:[0.12,0.05,0.03], exp:0.95, sun:[-9, 4,-6], glow:0.45 },
+  { name:'noche',     light:0x9fb4e8, li:0.8, amb:0.20, grade:[0.62,0.70,1.00], lift:[0.02,0.05,0.14], exp:0.72, sun:[ 4, 7,-9], glow:1.5 },
 ];
-let todIndex = 1, rainOn = true, paused = false;   // arranque: atardecer, asfalto mojado
+let todIndex = 2, rainOn = true, paused = false;   // arranque: atardecer, asfalto mojado
 function updateModeline() {
   document.getElementById('modeline').textContent =
     `${TOD[todIndex].name} · ${rainOn ? 'lluvia' : 'despejado'} · ${STATIONS[stationIdx]}${recOn ? ' · ● REC ZUBATO' : ''}`;
@@ -1393,7 +1544,9 @@ function applyTOD() {
   sun.color.setHex(t.light); sun.intensity = t.li;
   sun.position.set(...t.sun); amb.intensity = t.amb;
   postUniforms.grade.value.setRGB(...t.grade);
+  postUniforms.lift.value.setRGB(...t.lift);
   postUniforms.exposure.value = t.exp;
+  cabinGlow.intensity = t.glow;
   updateModeline();
 }
 applyTOD();
@@ -1736,7 +1889,8 @@ function frame() {
       if (p.userData.traffic) p.userData.s += p.userData.v * dt;
       const d = p.userData.s - scroll;
       p.position.z = -d;
-      p.position.x = p.userData.off + roadDX(d);
+      // el fondo lejano NO se dobla con la carretera (evita el "fondo sin sentido")
+      p.position.x = p.userData.off + roadDX(d) * (p.userData.bendMul ?? 1);
 
       // vecinos paseando: piernas/brazos en péndulo, ida y vuelta por la travesía
       if (p.userData.walkers && d > -190 && d < 500) {
@@ -1806,14 +1960,20 @@ function frame() {
   if (!dragging) { lookYawT *= Math.exp(-2.6 * dt); lookPitchT *= Math.exp(-2.6 * dt); }
   lookYaw   = THREE.MathUtils.lerp(lookYaw, lookYawT, 0.18);
   lookPitch = THREE.MathUtils.lerp(lookPitch, lookPitchT, 0.18);
-  camera.rotation.y = -lookYaw + (Math.random() - 0.5) * shake * 0.02;
-  camera.rotation.x = -lookPitch * 0.9 - basePitch + (Math.random() - 0.5) * shake * 0.02;
+  const breathe = postUniforms.time.value;   // respiración sutil de cámara (road movie)
+  camera.rotation.y = -lookYaw + Math.sin(breathe * 0.31) * 0.0035 + (Math.random() - 0.5) * shake * 0.02;
+  camera.rotation.x = -lookPitch * 0.9 - basePitch + Math.sin(breathe * 0.23) * 0.0028 + (Math.random() - 0.5) * shake * 0.02;
+  camera.rotation.z = Math.sin(breathe * 0.4) * 0.0035;
   camera.position.y = (camMode === 0 ? 0 : 1.2) + (Math.random() - 0.5) * shake * 0.06;
 
   sky.position.x = rig.position.x;
 
-  /* speed widens the FOV slightly — classic racing speed cue */
-  const targetFov = 58 + spdN * 7;
+  /* rain lives on the glass; wipers park when it stops */
+  dropletMat.opacity = THREE.MathUtils.lerp(dropletMat.opacity, rainOn ? 0.75 : 0, 0.03);
+  if (rainOn) dropletTex.offset.y -= dt * 0.012;
+
+  /* speed widens the FOV slightly; chase cam uses a longer lens */
+  const targetFov = (camMode === 0 ? 58 : 50) + spdN * 7;
   if (Math.abs(camera.fov - targetFov) > 0.05) {
     camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, 0.08);
     camera.updateProjectionMatrix();

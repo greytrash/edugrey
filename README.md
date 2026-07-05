@@ -118,6 +118,17 @@ no se dispare). Tráfico en ambos sentidos — coches lentos en tu carril y
 coches de frente con faros — con colisión AABB: frenazo, empujón lateral,
 sacudida y pulso rojo.
 
+**Dirección artística (estilo *Mixtape*):** realismo estilizado y
+cinematográfico — barras de película, cuatro momentos del día (amanecer, día,
+atardecer, noche) con grade y **lift de sombras** propios, luz cálida de
+cabina al anochecer, **reflejos y gotas de lluvia sobre el parabrisas** (capa
+de cristal propia, no solo pantalla), respiración sutil de cámara, lente más
+larga en la cámara exterior. El fondo lejano ya **no se dobla con la
+carretera** (amortiguación del bend por distancia) y los montes son **domos
+suaves con normales continuas** — pintados, no low-poly — con colinas
+intermedias, ovejas latxas pastando, fardos de heno, setos, quitamiedos y
+postes de teléfono **con sus cables en catenaria**.
+
 **Post-proceso cel:** un único pase GLSL3 — contornos por discontinuidad de
 profundidad + sobel de luminancia, grano fino de película, viñeta, grade por
 hora del día, estrías de lluvia y pulso de impacto. La iluminación dinámica
