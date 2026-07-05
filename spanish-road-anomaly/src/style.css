@@ -115,6 +115,28 @@ html, body {
 }
 #map.open { opacity: 0.96; transform: translateY(0) rotate(0.6deg); }
 
+/* pause: the map held up over the wheel */
+#map.big {
+  opacity: 1;
+  top: 50%; right: auto; left: 50%;
+  transform: translate(-50%, -50%) scale(1.85) rotate(-0.8deg);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.85);
+}
+
+/* horn — el pitido, touch friendly */
+#horn {
+  position: fixed; right: 20px; bottom: 84px; z-index: 6;
+  width: 56px; height: 56px; border-radius: 50%;
+  border: 1px solid rgba(216,212,200,0.25);
+  background: rgba(20,18,14,0.72);
+  font-size: 24px; line-height: 1;
+  color: var(--bone);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none; -webkit-user-select: none;
+}
+#horn:active { background: rgba(217,160,40,0.35); transform: scale(0.94); }
+
 /* anomaly glitch: flickered onto <body> for a few frames at a time */
 body.glitch #app canvas {
   filter: invert(1) hue-rotate(140deg) contrast(1.5) saturate(0.4);

@@ -4,14 +4,15 @@ import { World, ROAD_HALF } from './world';
 import { GameAudio } from './audio';
 import { sampleDay } from './daycycle';
 import { MiniMap } from './map';
-import { CYCLE_LEN, VILLAGES, DEST } from './route';
+import { Weather } from './weather';
+import { CYCLE_LEN, VILLAGES, DEST, MISSIONS } from './route';
 
 /* ---------------------------------------------------------------- anomaly */
 const CAPTIONS = [
   '',
   '¿no habíamos pasado ya por aquí?',
   'donibane no se acerca.',
-  'gaua ez da bukatzen.',            // the night is not ending
+  'gaua ez da bukatzen.',
   'no mires el retrovisor.',
 ];
 
@@ -23,36 +24,33 @@ function reverse(str: string) { return str.split('').reverse().join(''); }
 
 let cycle = 0;
 
-/* roadside distance signs: next village over DONIBANE, both receding */
 function distanceSign(s: number): { l1: string; l2: string } {
   const c = Math.floor(s / CYCLE_LEN);
   const cs = s % CYCLE_LEN;
   const next = VILLAGES.find(v => v.s > cs + 60) ?? VILLAGES[0];
-  let km1 = Math.max(1, Math.round((next.s - cs) / 400));
+  let km1 = Math.max(1, Math.round((next.s - cs) / 1000));
   let name = next.name;
-  let dest = `${DEST} ${23 + c}`;
+  let dest = `${DEST} ${45 + c}`;
   const r = hash(Math.floor(s));
   if (c >= 1 && r < 0.18) km1 += 1;
   if (c >= 2 && r > 0.86) return { l1: name + ' ' + km1, l2: 'EZ DA EXISTITZEN' };
   if (c >= 3) {
     if (r < 0.22) name = reverse(name);
     if (r > 0.90) dest = `${DEST} ∞`;
-    else if (r > 0.76) dest = `${DEST} ${-(23 + c)}`;
+    else if (r > 0.76) dest = `${DEST} ${-(45 + c)}`;
   }
   return { l1: `${name} ${km1}`, l2: dest };
 }
 
-/* kilometre stones: N-121-B up to the muga, D 4 beyond it */
 function kmMarker(s: number): { road: string; km: string } {
   const c = Math.floor(s / CYCLE_LEN);
   const cs = s % CYCLE_LEN;
-  const fr = cs > 3700;
+  const fr = cs > 23000;
   if (c >= 2) return { road: fr ? 'D 4' : 'N-121-B', km: '13' };
-  const km = fr ? 1 + Math.floor((cs - 3700) / 500) : 8 + Math.floor(cs / 500);
+  const km = fr ? 1 + Math.floor((cs - 23000) / 1000) : 8 + Math.floor(cs / 1000);
   return { road: fr ? 'D 4' : 'N-121-B', km: `${km}` };
 }
 
-/* village entry signs — eventually the towns are named wrong */
 function villageEntry(routeIdx: number): { name: string; alt: string } {
   const v = VILLAGES[routeIdx % VILLAGES.length];
   const c = Math.floor(routeIdx / VILLAGES.length);
@@ -74,15 +72,17 @@ renderer.toneMappingExposure = 1.05;
 app.appendChild(renderer.domElement);
 
 const world = new World({ distanceSign, kmMarker, villageEntry });
+world.bindRenderer(renderer);
 const audio = new GameAudio();
 const map = new MiniMap();
+const weather = new Weather();
 
 const camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.08, 900);
 world.scene.add(camera);
 camera.add(world.rainObject);
 world.attachSky(camera);
 
-/* overlay canvas: windshield droplets, wipers, dashboard */
+/* overlay canvas */
 const overlay = document.createElement('canvas');
 overlay.id = 'overlay';
 document.body.appendChild(overlay);
@@ -97,6 +97,7 @@ hud.innerHTML =
   '<div class="row"><span id="spd">0</span> km/h</div>' +
   '<div class="row dim">odómetro <span id="odo"></span></div>' +
   '<div class="row" id="radio-row">radio off</div>' +
+  '<div class="row" id="mission-row"></div>' +
   '<div class="row dim" id="state-row"></div>';
 document.body.appendChild(hud);
 const caption = document.createElement('div');
@@ -107,6 +108,13 @@ for (const id of ['grain', 'vignette']) {
   d.id = id;
   document.body.appendChild(d);
 }
+/* horn button: works with touch and mouse */
+const hornBtn = document.createElement('button');
+hornBtn.id = 'horn';
+hornBtn.textContent = '📯';
+hornBtn.setAttribute('aria-label', 'bocina');
+document.body.appendChild(hornBtn);
+
 const $ = (id: string) => document.getElementById(id)!;
 
 function sizeAll() {
@@ -127,11 +135,54 @@ function sizeAll() {
 sizeAll();
 addEventListener('resize', sizeAll);
 
+/* ---------------------------------------------------------------- states */
+type GameState = 'menu' | 'driving' | 'paused';
+let state: GameState = 'menu';
+let everStarted = false;
+
+const intro = document.getElementById('intro')!;
+const introSmall = intro.querySelector('.small') as HTMLElement;
+
+function toMenu() {
+  state = 'menu';
+  intro.classList.remove('hidden');
+  introSmall.textContent = everStarted
+    ? 'ENTER · seguir conduciendo'
+    : 'Press any key to start audio and drive.';
+  audio.suspend();
+  map.setBig(false);
+}
+function toDriving() {
+  state = 'driving';
+  intro.classList.add('hidden');
+  if (!everStarted) {
+    everStarted = true;
+    audio.start();
+  }
+  audio.resume();
+  map.setBig(false);
+  caption.classList.remove('show');
+}
+function toPaused() {
+  state = 'paused';
+  audio.suspend();
+  map.setBig(true);
+  showCaption('pausa — el mapa sobre el volante', 2400);
+}
+
+/* el pitido — exposed globally, wired to keyboard H and the touch button */
+function pitido(long = false) {
+  audio.horn(long);
+}
+(window as unknown as { pitido: typeof pitido }).pitido = pitido;
+// debug handle for scene inspection
+(window as unknown as { __dbg: unknown }).__dbg = { scene: world.scene, getS: () => s, world };
+hornBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); if (state === 'driving') pitido(); });
+
 /* ------------------------------------------------------------------ input */
 const keys: Record<string, boolean> = {};
 let interior = false;
 let wipers = true;
-let started = false;
 
 function radioRowText(): string {
   const st = audio.currentStation;
@@ -140,12 +191,19 @@ function radioRowText(): string {
 
 addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
-  if (!started) {
-    started = true;
-    document.getElementById('intro')!.classList.add('hidden');
-    audio.start();
+  if (k === 'escape') {                    // ESC → menú principal
+    if (state !== 'menu') toMenu();
     return;
   }
+  if (state === 'menu') {
+    if (k !== 'p') toDriving();
+    return;
+  }
+  if (k === 'p') {                         // P → pausa (mapa en mano)
+    state === 'paused' ? toDriving() : toPaused();
+    return;
+  }
+  if (state === 'paused') return;
   if (k === ' ') e.preventDefault();
   if (keys[k]) return;
   keys[k] = true;
@@ -153,30 +211,44 @@ addEventListener('keydown', (e) => {
   if (k === 'l') world.headlightsOn = !world.headlightsOn;
   if (k === 'v') wipers = !wipers;
   if (k === 'm') map.toggle();
+  if (k === 'h') pitido();
   if (k === 'r') { audio.cycleRadio(); $('radio-row').textContent = radioRowText(); }
-  if (k === '9') s += CYCLE_LEN - (s % CYCLE_LEN) - 120; // debug: jump near the fold
-  if (k === '8') s += 400;                                // debug: skip ahead
-  if (k === '0') tDay = (tDay + 0.06) % 1;               // debug: advance the day
+  if (k === '9') s += CYCLE_LEN - (s % CYCLE_LEN) - 150;
+  if (k === '8') s += 1500;
+  if (k === '0') tDay = (tDay + 0.06) % 1;
 });
 addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
 /* -------------------------------------------------------------- car state */
-const MAX_SPEED = 33;              // ~119 km/h; it is an old car
-const MAX_REVERSE = 8;             // ~29 km/h in reverse
-const DAY_LEN = 540;               // seconds per full day
+const MAX_SPEED = 33;
+const MAX_REVERSE = 8;
+const DAY_LEN = 3600;                      // 24 game-hours = 1 real hour
 let s = 0;
 let speed = 0;
+let prevSpeed = 0;
 let laneX = 1.7;
 let laneV = 0;
 let steer = 0;
 let shake = 0;
-let tDay = 0.76;                   // the drive starts at dusk
+let tDay = 0.76;
 let now = 0;
 
-/* anomaly bookkeeping */
+/* suspension + body dynamics */
+let bodyY = 0;
+let bodyVy = 0;
+let pitch = 0;
+let roll = 0;
+let wheelSpin = 0;
+
+/* anomaly + mission bookkeeping */
 let gasCaptionCycle = -1;
 let borderCaptionShown = false;
 let dawnBlockedShown = false;
+let missionIdx = 0;
+let missionState: 'idle' | 'broadcast' | 'revealed' = 'idle';
+let missionArmTimer = 40;
+let listenT = 0;
+let entregas = 0;
 let captionTimer: ReturnType<typeof setTimeout> | undefined;
 
 function showCaption(text: string, ms = 3800) {
@@ -201,6 +273,42 @@ function runGlitch() {
   audio.anomalySting();
 }
 
+/* --------------------------------------------------------------- missions */
+function updateMissions(dt: number) {
+  const m = MISSIONS[missionIdx % MISSIONS.length];
+  if (missionState === 'idle') {
+    missionArmTimer -= dt;
+    if (missionArmTimer <= 0) {
+      missionState = 'broadcast';
+      listenT = 0;
+      audio.setMission(m);
+    }
+    return;
+  }
+  if (missionState === 'broadcast') {
+    if (audio.currentStation?.type === 'sokoa') {
+      listenT += dt;
+      if (listenT > 11) {                 // you have heard enough to know
+        missionState = 'revealed';
+        map.setMission(m.targetS, m.label);
+        showCaption('sokoa: mensaje recibido. mira el mapa.', 4200);
+      }
+    }
+  }
+  {
+    const cs = s % CYCLE_LEN;
+    if (Math.abs(cs - m.targetS) < 70 && Math.abs(speed) < 12) {
+      missionState = 'idle';
+      missionArmTimer = 90 + Math.random() * 40;
+      missionIdx++;
+      entregas++;
+      map.clearMission();
+      audio.clearMission(m.ack);
+      showCaption('entrega realizada.', 4200);
+    }
+  }
+}
+
 /* --------------------------------------------------------------- wipers 2D */
 let wiperPhase = 0;
 let wiperDir = 1;
@@ -210,18 +318,17 @@ function bladeAngle(phase: number, from: number, to: number) {
   return from + (to - from) * e;
 }
 
-function drawInterior(dt: number, inr: number, rainI: number, darkness: number) {
+function drawInterior(dt: number, inr: number, rainI: number, darkness: number, inTunnel: boolean) {
   const w = innerWidth, h = innerHeight;
 
-  /* droplets accumulate on the half-res wet buffer */
   const ww = wet.width, wh = wet.height;
   wctx.globalCompositeOperation = 'destination-out';
   wctx.fillStyle = 'rgba(0,0,0,0.012)';
   wctx.fillRect(0, 0, ww, wh);
   wctx.globalCompositeOperation = 'source-over';
-  const spawn = (1 + Math.abs(speed) * 0.12) * (0.3 + rainI * 1.4);
+  const spawn = inTunnel ? 0 : (1 + Math.abs(speed) * 0.12) * (0.3 + rainI * 1.4);
   for (let i = 0; i < spawn; i++) {
-    if (Math.random() > 0.82) {                       // a runner streaking down
+    if (Math.random() > 0.82) {
       const x0 = Math.random() * ww, y0 = Math.random() * wh * 0.6;
       wctx.strokeStyle = 'rgba(200,214,228,0.30)';
       wctx.lineWidth = 1.2;
@@ -229,7 +336,7 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number) 
       wctx.moveTo(x0, y0);
       wctx.lineTo(x0 + (Math.random() - 0.5) * 4, y0 + 8 + Math.random() * 24);
       wctx.stroke();
-    } else {                                          // beaded droplet with a bright rim
+    } else {
       const r = 0.7 + Math.random() * 2.1;
       const dx = Math.random() * ww, dy = Math.random() * wh;
       const dg = wctx.createRadialGradient(dx - r * 0.3, dy - r * 0.3, r * 0.1, dx, dy, r);
@@ -243,7 +350,6 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number) 
     }
   }
 
-  /* wiper sweep, erasing the wet buffer */
   const pivots = [
     { x: 0.36, y: 1.06, from: -2.85, to: -1.35, len: 0.62 },
     { x: 0.74, y: 1.06, from: -2.75, to: -1.15, len: 0.56 },
@@ -272,7 +378,6 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number) 
   octx.drawImage(wet, 0, 0, w, h);
   octx.restore();
 
-  /* wiper blades */
   for (const p of pivots) {
     const a = bladeAngle(wiperPhase, p.from, p.to);
     const px = p.x * w, py = p.y * h, L = p.len * h;
@@ -285,7 +390,7 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number) 
     octx.stroke();
   }
 
-  /* A-pillars and headliner shadow */
+  /* A-pillars, headliner, side mirrors */
   octx.fillStyle = 'rgba(8,7,6,0.92)';
   octx.beginPath();
   octx.moveTo(0, 0); octx.lineTo(w * 0.09, 0); octx.lineTo(w * 0.02, h * 0.8); octx.lineTo(0, h * 0.8);
@@ -298,6 +403,21 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number) 
   hl.addColorStop(1, 'rgba(8,7,6,0)');
   octx.fillStyle = hl;
   octx.fillRect(0, 0, w, h * 0.09);
+
+  for (const side of [0, 1]) {
+    const mx2 = side ? w * 0.905 : w * 0.017, mw2 = w * 0.078, my2 = h * 0.545, mh2 = h * 0.075;
+    octx.fillStyle = '#0a0908';
+    octx.fillRect(mx2 - 4, my2 - 4, mw2 + 8, mh2 + 8);
+    octx.fillStyle = '#101418';
+    octx.fillRect(mx2, my2, mw2, mh2);
+    if (cycle >= 3 && side === 0 && hash(Math.floor(s / 55) + 3) > 0.7) {
+      const gg = octx.createRadialGradient(mx2 + mw2 * 0.5, my2 + mh2 * 0.5, 1, mx2 + mw2 * 0.5, my2 + mh2 * 0.5, mh2 * 0.4);
+      gg.addColorStop(0, 'rgba(255,240,200,0.8)');
+      gg.addColorStop(1, 'rgba(255,240,200,0)');
+      octx.fillStyle = gg;
+      octx.fillRect(mx2, my2, mw2, mh2);
+    }
+  }
 
   /* dashboard */
   const dashTop = h * 0.74;
@@ -314,7 +434,6 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number) 
   octx.lineTo(w, h);
   octx.closePath();
   octx.fill();
-  // dash top edge catches whatever light there is
   octx.strokeStyle = `rgba(180,170,150,${0.10 + 0.1 * (1 - darkness)})`;
   octx.lineWidth = 2;
   octx.beginPath();
@@ -323,35 +442,55 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number) 
   octx.quadraticCurveTo(w * 0.75, dashTop + 18, w, dashTop + 2);
   octx.stroke();
 
-  /* steering wheel: rim, hub, horn ring */
+  /* steering wheel + hands that follow it */
+  const wcx = w * 0.34, wcy = h * 1.10, wr = h * 0.30;
   octx.save();
-  octx.translate(w * 0.34, h * 1.10);
+  octx.translate(wcx, wcy);
   octx.rotate(steer * 1.4);
   octx.strokeStyle = '#191512';
   octx.lineWidth = h * 0.030;
   octx.beginPath();
-  octx.arc(0, 0, h * 0.30, 0, Math.PI * 2);
+  octx.arc(0, 0, wr, 0, Math.PI * 2);
   octx.stroke();
   octx.strokeStyle = '#23201b';
   octx.lineWidth = h * 0.008;
   octx.beginPath();
-  octx.arc(0, 0, h * 0.245, 0, Math.PI * 2);
+  octx.arc(0, 0, wr * 0.82, 0, Math.PI * 2);
   octx.stroke();
   octx.strokeStyle = '#171310';
   octx.lineWidth = h * 0.017;
   for (const sa of [-0.5, Math.PI + 0.5, Math.PI * 0.5]) {
     octx.beginPath();
     octx.moveTo(0, 0);
-    octx.lineTo(Math.cos(sa) * h * 0.285, Math.sin(sa) * h * 0.285);
+    octx.lineTo(Math.cos(sa) * wr * 0.95, Math.sin(sa) * wr * 0.95);
     octx.stroke();
   }
   octx.fillStyle = '#12100d';
   octx.beginPath();
   octx.arc(0, 0, h * 0.045, 0, Math.PI * 2);
   octx.fill();
+  /* hands at ten-to-two, gripping the rim */
+  for (const ha of [-2.35, -0.75]) {
+    const hx = Math.cos(ha) * wr, hy = Math.sin(ha) * wr;
+    // sleeve
+    octx.fillStyle = '#22201c';
+    octx.beginPath();
+    octx.ellipse(hx * 1.22, hy * 1.22, h * 0.035, h * 0.026, ha, 0, 7);
+    octx.fill();
+    // hand
+    octx.fillStyle = '#a67c5a';
+    octx.beginPath();
+    octx.ellipse(hx, hy, h * 0.030, h * 0.022, ha, 0, 7);
+    octx.fill();
+    // knuckle shading
+    octx.fillStyle = 'rgba(60,38,24,0.35)';
+    octx.beginPath();
+    octx.ellipse(hx + Math.cos(ha) * h * 0.012, hy + Math.sin(ha) * h * 0.012, h * 0.016, h * 0.010, ha, 0, 7);
+    octx.fill();
+  }
   octx.restore();
 
-  /* gauges, amber backlight */
+  /* gauges */
   const backlight = 0.35 + 0.55 * darkness;
   const gauge = (sx: number, sy: number, sr: number, frac: number) => {
     octx.fillStyle = 'rgba(18,13,6,0.97)';
@@ -376,8 +515,8 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number) 
     octx.lineTo(sx + Math.cos(na) * sr * 0.78, sy + Math.sin(na) * sr * 0.78);
     octx.stroke();
   };
-  gauge(w * 0.60, h * 0.905, h * 0.075, Math.abs(speed) * 3.6 / 160);      // speedo
-  gauge(w * 0.695, h * 0.925, h * 0.045, 0.62 + Math.sin(now * 0.05) * 0.05); // fuel, roughly
+  gauge(w * 0.60, h * 0.905, h * 0.075, Math.abs(speed) * 3.6 / 160);
+  gauge(w * 0.695, h * 0.925, h * 0.045, 0.62 + Math.sin(now * 0.05) * 0.05);
 
   /* radio face */
   const st = audio.currentStation;
@@ -387,7 +526,6 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number) 
     octx.fillRect(rx, ry, rw, rh);
     octx.strokeStyle = 'rgba(120,130,120,0.3)';
     octx.strokeRect(rx, ry, rw, rh);
-    // tuning band with needle
     octx.strokeStyle = `rgba(140,220,120,${0.35 * backlight + 0.2})`;
     octx.lineWidth = 1;
     octx.beginPath();
@@ -395,18 +533,18 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number) 
     octx.lineTo(rx + rw - 8, ry + rh * 0.68);
     octx.stroke();
     const fr = parseFloat(st.freq);
-    const fx = rx + 8 + (rw - 16) * Math.min(1, Math.max(0, (fr - 65) / 45));
-    octx.strokeStyle = st.type === 'numbers' ? '#c85040' : '#8cdc78';
+    const fx = rx + 8 + (rw - 16) * Math.min(1, Math.max(0, (fr - 87) / 21));
+    octx.strokeStyle = st.type === 'sokoa' ? '#c85040' : '#8cdc78';
     octx.lineWidth = 2;
     octx.beginPath();
     octx.moveTo(fx, ry + rh * 0.5);
     octx.lineTo(fx, ry + rh * 0.86);
     octx.stroke();
     let label = `${st.freq}  ${st.name}`;
-    if (inr > 0.45 && st.type !== 'numbers' && Math.random() < inr * 0.5) {
+    if (inr > 0.45 && st.type !== 'sokoa' && Math.random() < inr * 0.5) {
       label = label.replace(/\d/g, () => '' + ((Math.random() * 10) | 0));
     }
-    octx.fillStyle = st.type === 'numbers'
+    octx.fillStyle = st.type === 'sokoa'
       ? 'rgba(230,110,90,0.95)'
       : inr > 0.6 ? 'rgba(230,120,90,0.9)' : `rgba(140,220,120,${0.6 + 0.35 * backlight})`;
     octx.font = `${Math.round(h * 0.017)}px "Courier New", monospace`;
@@ -414,7 +552,7 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number) 
     octx.fillText(label, rx + rw / 2, ry + h * 0.021);
   }
 
-  /* rear-view mirror — late in the night, something follows */
+  /* rear-view mirror */
   const mw = w * 0.19, mh = h * 0.05, mx = w * 0.5 - mw / 2, my = h * 0.045;
   octx.fillStyle = '#020303';
   octx.fillRect(mx, my, mw, mh);
@@ -437,18 +575,31 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number) 
 
 /* ------------------------------------------------------------------- loop */
 const clock = new THREE.Clock();
+let baseFov = 58;
+
+function gameHHMM(): { str: string; hour: number } {
+  const mins = Math.floor(tDay * 24 * 60);
+  const hh = Math.floor(mins / 60) % 24;
+  const mm = mins % 60;
+  return { str: `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`, hour: hh };
+}
 
 function frame() {
   requestAnimationFrame(frame);
   const dt = Math.min(clock.getDelta(), 0.05);
+  if (state === 'paused') {
+    map.update(s, cycle, 0, now);
+    renderer.render(world.scene, camera);
+    return;
+  }
   now += dt;
 
-  /* organic weather + daylight run even on the intro screen */
-  const rainI = THREE.MathUtils.clamp(
-    0.55 + 0.35 * Math.sin(now * 0.011) + 0.25 * Math.sin(now * 0.043 + 2), 0.12, 1);
+  /* weather + daylight advance even on the menu, so the world lives */
+  weather.update(dt / DAY_LEN * 24, dt);
+  const rainI = weather.current.rainI;
   tDay = (tDay + dt / DAY_LEN) % 1;
   if (cycle >= 2 && tDay > 0.215 && tDay < 0.30) {
-    tDay = 0.215;                                    // dawn stops coming
+    tDay = 0.215;
     if (!dawnBlockedShown) {
       dawnBlockedShown = true;
       showCaption(CAPTIONS[3], 5200);
@@ -456,40 +607,45 @@ function frame() {
   }
   const day = sampleDay(tDay);
   renderer.toneMappingExposure = day.exposure;
-
-  if (!started) {
-    world.update(dt, {
-      s, speed: 0, laneX, visualYaw: 0, roll: 0,
-      interior: false, braking: false, time: now, tDay, day, rainI,
-    });
-    renderer.render(world.scene, camera);
-    return;
+  if (weather.lightning) {
+    world.lightningFlash();
+    audio.thunder(0.8 + Math.random() * 3);
   }
 
-  /* --- driving model --- */
-  const up = keys['w'] || keys['arrowup'];
-  const down = keys['s'] || keys['arrowdown'];
-  const left = keys['a'] || keys['arrowleft'];
-  const right = keys['d'] || keys['arrowright'];
-  const handbrake = !!keys[' '];
+  const driving = state === 'driving';
 
-  if (up) speed += 8.5 * dt;
+  /* --- driving model --- */
+  const up = driving && (keys['w'] || keys['arrowup']);
+  const down = driving && (keys['s'] || keys['arrowdown']);
+  const left = driving && (keys['a'] || keys['arrowleft']);
+  const right = driving && (keys['d'] || keys['arrowright']);
+  const handbrake = driving && !!keys[' '];
+
+  prevSpeed = speed;
+  const engineF = 9.5 * (1 - 0.55 * Math.abs(speed) / MAX_SPEED);   // torque tapers
+  if (up) speed += engineF * dt;
   if (down) {
     if (speed > 0.4) speed -= 16 * dt;
     else speed -= 7 * dt;
   }
   if (handbrake) speed -= Math.sign(speed) * 14 * dt;
-  speed -= Math.sign(speed) * (0.0009 * speed * speed + 0.11) * dt * 9;
+  speed += -9.81 * world.grade(s) * 0.8 * dt;                        // slopes matter
+  speed -= Math.sign(speed) * (0.0011 * speed * speed + 0.10) * dt * 9;
+  if (!up && !down && Math.abs(speed) < 0.6) speed = 0;              // parking friction
   speed = THREE.MathUtils.clamp(speed, -MAX_REVERSE, MAX_SPEED);
+  const longAccel = (speed - prevSpeed) / Math.max(dt, 0.001);
 
-  const wetGrip = 1 - 0.25 * rainI;
-  const grip = (handbrake ? 0.3 : 1.0) * wetGrip;
+  const inTun = world.inTunnel(s);
+  const wetGrip = 1 - 0.32 * (inTun ? 0.2 : rainI);
+  const grip = (handbrake ? 0.32 : 1.0) * wetGrip;
   const sIn = (left ? -1 : 0) + (right ? 1 : 0);
-  steer = THREE.MathUtils.lerp(steer, sIn, 1 - Math.exp(-8 * dt));
-  laneV += steer * (5 + 15 * (Math.abs(speed) / MAX_SPEED)) * dt * Math.sign(speed || 1);
-  laneV -= laneV * Math.min(1, 6.5 * grip * dt);
+  steer = THREE.MathUtils.lerp(steer, sIn, 1 - Math.exp(-7 * dt));
+  const prevLaneV = laneV;
+  laneV += steer * (4.5 + 16 * (Math.abs(speed) / MAX_SPEED)) * grip * dt * Math.sign(speed || 1);
+  laneV -= laneV * Math.min(1, 6.0 * grip * dt);
   laneV -= world.curvature(s) * speed * speed * dt;
   laneX += laneV * dt;
+  const latAccel = (laneV - prevLaneV) / Math.max(dt, 0.001);
 
   const offroad = Math.abs(laneX) > ROAD_HALF + 0.15 && Math.abs(speed) > 1;
   if (offroad) {
@@ -499,12 +655,22 @@ function frame() {
   if (Math.abs(laneX) > 8) { laneX = Math.sign(laneX) * 8; laneV *= -0.25; }
 
   s += speed * dt;
+  wheelSpin += speed * dt / 0.34;
+
+  /* suspension: bumps + weight transfer */
+  const bump = (offroad ? (Math.random() - 0.5) * 0.05 : 0)
+    + (Math.sin(s * 1.7) + Math.sin(s * 3.31)) * 0.006 * (Math.abs(speed) / MAX_SPEED);
+  bodyVy += ((bump - bodyY) * 55 - bodyVy * 7.5) * dt;
+  bodyY += bodyVy * dt;
+  pitch = THREE.MathUtils.lerp(pitch, THREE.MathUtils.clamp(-longAccel * 0.0075, -0.05, 0.06), 1 - Math.exp(-6 * dt));
+  roll = THREE.MathUtils.lerp(roll, THREE.MathUtils.clamp(-latAccel * 0.010 - steer * 0.02, -0.09, 0.09), 1 - Math.exp(-6 * dt));
 
   /* --- anomaly clock --- */
   const cs = s % CYCLE_LEN;
-  const inr = Math.min(1, Math.max(0, (cs - (CYCLE_LEN - 500)) / 500) + Math.min(0.25, cycle * 0.07));
+  const inr = Math.min(1, Math.max(0, (cs - (CYCLE_LEN - 2200)) / 2200) + Math.min(0.25, cycle * 0.07));
   audio.interference = inr;
-  audio.numbersUnlocked = cycle >= 2;
+  const hm = gameHHMM();
+  audio.context = { hourStr: hm.str, hour: hm.hour, weather: weather.name, cycle };
 
   const newCycle = Math.floor(s / CYCLE_LEN);
   if (newCycle > cycle) {
@@ -514,43 +680,55 @@ function frame() {
     setTimeout(() => showCaption(line), 900);
     world.mirrorOncoming = cycle >= 2;
   }
-  if (world.gasStationS < s - 80) {
+  if (world.gasStationS < s - 120) {
     world.setGasStationS(world.gasStationS + CYCLE_LEN);
   }
-  if (cycle >= 1 && gasCaptionCycle !== cycle && Math.abs(world.gasStationS - s) < 28) {
+  if (cycle >= 1 && gasCaptionCycle !== cycle && Math.abs(world.gasStationS - s) < 30) {
     gasCaptionCycle = cycle;
     showCaption('la misma gasolinera.');
   }
-  if (!borderCaptionShown && Math.abs(world.borderPostS - s) < 22) {
+  if (!borderCaptionShown && Math.abs(world.borderPostS - s) < 24) {
     borderCaptionShown = true;
     showCaption('la muga. no hay nadie.', 4200);
   }
 
+  if (driving) updateMissions(dt);
   shake = Math.max(0, shake - dt * 1.6);
 
-  /* --- world + camera --- */
+  /* --- world --- */
   world.update(dt, {
-    s, speed, laneX,
-    visualYaw: -(steer * 0.2 + laneV * 0.018) * Math.sign(speed || 1),
-    roll: -(steer * 0.05 + laneV * 0.012),
+    s, speed, laneX, steer,
+    visualYaw: -(steer * 0.18 + laneV * 0.016) * Math.sign(speed || 1),
+    roll, pitch, bodyY, wheelSpin,
     interior,
     braking: down || handbrake,
     time: now, tDay, day, rainI,
+    cloud: weather.current.cloud,
+    lightning: weather.lightning,
   });
 
+  /* --- cinematic camera --- */
   const shx = (Math.random() - 0.5) * shake * 0.14;
   const shy = (Math.random() - 0.5) * shake * 0.1;
+  const ahead = world.aheadPoint(s, 30);
+  const wantFov = (interior ? 60 : 57) + (Math.abs(speed) / MAX_SPEED) * 7;
+  if (Math.abs(wantFov - baseFov) > 0.1) {
+    baseFov = THREE.MathUtils.lerp(baseFov, wantFov, 0.05);
+    camera.fov = baseFov;
+    camera.updateProjectionMatrix();
+  }
   if (interior) {
-    camera.position.set(laneX - 0.35 + shx, 1.28 + shy, -7.55);
-    camera.lookAt(laneX - 0.35 + steer * 1.2, 0.9, -46);
+    camera.position.set(laneX - 0.35 + shx, 1.28 + bodyY * 0.8 + shy, -7.55);
+    camera.lookAt(laneX - 0.35 + steer * 1.2 + ahead.x * 0.25, 0.9 + ahead.y * 0.55, -46);
   } else {
-    camera.position.set(laneX * 0.62 + shx, 2.55 + shy, 1.6);
-    camera.lookAt(laneX * 0.82, 1.35, -25);
+    const sway = Math.sin(now * 0.7) * 0.04 * (Math.abs(speed) / MAX_SPEED);
+    camera.position.set(laneX * 0.62 + shx + sway, 2.55 + bodyY * 0.4 + shy, 1.6);
+    camera.lookAt(laneX * 0.80 + ahead.x * 0.30, 1.3 + ahead.y * 0.45, -26);
   }
 
   /* --- overlay + map --- */
   octx.clearRect(0, 0, innerWidth, innerHeight);
-  if (interior) drawInterior(dt, inr, rainI, day.darkness);
+  if (interior && driving) drawInterior(dt, inr, rainI, day.darkness, inTun);
   map.update(s, cycle, inr, now);
 
   /* --- HUD --- */
@@ -565,17 +743,29 @@ function frame() {
   $('odo').textContent = odo + ' km';
   const rr = $('radio-row');
   const st = audio.currentStation;
-  rr.className = 'row ' + (!st ? 'dim' : (inr > 0.5 && st.type !== 'numbers') ? 'radio-bad' : 'radio-on');
-  rr.textContent = st && inr > 0.5 && st.type !== 'numbers' ? 'radio · interferencia' : radioRowText();
+  rr.className = 'row ' + (!st ? 'dim' : (inr > 0.5 && st.type !== 'sokoa') ? 'radio-bad' : 'radio-on');
+  rr.textContent = st && inr > 0.5 && st.type !== 'sokoa' ? 'radio · interferencia' : radioRowText();
+  const mrow = $('mission-row');
+  if (missionState === 'revealed') {
+    mrow.className = 'row radio-bad';
+    mrow.textContent = `sokoa · ${MISSIONS[missionIdx % MISSIONS.length].label}`;
+  } else if (missionState === 'broadcast') {
+    mrow.className = 'row dim';
+    mrow.textContent = 'algo se mueve en 91.8…';
+  } else {
+    mrow.className = 'row dim';
+    mrow.textContent = entregas > 0 ? `entregas: ${entregas}` : '';
+  }
   $('state-row').textContent =
-    `${world.headlightsOn ? 'luces' : 'luces off'} · ${wipers ? 'limpia' : 'limpia off'} · ` +
-    `${interior ? 'cabina' : 'exterior'} · ${map.visible ? 'mapa' : 'M mapa'}`;
+    `${hm.str} · ${weather.name} · ${world.headlightsOn ? 'luces' : 'luces off'} · ` +
+    `${interior ? 'cabina' : 'exterior'} · P pausa · ESC menú`;
 
   audio.update(dt, {
     speed, maxSpeed: MAX_SPEED, throttle: !!up,
-    offroad, handbrake, rain: rainI,
+    offroad, handbrake, rain: inTun ? 0.05 : rainI,
   });
 
   renderer.render(world.scene, camera);
 }
+toMenu();
 frame();
