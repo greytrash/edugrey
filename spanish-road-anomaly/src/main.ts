@@ -130,6 +130,7 @@ addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
 /* -------------------------------------------------------------- car state */
 const MAX_SPEED = 33;              // ~119 km/h; it is an old car
+const MAX_REVERSE = 8;             // ~29 km/h in reverse
 let s = 0;                         // distance along the road
 let speed = 0;
 let laneX = 1.7;                   // right lane
@@ -295,7 +296,7 @@ function drawInterior(dt: number, inr: number) {
     octx.lineTo(sx + Math.cos(ta) * sr * 0.92, sy + Math.sin(ta) * sr * 0.92);
     octx.stroke();
   }
-  const na = Math.PI * 0.8 + Math.min(1, speed * 3.6 / 160) * Math.PI * 1.4;
+  const na = Math.PI * 0.8 + Math.min(1, Math.abs(speed) * 3.6 / 160) * Math.PI * 1.4;
   octx.strokeStyle = '#e4b23c';
   octx.lineWidth = 2.4;
   octx.beginPath();
@@ -355,10 +356,14 @@ function frame() {
   const handbrake = !!keys[' '];
 
   if (up) speed += 8.5 * dt;
-  if (down) speed -= 16 * dt;
-  if (handbrake) speed -= 14 * dt;
-  speed -= (0.0009 * speed * speed + 0.11) * dt * 9;
-  speed = THREE.MathUtils.clamp(speed, 0, MAX_SPEED);
+  if (down) {
+    if (speed > 0.4) speed -= 16 * dt;        // still rolling forward → brake hard
+    else speed -= 7 * dt;                      // stopped/reversing → back up
+  }
+  if (handbrake) speed -= Math.sign(speed) * 14 * dt;
+  // rolling resistance always opposes the current direction of travel
+  speed -= Math.sign(speed) * (0.0009 * speed * speed + 0.11) * dt * 9;
+  speed = THREE.MathUtils.clamp(speed, -MAX_REVERSE, MAX_SPEED);
 
   const grip = handbrake ? 0.3 : 1.0;
   const sIn = (left ? -1 : 0) + (right ? 1 : 0);
@@ -368,7 +373,7 @@ function frame() {
   laneV -= world.curvature(s) * speed * speed * dt;      // curves push you out
   laneX += laneV * dt;
 
-  const offroad = Math.abs(laneX) > ROAD_HALF + 0.15 && speed > 1;
+  const offroad = Math.abs(laneX) > ROAD_HALF + 0.15 && Math.abs(speed) > 1;
   if (offroad) {
     speed -= speed * 0.55 * dt;
     shake = Math.max(shake, 0.35);
@@ -383,7 +388,7 @@ function frame() {
   audio.interference = inr;
 
   const newCycle = Math.floor(s / CYCLE_LEN);
-  if (newCycle !== cycle) {
+  if (newCycle > cycle) {                                  // the fold only advances
     cycle = newCycle;
     runGlitch();
     const line = CAPTIONS[Math.min(cycle, CAPTIONS.length - 1)];
@@ -426,7 +431,9 @@ function frame() {
   if (interior) drawInterior(dt, inr);
 
   /* --- HUD --- */
-  $('spd').textContent = `${Math.round(speed * 3.6)}`;
+  $('spd').textContent = speed < -0.4
+    ? `R ${Math.round(-speed * 3.6)}`
+    : `${Math.round(Math.max(0, speed) * 3.6)}`;
   let odo = (84213.7 + s / 1000).toFixed(1);
   if (inr > 0.6 && Math.random() < 0.12) {
     const i = (Math.random() * (odo.length - 1)) | 0;
