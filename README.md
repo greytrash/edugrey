@@ -1,11 +1,12 @@
 # Spanish Road Anomaly
 
-> **La carretera no termina.** Coche viejo. Asfalto mojado. Euskadi rural.
-> Interferencias en la radio.
+> **La carretera no termina.** Años setenta. Euskadi rural. Eres el cartero
+> comarcal — y correo de una red clandestina que lucha con cultura contra la
+> dictadura: material que cruza la muga entre las sacas, y una radio pirata
+> que espera tu voz. **RADIO ZUBATO** emite donde la señal no llega.
 
-Prototipo jugable en el navegador: conduces un **taxi blanco por las
-comarcales del País Vasco en los años 80** — donde se desarrolla la historia —
-con cámara interior y exterior, **cel shading**
+Prototipo jugable en el navegador: conduces el **coche amarillo de Correos por
+las comarcales del País Vasco de los años 70**, con cámara interior y exterior, **cel shading**
 con contornos de tinta, curvas, tráfico con colisión, faros reales, clima y
 ciclo día/noche — y un **horizonte donde todo existe de verdad**: nada aparece
 de repente. Arranca al atardecer, con lluvia y los faros encendidos; cada
@@ -31,13 +32,13 @@ de repente. Arranca al atardecer, con lluvia y los faros encendidos; cada
 | `W` / `S` | gas / freno |
 | `A` / `D` | volante (muerde con velocidad; menos agarre con lluvia o en la grava) |
 | `C` | cámara: interior ⇄ exterior (taxi visible, con su franja roja y cartel) |
-| `R` | cambiar emisora — cada una suena distinta (RNE 1, Radio 3, Los 40, SER, onda media, apagada) |
+| `R` | cambiar emisora — cada una suena distinta (RNE 1, Radio 3, Los 40, SER, **Radio Zubato**, apagada) |
 | `L` | faros (foco real que ilumina la carretera) |
 | `V` | lluvia + limpiaparabrisas animado |
 | `Espacio` | freno de mano (bloquea las ruedas, la trasera se suelta) |
 | `ratón` | arrastrar para mirar la cabina, el asiento o por la ventanilla |
 | **móvil** | botonera táctil automática: ◀ ▶ volante, ▲ gas, ▼ freno, ✋ freno de mano, y fila CAM · RADIO · LUZ · LLUVIA · HORA · REC; arrastra el dedo por la escena para mirar |
-| `T` | grabar con la emisora del macuto (● REC) |
+| `T` | grabar tu mensaje para Radio Zubato con la emisora del macuto (● REC) |
 | `N` | hora del día (día → atardecer → noche) |
 | `P` | pausa |
 
@@ -79,6 +80,13 @@ siseo y ráfaga de estática al girar el dial. La sexta posición la apaga.
   de spray. Sin simbología de organizaciones armadas.
 - **Ciclistas** en pelotón por tu carril, con maillots de colores e hitbox
   estrecha — hay que abrirse para adelantarlos.
+- **Travesías de pueblo definidas**: cartel de entrada → calle de caseríos a
+  ambos lados, herriko taberna, iglesia o frontón, murales… y **vecinos con
+  txapela paseando** (piernas y brazos animados en péndulo, ida y vuelta).
+- **Puentes de piedra** sobre regatas: pretiles con albardilla y machones, el
+  agua cruzando bajo la carretera.
+- **Manos del cartero al volante** (giran con él), pila de cartas y paquete
+  atado con cuerda en el salpicadero, coche amarillo con rótulo CORREOS.
 - **Gasolineras CAMPSA** de época: marquesina, surtidores rojos, kiosco y
   rótulo azul.
 - Carteles de entrada a pueblo (Gernika, Lekeitio, Oñati, Azpeitia, Elorrio,
@@ -86,6 +94,12 @@ siseo y ráfaga de estática al girar el dial. La sexta posición la apaga.
 - Robles, pinos de repoblación, helechos, prados verdes y **montes verdes** en
   capas hasta el horizonte, con la niebla atlántica más cerrada.
 - Cielo encapotado (esfera envolvente con nubes) y el toro de Osborne, raro.
+
+**Fixes técnicos** (v. cartero): buffer de profundidad a 24 bits — adiós al
+bandeado de los prados, a los contornos punteados de las montañas y al
+parpadeo de la cara de la radio (z-fighting) —, más separación en todos los
+paneles de la cabina, textura de asfalto con parches y sellado de grietas, y
+HUD reubicado en móvil para no pisar los botones.
 
 **Distancia de dibujado / sin pop-in:** el campo de props abarca ~2,1 km de
 carretera; la niebla se vuelve opaca antes del punto donde se recicla y

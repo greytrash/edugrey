@@ -91,7 +91,7 @@
 <div id="ui">
   <div id="title">
     <h1>Spanish Road Anomaly</h1>
-    <p>La carretera no termina. Un taxi viejo por las comarcales del País Vasco: niebla, caseríos, gasolineras y una radio con interferencias.</p>
+    <p>Años setenta. Eres el cartero comarcal — y correo de una red clandestina que lucha con cultura contra la dictadura. Pasas material por la muga y grabas mensajes para RADIO ZUBATO.</p>
   </div>
   <div id="help">
     <b>W</b>/<b>S</b> gas · freno &nbsp; <b>A</b>/<b>D</b> volante &nbsp; <b>C</b> cámara &nbsp; <b>R</b> radio &nbsp; <b>L</b> luces &nbsp; <b>V</b> limpia/lluvia &nbsp; <b>Espacio</b> freno de mano &nbsp; <b>ratón</b> mirar &nbsp; <b>T</b> grabar &nbsp; <b>N</b> hora &nbsp; <b>P</b> pausa
@@ -121,15 +121,19 @@
   <div class="intro-card">
     <p class="eyebrow">SPANISH ROAD ANOMALY</p>
     <h1>La carretera no termina.</h1>
-    <p>Coche viejo. Asfalto mojado. Euskadi rural. Interferencias en la radio.</p>
+    <p>Años setenta. Euskadi rural. Eres el cartero comarcal — y correo de una
+    red clandestina que lucha con cultura contra la dictadura: material que
+    cruza la muga escondido entre las sacas, y una radio pirata que espera tu
+    voz. <b>RADIO ZUBATO</b> emite donde la señal no llega.</p>
     <p class="controls">
       W/S · acelerar / frenar<br />
       A/D · girar<br />
       C · cámara<br />
-      R · radio<br />
+      R · radio (busca la ZUBATO en el dial)<br />
       L · luces<br />
       V · limpiaparabrisas<br />
       Espacio · freno de mano<br />
+      T · grabar para Radio Zubato<br />
       Móvil · botones en pantalla
     </p>
     <p class="small">Pulsa cualquier tecla (o toca la pantalla) para arrancar el audio y conducir.</p>
@@ -185,10 +189,10 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
 
 const scene  = new THREE.Scene();
-const FOG_NEAR = 520, FOG_FAR = 1750;   // Basque mist sits closer
+const FOG_NEAR = 700, FOG_FAR = 1950;   // Basque mist, but with real draw distance
 scene.fog = new THREE.Fog(new THREE.Color(PALETTE.horizon), FOG_NEAR, FOG_FAR);
 
-const camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.25, 2600);
+const camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.3, 2600);
 camera.rotation.order = 'YXZ';
 
 // the rig is the taxi: it carries the camera (head) and the whole cockpit
@@ -253,10 +257,33 @@ function roadTexture() {
     x.lineTo(px + (Math.random() - 0.5) * 26, Math.random() * H);
     x.stroke();
   }
+  // parches de asfalto recauchutado
+  x.fillStyle = 'rgba(28,26,22,0.35)';
+  for (let i = 0; i < 7; i++) {
+    const px = 30 + Math.random() * 180, py = Math.random() * H;
+    x.save(); x.translate(px, py); x.rotate((Math.random() - 0.5) * 0.3);
+    x.fillRect(0, 0, 24 + Math.random() * 40, 34 + Math.random() * 60);
+    x.restore();
+  }
+  // sellado de grietas (culebras de alquitrán)
+  x.strokeStyle = 'rgba(15,14,12,0.6)'; x.lineWidth = 3; x.lineCap = 'round';
+  for (let i = 0; i < 9; i++) {
+    x.beginPath();
+    let px = 30 + Math.random() * 190, py = Math.random() * H;
+    x.moveTo(px, py);
+    for (let k = 0; k < 5; k++) { px += (Math.random() - 0.5) * 40; py += 24 + Math.random() * 30; x.lineTo(px, py); }
+    x.stroke();
+  }
   x.fillStyle = 'rgba(238,232,214,0.85)';
   x.fillRect(30, 0, 5, H); x.fillRect(221, 0, 5, H);             // edge lines
   for (let y = 0; y < H; y += 146) x.fillRect(124, y, 8, 40);    // centre dashes
-  grain(x, W, H, 0.22);
+  // desgaste: mordiscos en las líneas
+  for (let i = 0; i < 14; i++) {
+    const ly = Math.random() * H, lx = Math.random() < 0.5 ? 30 : 221;
+    x.fillStyle = '#6b6660';
+    x.fillRect(lx, ly, 5, 4 + Math.random() * 10);
+  }
+  grain(x, W, H, 0.3);
   return texFrom(c, 1, 26);
 }
 
@@ -338,7 +365,7 @@ function curveSignTexture() {
 }
 
 /* cockpit textures ------------------------------------------------------------ */
-const STATIONS = ['RNE 1', 'RADIO 3', 'LOS 40', 'CADENA SER', 'ONDA MEDIA', 'APAGADA'];
+const STATIONS = ['RNE 1', 'RADIO 3', 'LOS 40', 'CADENA SER', 'RADIO ZUBATO', 'APAGADA'];
 let stationIdx = 1, recOn = false;
 const radioCanvas = makeCanvas(256, 96);
 function drawRadioFace() {
@@ -351,7 +378,7 @@ function drawRadioFace() {
     x.fillStyle = '#c23a2a';
     x.fillRect(26 + stationIdx * 42, 12, 3, 30);
   }
-  x.fillStyle = stationIdx < 5 ? '#71d98a' : '#4a463c';
+  x.fillStyle = stationIdx === 4 ? '#e8935a' : stationIdx < 5 ? '#71d98a' : '#4a463c';
   x.font = 'bold 16px monospace';
   x.fillText(STATIONS[stationIdx], W / 2, 72);
   return radioCanvas.c;
@@ -359,15 +386,6 @@ function drawRadioFace() {
 const radioTex = texFrom(drawRadioFace(), 1, 1);
 function refreshRadioFace() { drawRadioFace(); radioTex.needsUpdate = true; }
 
-function taximeterTexture() {
-  const { c, x } = makeCanvas(128, 64);
-  x.fillStyle = '#14110d'; x.fillRect(0, 0, 128, 64);
-  x.fillStyle = '#5fdf7a'; x.font = 'bold 15px monospace'; x.textAlign = 'center';
-  x.fillText('OCUPADO', 64, 24);
-  x.fillStyle = '#e8b53a'; x.font = 'bold 20px monospace';
-  x.fillText('085', 64, 50);
-  return texFrom(c, 1, 1);
-}
 function gaugeTexture() {
   const W = 128, { c, x } = makeCanvas(W, W);
   x.fillStyle = '#14110d'; x.beginPath(); x.arc(64, 64, 62, 0, 7); x.fill();
@@ -392,9 +410,9 @@ function gaugeTexture() {
    linear extension past BEND_MAX keeps far geometry sane.
    ========================================================================== */
 let scroll = 0;
-const CURVE = [               // comarcal de montaña: mucho más revirada
-  { a: 38, f: 0.0055, p: 0.0 },
-  { a: 20, f: 0.0028, p: 1.7 },
+const CURVE = [               // comarcal de montaña: revirada de verdad
+  { a: 40, f: 0.006,  p: 0.0 },
+  { a: 26, f: 0.0028, p: 1.7 },
   { a: 9,  f: 0.011,  p: 0.9 },
 ];
 const BEND_MAX = 500;
@@ -677,20 +695,101 @@ function buildFronton() {
   court.rotation.x = -Math.PI / 2; court.position.set(5.2, 0.015, 0); grp.add(court);
   return grp;
 }
-function buildPueblo() {                       // caseríos + iglesia o frontón
+/* peatones: figuras con txapela que pasean con piernas y brazos animados ----- */
+function buildPersona() {
+  const g = new THREE.Object3D();
+  const coats = [0x5a5a66, 0x6e5a48, 0x3a4a5c, 0x7a6a58, 0x6a3a3a];
+  const coat = toon({ color: coats[(Math.random() * coats.length) | 0] });
+  const trousers = toon({ color: 0x2e2a26 });
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.55, 0.2), coat);
+  torso.position.y = 1.05; g.add(torso);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), toon({ color: 0xc9976b }));
+  head.position.y = 1.46; g.add(head);
+  if (Math.random() < 0.7) {                     // txapela
+    const beret = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.035, 10), toon({ color: 0x1d1b18 }));
+    beret.position.y = 1.55; g.add(beret);
+  }
+  const hips = [], arms = [];
+  for (const sx of [-0.09, 0.09]) {
+    const hip = new THREE.Object3D(); hip.position.set(sx, 0.78, 0);
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.78, 0.13), trousers);
+    leg.position.y = -0.39; hip.add(leg); g.add(hip); hips.push(hip);
+    const sh = new THREE.Object3D(); sh.position.set(sx * 2.6, 1.26, 0);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.1), coat);
+    arm.position.y = -0.25; sh.add(arm); g.add(sh); arms.push(sh);
+  }
+  g.userData.hips = hips; g.userData.arms = arms;
+  return g;
+}
+
+/* pueblo con entrada definida: cartel → calle de caseríos a ambos lados,
+   taberna/iglesia/frontón, murales, y vecinos paseando. Una sola unidad. */
+function buildVillage() {
   const grp = new THREE.Object3D();
+  grp.userData.tail = 175;                       // extensión hacia delante (recycle-safe)
+  const sign = buildTownSign(); sign.position.set(9.4, 0, 0); grp.add(sign);
+  const speed = buildSign(); speed.position.set(-9.2, 0, -10); grp.add(speed);
+  const mw = buildMuralWall(); mw.position.set(11.5, 0, -22); grp.add(mw);
+  let tabernaDone = false, churchDone = false;
+  for (let z = -32; z > -150; z -= 17 + Math.random() * 6) {
+    for (const side of [-1, 1]) {
+      if (Math.random() < 0.72) {
+        const roll = Math.random();
+        if (!tabernaDone && roll < 0.2) {
+          const t = buildHerrikoTaberna(); t.position.set(side * 13.5, 0, z);
+          t.rotation.y = side < 0 ? Math.PI : 0; grp.add(t); tabernaDone = true;
+        } else if (!churchDone && roll < 0.32) {
+          const ch = buildChurch(); ch.position.set(side * 16, 0, z);
+          grp.add(ch); churchDone = true;
+        } else {
+          const c = buildCaserio();
+          c.position.set(side * (12.5 + Math.random() * 4), 0, z);
+          c.rotation.y = (side < 0 ? Math.PI : 0) + (Math.random() - 0.5) * 0.3;
+          grp.add(c);
+        }
+      }
+    }
+  }
+  if (Math.random() < 0.5) { const f = buildFronton(); f.position.set(19, 0, -95); grp.add(f); }
+  const exitHito = buildHito(); exitHito.position.set(8.6, 0, -160); grp.add(exitHito);
+  // vecinos paseando por los márgenes de la travesía
+  const walkers = [];
   const n = 2 + (Math.random() * 3 | 0);
   for (let i = 0; i < n; i++) {
-    const c = buildCaserio();
-    c.position.set((Math.random() - 0.5) * 10, 0, i * 13);
-    c.rotation.y = (Math.random() - 0.5) * 0.6;
-    grp.add(c);
+    const p = buildPersona();
+    const side = Math.random() < 0.5 ? -1 : 1;
+    p.position.set(side * (9.8 + Math.random() * 1.6), 0, -25 - Math.random() * 115);
+    const dir = Math.random() < 0.5 ? -1 : 1;
+    p.rotation.y = dir > 0 ? 0 : Math.PI;
+    grp.add(p);
+    walkers.push({ obj: p, phase: Math.random() * 6.28, dir, zMin: -145, zMax: -20, v: 0.7 + Math.random() * 0.5 });
   }
-  const roll = Math.random();
-  if (roll < 0.35) { const ch = buildChurch(); ch.position.set(10, 0, 6); ch.rotation.y = Math.random() * 3; grp.add(ch); }
-  else if (roll < 0.6) { const f = buildFronton(); f.position.set(11, 0, n * 6); grp.add(f); }
-  else if (roll < 0.85) { const t = buildHerrikoTaberna(); t.position.set(3, 0, n * 13); grp.add(t); }
-  if (Math.random() < 0.4) { const mw = buildMuralWall(); mw.position.set(-4, 0, -6); grp.add(mw); }
+  grp.userData.walkers = walkers;
+  return grp;
+}
+
+/* puente de piedra sobre una regata ----------------------------------------- */
+const stoneMat2 = toon({ color: 0x8f8a7c });
+function buildBridge() {
+  const grp = new THREE.Object3D();
+  grp.userData.tail = 8;
+  // la regata cruza bajo la carretera
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(260, 9), toon({ color: 0x51707c }));
+  water.rotation.x = -Math.PI / 2; water.position.y = 0.045; grp.add(water);
+  for (const sz of [-6.5, 6.5]) {                // riberas más oscuras
+    const bank = new THREE.Mesh(new THREE.PlaneGeometry(260, 3.6), toon({ color: 0x55703f }));
+    bank.rotation.x = -Math.PI / 2; bank.position.set(0, 0.05, sz); grp.add(bank);
+  }
+  for (const sx of [-9.6, 9.6]) {                // pretiles de piedra
+    const parapet = new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.05, 11), stoneMat2);
+    parapet.position.set(sx, 0.52, 0); grp.add(parapet);
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.14, 11.3), toon({ color: 0xa39e8e }));
+    cap.position.set(sx, 1.1, 0); grp.add(cap);
+    for (const pz of [-5.5, 5.5]) {              // machones en los extremos
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.45, 0.8), stoneMat2);
+      post.position.set(sx, 0.72, pz); grp.add(post);
+    }
+  }
   return grp;
 }
 
@@ -816,7 +915,7 @@ function buildField() {
     new THREE.PlaneGeometry(60 + Math.random() * 100, 50 + Math.random() * 120),
     toon({ color: tones[(Math.random() * tones.length) | 0] })
   );
-  m.rotation.x = -Math.PI / 2; m.position.y = 0.012;
+  m.rotation.x = -Math.PI / 2; m.position.y = 0.06;   // clear of the ground plane
   const grp = new THREE.Object3D(); grp.add(m); return grp;
 }
 function buildMountain() {
@@ -893,14 +992,14 @@ function spawnProp(s) {
     offset = oncoming ? -2.2 : 2.2;
   }
   else if (roll < 0.45) { obj = buildCyclists();     offset = 6.3; }          // en tu carril, a adelantar
-  else if (roll < 0.53) { obj = buildPueblo();       offset = side * (16 + Math.random() * 45); }
-  else if (roll < 0.565){ obj = buildGasolinera();   offset = side * 15.5; }
-  else if (roll < 0.58) { obj = buildBull();         offset = side * (14 + Math.random() * 12); }
+  else if (roll < 0.51) { obj = buildVillage();      offset = 0; }            // travesía completa
+  else if (roll < 0.545){ obj = buildGasolinera();   offset = side * 15.5; }
+  else if (roll < 0.575){ obj = buildBridge();       offset = 0; }
+  else if (roll < 0.59) { obj = buildBull();         offset = side * (14 + Math.random() * 12); }
   else if (roll < 0.62) { obj = buildMuralWall();    offset = side * (11 + Math.random() * 8); }
-  else if (roll < 0.66) { obj = buildTownSign();     offset = side * 9.4; }
-  else if (roll < 0.71) { obj = buildSign();         offset = side * 9.2; }
-  else if (roll < 0.76) { obj = buildHito();         offset = side * 8.6; }
-  else if (roll < 0.82) { obj = buildScrub();        offset = side * (14 + Math.random() * 25); }
+  else if (roll < 0.66) { obj = buildSign();         offset = side * 9.2; }
+  else if (roll < 0.72) { obj = buildHito();         offset = side * 8.6; }
+  else if (roll < 0.80) { obj = buildScrub();        offset = side * (14 + Math.random() * 25); }
   else if (roll < 0.94) { obj = buildField();        offset = side * (100 + Math.random() * 150); }
   else                  { obj = buildMountain();     offset = side * (420 + Math.random() * 550); }
   obj.userData.s = s;
@@ -908,6 +1007,11 @@ function spawnProp(s) {
   scene.add(obj); props.push(obj);
 }
 for (let d = 25; d < WORLD; d += 13 + Math.random() * 15) spawnProp(d);
+// garantiza un pueblo y un puente al arrancar
+{
+  const v = buildVillage(); v.userData.s = 150; v.userData.off = 0; scene.add(v); props.push(v);
+  const b = buildBridge();  b.userData.s = 380; b.userData.off = 0; scene.add(b); props.push(b);
+}
 
 /* ============================================================================
    COCKPIT — full cabin, attached to the rig (NOT the camera) so free-look
@@ -956,10 +1060,10 @@ const binnacle = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.20, 0.06), vinyl2)
 binnacle.position.set(0, -0.30, -0.88); binnacle.rotation.x = 0.12; cab.add(binnacle);
 for (const gx of [-0.12, 0.12]) {
   const face = new THREE.Mesh(new THREE.CircleGeometry(0.075, 20), toon({ map: gaugeTex }));
-  face.position.set(gx, -0.30, -0.845); face.rotation.x = 0.12; cab.add(face);
+  face.position.set(gx, -0.30, -0.836); face.rotation.x = 0.12; cab.add(face);
 }
 const needlePivot = new THREE.Object3D();
-needlePivot.position.set(-0.12, -0.30, -0.84); needlePivot.rotation.x = 0.12;
+needlePivot.position.set(-0.12, -0.30, -0.828); needlePivot.rotation.x = 0.12;
 const needle = new THREE.Mesh(new THREE.BoxGeometry(0.007, 0.062, 0.004),
   new THREE.MeshBasicMaterial({ color: 0xd94b32 }));
 needle.position.y = 0.026; needlePivot.add(needle); cab.add(needlePivot);
@@ -981,6 +1085,22 @@ hub.rotation.x = Math.PI / 2; wheelSpin.add(hub);
 const column = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.3, 8), vinyl2);
 column.position.set(0, -0.05, 0.12); column.rotation.x = 1.2; wheelGrp.add(column);
 
+// manos del cartero al volante (giran con él); mangas del uniforme azul
+const skinMat = toon({ color: 0xc9976b });
+const sleeveMat = toon({ color: 0x2a3c5c });
+for (const a of [2.35, 0.79]) {                         // 10 y 2
+  const hx = Math.cos(a) * 0.185, hy = Math.sin(a) * 0.185;
+  const hand = new THREE.Mesh(new THREE.SphereGeometry(0.038, 8, 6), skinMat);
+  hand.scale.set(1, 0.8, 1.15);
+  hand.position.set(hx, hy, 0.015);
+  wheelSpin.add(hand);
+  const forearm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.24), sleeveMat);
+  forearm.position.set(hx * 1.15, hy - 0.10, 0.12);
+  forearm.rotation.x = -0.7;
+  forearm.rotation.z = (a > 1.5 ? 0.3 : -0.3);
+  wheelSpin.add(forearm);
+}
+
 // radio on the dash top, angled at the driver — E cycles emisoras (with sound)
 const radioGrp = new THREE.Object3D();
 radioGrp.position.set(0.44, -0.30, -0.88);
@@ -990,7 +1110,7 @@ const radioBox = new THREE.Mesh(new THREE.BoxGeometry(0.27, 0.11, 0.06), vinyl2)
 radioGrp.add(radioBox);
 const radioFace = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.09),
   new THREE.MeshBasicMaterial({ map: radioTex }));
-radioFace.position.z = 0.032;
+radioFace.position.z = 0.042;   // clear of the box face — was z-fighting
 radioGrp.add(radioFace);
 for (const kx of [-0.095, 0.095]) {
   const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.02, 10), chromeMat);
@@ -999,12 +1119,20 @@ for (const kx of [-0.095, 0.095]) {
   radioGrp.add(knob);
 }
 
-// taxímetro
-const taxiMeter = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.075, 0.06), vinyl2);
-taxiMeter.position.set(0.22, -0.315, -0.9); taxiMeter.rotation.x = 0.15; cab.add(taxiMeter);
-const meterFace = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 0.06),
-  new THREE.MeshBasicMaterial({ map: taximeterTexture() }));
-meterFace.position.set(0.22, -0.312, -0.868); meterFace.rotation.x = 0.15; cab.add(meterFace);
+// el correo del día: pila de cartas y un paquete atado con cuerda
+const envMat = toon({ color: 0xe9e4d4 });
+for (let i = 0; i < 4; i++) {
+  const env = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.008, 0.11), envMat);
+  env.position.set(0.20, -0.312 + i * 0.0095, -0.9);
+  env.rotation.y = (Math.random() - 0.5) * 0.35;
+  cab.add(env);
+}
+const parcel = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.085, 0.11), toon({ color: 0x9a7448 }));
+parcel.position.set(0.05, -0.30, -0.9); cab.add(parcel);
+const twine1 = new THREE.Mesh(new THREE.BoxGeometry(0.135, 0.01, 0.012), darkMat);
+twine1.position.set(0.05, -0.255, -0.9); cab.add(twine1);
+const twine2 = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.01, 0.115), darkMat);
+twine2.position.set(0.05, -0.254, -0.9); cab.add(twine2);
 
 // passenger seat with the macuto + CB on it (look right to see it)
 const seatBase = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.16, 0.68), seatMat);
@@ -1098,14 +1226,24 @@ mySeatBack.position.set(-0.02, -0.25, 0.30); mySeatBack.rotation.x = -0.14; cab.
 /* ============================================================================
    EXTERIOR TAXI (chase cam), HEADLIGHTS, CAMERA MODES
    ========================================================================== */
-function buildTaxi() {
-  const g = buildCarMesh(0xeae6da, true);
-  for (const sx of [-0.96, 0.96]) {                    // red door stripe (taxi de Madrid)
-    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.46, 0.5), toon({ color: 0xb8382e }));
-    stripe.position.set(sx, 0.6, 0.4); stripe.rotation.x = 0.65; g.add(stripe);
+function correosTexture() {
+  const { c, x } = makeCanvas(256, 64);
+  x.clearRect(0, 0, 256, 64);
+  x.fillStyle = '#1a3a6b'; x.font = 'bold 40px sans-serif';
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText('CORREOS', 128, 34);
+  return texFrom(c, 1, 1);
+}
+const correosTex = correosTexture();
+function buildTaxi() {                                  // el coche del cartero
+  const g = buildCarMesh(0xd9a52c, true);               // amarillo Correos
+  for (const sx of [-0.96, 0.96]) {
+    const label = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.42),
+      new THREE.MeshBasicMaterial({ map: correosTex, transparent: true }));
+    label.position.set(sx * 1.01, 0.62, 0.3);
+    label.rotation.y = sx > 0 ? Math.PI / 2 : -Math.PI / 2;
+    g.add(label);
   }
-  const roofSign = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.13, 0.2), toon({ color: 0xf2ecdc }));
-  roofSign.position.set(0, 1.42, -0.1); g.add(roofSign);
   const headGlass = new THREE.MeshBasicMaterial({ color: 0xf6eed6 });
   for (const lx of [-0.58, 0.58]) {
     const l = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.18, 0.06), headGlass);
@@ -1151,7 +1289,7 @@ function makeTargets() {
     depthBuffer: true, colorSpace: THREE.SRGBColorSpace
   });
   rt.depthTexture = new THREE.DepthTexture(w, h);
-  rt.depthTexture.type = THREE.UnsignedShortType;
+  rt.depthTexture.type = THREE.UnsignedIntType;   // 24-bit: kills far-distance z-fighting
   return rt;
 }
 let sceneRT = makeTargets();
@@ -1253,7 +1391,7 @@ const TOD = [
 let todIndex = 1, rainOn = true, paused = false;   // arranque: atardecer, asfalto mojado
 function updateModeline() {
   document.getElementById('modeline').textContent =
-    `${TOD[todIndex].name} · ${rainOn ? 'lluvia' : 'despejado'} · ${STATIONS[stationIdx]}${recOn ? ' · ● REC' : ''}`;
+    `${TOD[todIndex].name} · ${rainOn ? 'lluvia' : 'despejado'} · ${STATIONS[stationIdx]}${recOn ? ' · ● REC ZUBATO' : ''}`;
 }
 function applyTOD() {
   const t = TOD[todIndex];
@@ -1279,13 +1417,13 @@ const RADIO_PROG = [
   { type: 'music', style: 'rock',  bpm: 142, root: 82.41,  bp: 1500, hiss: 0.014 }, // RADIO 3
   { type: 'music', style: 'pop',   bpm: 118, root: 110.0,  bp: 1600, hiss: 0.012 }, // LOS 40
   { type: 'talk',  formants: [430, 2300], pace: 1.35, bp: 1300, hiss: 0.018 },  // CADENA SER — más nervioso
-  { type: 'music', style: 'copla', bpm: 102, root: 98.0,   bp:  950, hiss: 0.030 }, // ONDA MEDIA
+  { type: 'music', style: 'folk',  bpm: 96,  root: 146.83, bp: 1350, hiss: 0.026 }, // RADIO ZUBATO — clandestina
   { type: 'off' },                                                               // APAGADA
 ];
 const SCALES = {
   rock:  [0, 3, 5, 7, 10],            // pentatónica menor
   pop:   [0, 2, 3, 5, 7, 8, 10],      // menor natural
-  copla: [0, 2, 3, 5, 7, 8, 11],      // menor armónica
+  folk:  [0, 2, 4, 5, 7, 9, 10],      // doinu mixolidio (txistu)
 };
 
 function initAudio() {
@@ -1395,13 +1533,13 @@ function musicStep(t, i, st) {
     const f = st.root * Math.pow(2, semi / 12);
     tone(t, f, stepDur * 0.95, 'sawtooth', 0.20, 1300);
     tone(t, f * 1.5, stepDur * 0.95, 'sawtooth', 0.10, 1300);              // quinta
-  } else { // copla
-    if (i % 4 === 0) tone(t, st.root * 0.5, stepDur * 1.6, 'triangle', 0.30, 500);
-    if (i % 4 === 2) tone(t, st.root * 0.75, stepDur * 1.4, 'triangle', 0.26, 500);
-    if (i % 4 === 2) noiseHit(t, 0.05, 'highpass', 7000, 1, 0.06);         // pandereta
+  } else { // folk clandestino: txistu (triángulo agudo) y tamboril
+    if (i % 4 === 0) kick(t);                                              // tamboril grave
+    if (i % 4 === 2) noiseHit(t, 0.05, 'bandpass', 3200, 2, 0.10);         // golpe seco
+    tone(t, st.root * 0.5, stepDur * 1.7, 'triangle', 0.22, 420);          // bordón
     if (i % 2 === 0) {
       leadDeg = Math.max(0, Math.min(scale.length * 2 - 1, leadDeg + ((Math.random() * 5) | 0) - 2));
-      tone(t, degF(leadDeg), stepDur * (Math.random() < 0.3 ? 1.7 : 0.85), 'sawtooth', 0.15, 2000);
+      tone(t, degF(leadDeg) * 2, stepDur * (Math.random() < 0.35 ? 1.8 : 0.9), 'triangle', 0.20, 4200);
     }
   }
 }
@@ -1516,7 +1654,7 @@ const isCoarse = matchMedia('(pointer: coarse)').matches
   || 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 if (isCoarse && touchUI) {
   touchUI.classList.add('on');
-  document.getElementById('hud').style.bottom = '150px';
+  document.getElementById('hud').style.bottom = '200px';
   document.getElementById('help').style.display = 'none';
 
   const hold = (id, key) => {
@@ -1605,7 +1743,25 @@ function frame() {
       p.position.z = -d;
       p.position.x = p.userData.off + roadDX(d);
 
-      if (d < -30 || d > WORLD + 100) {
+      // vecinos paseando: piernas/brazos en péndulo, ida y vuelta por la travesía
+      if (p.userData.walkers && d > -190 && d < 500) {
+        for (const w of p.userData.walkers) {
+          w.phase += dt * 5.2;
+          const s0 = Math.sin(w.phase);
+          w.obj.userData.hips[0].rotation.x = s0 * 0.5;
+          w.obj.userData.hips[1].rotation.x = -s0 * 0.5;
+          w.obj.userData.arms[0].rotation.x = -s0 * 0.35;
+          w.obj.userData.arms[1].rotation.x = s0 * 0.35;
+          w.obj.position.y = Math.abs(Math.cos(w.phase)) * 0.028;
+          w.obj.position.z += w.dir * w.v * dt;
+          if (w.obj.position.z > w.zMax) { w.dir = -1; w.obj.rotation.y = Math.PI; }
+          if (w.obj.position.z < w.zMin) { w.dir = 1; w.obj.rotation.y = 0; }
+        }
+      }
+
+      // el pueblo/puente se extiende hacia delante: no reciclar hasta que pase entero
+      const tailLen = p.userData.tail || 0;
+      if (d < -30 - tailLen || d > WORLD + 100) {
         scene.remove(p);
         props.splice(props.indexOf(p), 1);
         spawnProp(scroll + WORLD - Math.random() * 60);
