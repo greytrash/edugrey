@@ -71,8 +71,14 @@ siseo y ráfaga de estática al girar el dial. La sexta posición la apaga.
   centrífuga real), asfalto desgastado con línea blanca discontinua y arcenes
   de grava.
 - **Caseríos** con entramado de madera en el hastial, alero grande y tejado a
-  dos aguas; **pueblos** con iglesia de torre cuadrada o **frontón** con su
-  raya verde.
+  dos aguas; **pueblos** con iglesia de torre cuadrada, **frontón** con su
+  raya verde o **herriko taberna** con su rótulo y su ikurriña.
+- **Murales y pintadas de época** en fachadas y tapias: ikurriñas, "EUSKAL
+  PRESOAK — ETXERA" con siluetas de estarcido (caras genéricas, ninguna
+  persona real), "GORA EUSKADI", "INDEPENDENTZIA", "AMNISTIA" con goterones
+  de spray. Sin simbología de organizaciones armadas.
+- **Ciclistas** en pelotón por tu carril, con maillots de colores e hitbox
+  estrecha — hay que abrirse para adelantarlos.
 - **Gasolineras CAMPSA** de época: marquesina, surtidores rojos, kiosco y
   rótulo azul.
 - Carteles de entrada a pueblo (Gernika, Lekeitio, Oñati, Azpeitia, Elorrio,

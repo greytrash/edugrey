@@ -390,7 +390,7 @@ let scroll = 0;
 const CURVE = [               // comarcal de montaña: mucho más revirada
   { a: 38, f: 0.0055, p: 0.0 },
   { a: 20, f: 0.0028, p: 1.7 },
-  { a: 7,  f: 0.010,  p: 0.9 },
+  { a: 9,  f: 0.011,  p: 0.9 },
 ];
 const BEND_MAX = 500;
 function curveX(s)   { let v = 0; for (const c of CURVE) v += c.a * Math.sin(s * c.f + c.p); return v; }
@@ -476,6 +476,78 @@ function buildPineRow() {                     // pinos de repoblación, altos
 }
 const timberMat = toon({ color: 0x5a3d28 });   // entramado de madera del caserío
 
+/* --- murales y pintadas de los 80: ikurriñas, presoak, consignas ----------
+   Caras genéricas de estarcido (ninguna persona real); sin simbología de
+   organizaciones — el retrato de época se hace con la cartelería popular. */
+function ikurrinaTexture() {
+  const W = 256, H = 160, { c, x } = makeCanvas(W, H);
+  x.fillStyle = '#a8262c'; x.fillRect(0, 0, W, H);
+  x.strokeStyle = '#2e7d4f'; x.lineWidth = 26;
+  x.beginPath(); x.moveTo(0, 0); x.lineTo(W, H); x.stroke();
+  x.beginPath(); x.moveTo(W, 0); x.lineTo(0, H); x.stroke();
+  x.strokeStyle = '#e9e4d6'; x.lineWidth = 26;
+  x.beginPath(); x.moveTo(W / 2, 0); x.lineTo(W / 2, H); x.stroke();
+  x.beginPath(); x.moveTo(0, H / 2); x.lineTo(W, H / 2); x.stroke();
+  grain(x, W, H, 0.3);
+  return texFrom(c, 1, 1);
+}
+function presoakTexture() {
+  const W = 512, H = 256, { c, x } = makeCanvas(W, H);
+  x.fillStyle = '#e6e1d2'; x.fillRect(0, 0, W, H);
+  // fila de caras de estarcido (siluetas genéricas)
+  x.fillStyle = '#221f1a';
+  for (let i = 0; i < 5; i++) {
+    const cx = 76 + i * 90, cy = 78;
+    x.beginPath(); x.arc(cx, cy, 30, 0, 7); x.fill();               // cabeza
+    x.fillRect(cx - 38, cy + 26, 76, 26);                            // hombros
+    x.fillStyle = '#e6e1d2';
+    x.fillRect(cx - 20, cy - 2, 40, 20);                             // hueco cara
+    x.fillStyle = '#221f1a';
+  }
+  x.font = 'bold 44px sans-serif'; x.textAlign = 'center';
+  x.fillStyle = '#221f1a'; x.fillText('EUSKAL PRESOAK', 256, 188);
+  x.fillStyle = '#b03028'; x.font = 'bold 52px sans-serif';
+  x.fillText('ETXERA', 256, 240);
+  grain(x, W, H, 0.25);
+  return texFrom(c, 1, 1);
+}
+function graffitiTexture(text, color) {
+  const W = 512, H = 128, { c, x } = makeCanvas(W, H);
+  x.clearRect(0, 0, W, H);
+  x.fillStyle = color; x.font = 'bold italic 58px sans-serif';
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.save(); x.translate(256, 60); x.rotate(-0.03); x.fillText(text, 0, 0); x.restore();
+  // goterones de spray
+  for (let i = 0; i < 10; i++) {
+    const gx = 60 + Math.random() * 390;
+    x.fillRect(gx, 84, 3, 8 + Math.random() * 22);
+  }
+  return texFrom(c, 1, 1);
+}
+const ikurrinaTex = ikurrinaTexture();
+const presoakTex  = presoakTexture();
+const graffitiTexes = [
+  graffitiTexture('GORA EUSKADI', '#b03028'),
+  graffitiTexture('INDEPENDENTZIA', '#221f1a'),
+  graffitiTexture('AMNISTIA', '#b03028'),
+];
+function muralPlane(w, h) {
+  const roll = Math.random();
+  const map = roll < 0.35 ? ikurrinaTex : roll < 0.6 ? presoakTex
+            : graffitiTexes[(Math.random() * graffitiTexes.length) | 0];
+  return new THREE.Mesh(new THREE.PlaneGeometry(w, h),
+    new THREE.MeshBasicMaterial({ map, transparent: true }));
+}
+function herrikoTexture() {
+  const { c, x } = makeCanvas(512, 96);
+  x.fillStyle = '#1c5c38'; x.fillRect(0, 0, 512, 96);
+  x.fillStyle = '#efe9d8'; x.font = 'bold 44px sans-serif';
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText('HERRIKO TABERNA', 256, 50);
+  return texFrom(c, 1, 1);
+}
+const herrikoTex = herrikoTexture();
+
 function buildCaserio() {
   const w = 8 + Math.random() * 3, h = 4.4 + Math.random() * 1.2, dp = 7 + Math.random() * 2;
   const house = new THREE.Object3D();
@@ -503,7 +575,74 @@ function buildCaserio() {
     const win = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.7, 0.1), darkMat);
     win.position.set(wx, wy, face); house.add(win);
   }
+  // pintada o mural en la fachada, muy de la época
+  if (Math.random() < 0.45) {
+    const m = muralPlane(w * 0.42, w * 0.42 * 0.5);
+    m.position.set(w * 0.2, h * 0.55, face + 0.06);
+    house.add(m);
+  }
   return house;
+}
+function buildHerrikoTaberna() {
+  const grp = new THREE.Object3D();
+  const w = 6.5, h = 3.8, dp = 5.5, face = dp / 2 + 0.03;
+  const base = new THREE.Mesh(new THREE.BoxGeometry(w, h, dp), wallMat);
+  base.position.y = h / 2; grp.add(base);
+  for (const sgn of [-1, 1]) {
+    const slope = new THREE.Mesh(new THREE.BoxGeometry(w * 0.62, 0.12, dp + 0.9), roofMat);
+    slope.position.set(sgn * w * 0.26, h + w * 0.09, 0);
+    slope.rotation.z = -sgn * 0.36;
+    grp.add(slope);
+  }
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 0.68),
+    new THREE.MeshBasicMaterial({ map: herrikoTex }));
+  sign.position.set(0, 2.9, face); grp.add(sign);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.1, 0.1), darkMat);
+  door.position.set(0, 1.05, face); grp.add(door);
+  for (const wx of [-2.1, 2.1]) {
+    const win = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.0, 0.1), darkMat);
+    win.position.set(wx, 1.5, face); grp.add(win);
+  }
+  const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.8),
+    new THREE.MeshBasicMaterial({ map: ikurrinaTex }));
+  flag.position.set(-2.1, 3.1, face); grp.add(flag);
+  return grp;
+}
+function buildMuralWall() {                   // tapia suelta con mural
+  const grp = new THREE.Object3D();
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(6.5, 3.2, 0.35), wallMat);
+  wall.position.y = 1.6; grp.add(wall);
+  const m = muralPlane(5.6, 2.5);
+  m.position.set(0, 1.7, 0.21); grp.add(m);
+  return grp;
+}
+function buildCyclists() {                    // pelotón dominguero, muy vasco
+  const grp = new THREE.Object3D();
+  const jerseys = [0xc8452a, 0xe8a13a, 0x3a6ea8, 0xe8e2d2, 0x6a3a8a];
+  const wheelGeo = new THREE.TorusGeometry(0.32, 0.035, 6, 14);
+  const n = 1 + (Math.random() * 3 | 0);
+  for (let i = 0; i < n; i++) {
+    const r = new THREE.Object3D();
+    for (const wz of [-0.42, 0.42]) {
+      const wheel = new THREE.Mesh(wheelGeo, darkMat);
+      wheel.rotation.y = Math.PI / 2;
+      wheel.position.set(0, 0.32, wz);
+      r.add(wheel);
+    }
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.34, 0.9), toon({ color: 0x8a2a2a }));
+    frame.position.y = 0.55; r.add(frame);
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.52, 0.24),
+      toon({ color: jerseys[(Math.random() * jerseys.length) | 0] }));
+    torso.position.set(0, 0.98, -0.05); torso.rotation.x = 0.5; r.add(torso);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), toon({ color: 0xd8b090 }));
+    head.position.set(0, 1.26, -0.22); r.add(head);
+    r.position.set((Math.random() - 0.5) * 0.4, 0, i * (2.6 + Math.random()));
+    grp.add(r);
+  }
+  grp.userData.traffic = true;
+  grp.userData.narrow = true;                 // hitbox estrecha
+  grp.userData.v = 6.5 + Math.random() * 3.5;
+  return grp;
 }
 function buildChurch() {
   const grp = new THREE.Object3D();
@@ -543,8 +682,10 @@ function buildPueblo() {                       // caseríos + iglesia o frontón
     grp.add(c);
   }
   const roll = Math.random();
-  if (roll < 0.4) { const ch = buildChurch(); ch.position.set(10, 0, 6); ch.rotation.y = Math.random() * 3; grp.add(ch); }
-  else if (roll < 0.7) { const f = buildFronton(); f.position.set(11, 0, n * 6); grp.add(f); }
+  if (roll < 0.35) { const ch = buildChurch(); ch.position.set(10, 0, 6); ch.rotation.y = Math.random() * 3; grp.add(ch); }
+  else if (roll < 0.6) { const f = buildFronton(); f.position.set(11, 0, n * 6); grp.add(f); }
+  else if (roll < 0.85) { const t = buildHerrikoTaberna(); t.position.set(3, 0, n * 13); grp.add(t); }
+  if (Math.random() < 0.4) { const mw = buildMuralWall(); mw.position.set(-4, 0, -6); grp.add(mw); }
   return grp;
 }
 
@@ -738,22 +879,24 @@ function spawnProp(s) {
   const roll = Math.random();
   const side = Math.random() < 0.5 ? -1 : 1;
   let obj, offset;
-  if (roll < 0.14)      { obj = buildOakGrove();     offset = side * (22 + Math.random() * 60); }
-  else if (roll < 0.23) { obj = buildPineRow();      offset = side * (13 + Math.random() * 35); }
-  else if (roll < 0.32) { obj = buildPole();         offset = side * 9.6; }
-  else if (roll < 0.42) {
+  if (roll < 0.13)      { obj = buildOakGrove();     offset = side * (22 + Math.random() * 60); }
+  else if (roll < 0.21) { obj = buildPineRow();      offset = side * (13 + Math.random() * 35); }
+  else if (roll < 0.30) { obj = buildPole();         offset = side * 9.6; }
+  else if (roll < 0.40) {
     const oncoming = Math.random() < 0.5;
     obj = buildTraffic(oncoming);
     offset = oncoming ? -2.2 : 2.2;
   }
-  else if (roll < 0.50) { obj = buildPueblo();       offset = side * (16 + Math.random() * 45); }
-  else if (roll < 0.535){ obj = buildGasolinera();   offset = side * 15.5; }
-  else if (roll < 0.55) { obj = buildBull();         offset = side * (14 + Math.random() * 12); }
-  else if (roll < 0.60) { obj = buildTownSign();     offset = side * 9.4; }
-  else if (roll < 0.66) { obj = buildSign();         offset = side * 9.2; }
-  else if (roll < 0.72) { obj = buildHito();         offset = side * 8.6; }
-  else if (roll < 0.79) { obj = buildScrub();        offset = side * (14 + Math.random() * 25); }
-  else if (roll < 0.93) { obj = buildField();        offset = side * (100 + Math.random() * 150); }
+  else if (roll < 0.45) { obj = buildCyclists();     offset = 6.3; }          // en tu carril, a adelantar
+  else if (roll < 0.53) { obj = buildPueblo();       offset = side * (16 + Math.random() * 45); }
+  else if (roll < 0.565){ obj = buildGasolinera();   offset = side * 15.5; }
+  else if (roll < 0.58) { obj = buildBull();         offset = side * (14 + Math.random() * 12); }
+  else if (roll < 0.62) { obj = buildMuralWall();    offset = side * (11 + Math.random() * 8); }
+  else if (roll < 0.66) { obj = buildTownSign();     offset = side * 9.4; }
+  else if (roll < 0.71) { obj = buildSign();         offset = side * 9.2; }
+  else if (roll < 0.76) { obj = buildHito();         offset = side * 8.6; }
+  else if (roll < 0.82) { obj = buildScrub();        offset = side * (14 + Math.random() * 25); }
+  else if (roll < 0.94) { obj = buildField();        offset = side * (100 + Math.random() * 150); }
   else                  { obj = buildMountain();     offset = side * (420 + Math.random() * 550); }
   obj.userData.s = s;
   obj.userData.off = offset;
@@ -1467,7 +1610,8 @@ function frame() {
       if (p.userData.traffic && crashCooldown <= 0) {
         const dxC = p.position.x - carX;
         const dzC = p.position.z - TAXI_Z;
-        if (Math.abs(dxC) < 1.85 && Math.abs(dzC) < 4.3) {
+        const hitW = p.userData.narrow ? 1.25 : 1.85;
+        if (Math.abs(dxC) < hitW && Math.abs(dzC) < 4.3) {
           const closing = p.userData.v < 0 ? speed - p.userData.v : Math.abs(speed - p.userData.v);
           speed = Math.max(1.5, speed * 0.15);
           laneX = THREE.MathUtils.clamp(laneX - Math.sign(dxC || 1) * 1.6, -LANE, LANE);
