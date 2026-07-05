@@ -103,6 +103,18 @@ html, body {
   .intro-card .small { animation: none; }
 }
 
+/* fold-out paper map, top right */
+#map {
+  position: fixed; top: 18px; right: 18px; z-index: 5;
+  pointer-events: none;
+  opacity: 0; transform: translateY(-8px) rotate(1.2deg);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  box-shadow: 0 10px 34px rgba(0,0,0,0.65);
+  border: 1px solid rgba(60,50,35,0.5);
+  border-radius: 2px;
+}
+#map.open { opacity: 0.96; transform: translateY(0) rotate(0.6deg); }
+
 /* anomaly glitch: flickered onto <body> for a few frames at a time */
 body.glitch #app canvas {
   filter: invert(1) hue-rotate(140deg) contrast(1.5) saturate(0.4);

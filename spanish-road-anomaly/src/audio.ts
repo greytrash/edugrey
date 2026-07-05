@@ -1,15 +1,22 @@
-/* All-procedural WebAudio: engine, rain, tires, wipers, and a car radio
-   whose stations dissolve into interference as the anomaly approaches. */
+/* All-procedural WebAudio. The radio is the game's spine: five stations on
+   the dial, three languages, and one frequency that should not be there.
+   As the fold approaches, every honest station drowns in static — and the
+   numbers station at 66.6 comes up out of it, clearer the worse things get. */
 
-export type RadioMode = 'off' | 'static' | 'music' | 'voices';
-const RADIO_ORDER: RadioMode[] = ['off', 'static', 'music', 'voices'];
+export interface Station {
+  freq: string;
+  name: string;
+  type: 'static' | 'voices' | 'waltz' | 'phrygian' | 'flute' | 'numbers';
+}
 
-export const RADIO_LABEL: Record<RadioMode, string> = {
-  off: 'radio off',
-  static: '87.6 MHz · estática',
-  music: '98.2 MHz · Cadena Sur',
-  voices: '103.1 MHz · voces',
-};
+const STATIONS: Station[] = [
+  { freq: '87.6',  name: 'estática',       type: 'static' },
+  { freq: '88.1',  name: 'Euskal Irratia', type: 'voices' },
+  { freq: '94.3',  name: 'Radio Baiona',   type: 'waltz' },
+  { freq: '98.2',  name: 'Cadena Sur',     type: 'phrygian' },
+  { freq: '103.7', name: 'Herri Musika',   type: 'flute' },
+  { freq: '66.6',  name: '· · ·',          type: 'numbers' },
+];
 
 function makeNoiseBuffer(ctx: AudioContext, seconds = 2): AudioBuffer {
   const buf = ctx.createBuffer(1, ctx.sampleRate * seconds, ctx.sampleRate);
@@ -27,24 +34,38 @@ export class GameAudio {
   private engOsc!: OscillatorNode;
   private engSub!: OscillatorNode;
   private engGain!: GainNode;
+  private whineOsc!: OscillatorNode;
+  private whineGain!: GainNode;
 
   private rainGain!: GainNode;
-  private hissGain!: GainNode;   // wet tires
-  private rumbleGain!: GainNode; // off-road
-  private skidGain!: GainNode;   // handbrake
+  private hissGain!: GainNode;
+  private rumbleGain!: GainNode;
+  private skidGain!: GainNode;
 
   private radioBus!: GainNode;
   private staticGain!: GainNode;
   private staticFilter!: BiquadFilterNode;
-  private musicGain!: GainNode;
-  private voiceGain!: GainNode;
+  private programGain!: GainNode;
 
-  radioMode: RadioMode = 'off';
+  radioIndex = -1;                 // -1 = off
+  numbersUnlocked = false;
   interference = 0;
 
   private nextNote = 0;
   private noteIdx = 0;
   private nextSyllable = 0;
+  private nextBeat = 0;
+  private beatIdx = 0;
+  private nextFlute = 0;
+  private nextNum = 0;
+  private numStep = 0;
+
+  get stations(): Station[] {
+    return this.numbersUnlocked ? STATIONS : STATIONS.filter(s => s.type !== 'numbers');
+  }
+  get currentStation(): Station | null {
+    return this.radioIndex < 0 ? null : this.stations[this.radioIndex] ?? null;
+  }
 
   start() {
     if (this.started) return;
@@ -55,7 +76,7 @@ export class GameAudio {
     this.master.connect(ctx.destination);
     this.noise = makeNoiseBuffer(ctx);
 
-    /* engine: saw + sub-octave sine through a dull lowpass */
+    /* engine */
     const engFilter = ctx.createBiquadFilter();
     engFilter.type = 'lowpass';
     engFilter.frequency.value = 340;
@@ -73,8 +94,16 @@ export class GameAudio {
     this.engGain.connect(this.master);
     this.engOsc.start();
     this.engSub.start();
+    // reverse-gear whine
+    this.whineOsc = ctx.createOscillator();
+    this.whineOsc.type = 'sine';
+    this.whineOsc.frequency.value = 360;
+    this.whineGain = ctx.createGain();
+    this.whineGain.gain.value = 0;
+    this.whineOsc.connect(this.whineGain).connect(this.master);
+    this.whineOsc.start();
 
-    /* looped noise feeding rain / tire hiss / rumble / skid shapers */
+    /* shared looped noise */
     const loop = ctx.createBufferSource();
     loop.buffer = this.noise;
     loop.loop = true;
@@ -110,7 +139,7 @@ export class GameAudio {
     this.skidGain.gain.value = 0;
     loop.connect(skidFilter).connect(this.skidGain).connect(this.master);
 
-    /* radio bus: everything squeezed through an AM-ish bandpass */
+    /* radio bus through an AM-ish bandpass */
     const am = ctx.createBiquadFilter();
     am.type = 'bandpass';
     am.frequency.value = 1100;
@@ -118,6 +147,7 @@ export class GameAudio {
     this.radioBus = ctx.createGain();
     this.radioBus.gain.value = 0;
     am.connect(this.radioBus).connect(this.master);
+    this.amNode = am;
 
     this.staticFilter = ctx.createBiquadFilter();
     this.staticFilter.type = 'bandpass';
@@ -127,29 +157,26 @@ export class GameAudio {
     this.staticGain.gain.value = 0;
     loop.connect(this.staticFilter).connect(this.staticGain).connect(am);
 
-    this.musicGain = ctx.createGain();
-    this.musicGain.gain.value = 0;
-    this.musicGain.connect(am);
-
-    this.voiceGain = ctx.createGain();
-    this.voiceGain.gain.value = 0;
-    this.voiceGain.connect(am);
+    this.programGain = ctx.createGain();
+    this.programGain.gain.value = 0;
+    this.programGain.connect(am);
   }
+  private amNode!: BiquadFilterNode;
 
-  cycleRadio(): RadioMode {
-    this.radioMode = RADIO_ORDER[(RADIO_ORDER.indexOf(this.radioMode) + 1) % RADIO_ORDER.length];
+  cycleRadio(): Station | null {
+    const n = this.stations.length;
+    this.radioIndex = this.radioIndex >= n - 1 ? -1 : this.radioIndex + 1;
     if (this.started) {
-      // small tuning chirp on every twist of the dial
       const t = this.ctx.currentTime;
       const g = this.ctx.createGain();
       g.gain.setValueAtTime(0.12, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
       const src = this.ctx.createBufferSource();
       src.buffer = this.noise;
       src.connect(g).connect(this.master);
-      src.start(t, Math.random(), 0.15);
+      src.start(t, Math.random(), 0.18);
     }
-    return this.radioMode;
+    return this.currentStation;
   }
 
   wiperSweep() {
@@ -169,7 +196,6 @@ export class GameAudio {
     src.start(t, Math.random(), 0.32);
   }
 
-  /* the moment the road folds back on itself */
   anomalySting() {
     if (!this.started) return;
     const t = this.ctx.currentTime;
@@ -184,8 +210,6 @@ export class GameAudio {
     o.connect(g).connect(this.master);
     o.start(t);
     o.stop(t + 1.9);
-
-    // shimmer cluster fading in above it, slightly wrong
     for (const f of [1244, 1567, 1863]) {
       const s = this.ctx.createOscillator();
       s.type = 'sine';
@@ -206,41 +230,55 @@ export class GameAudio {
   }) {
     if (!this.started) return;
     const t = this.ctx.currentTime;
-    const k = p.speed / p.maxSpeed;
+    const k = Math.abs(p.speed) / p.maxSpeed;
 
     this.engOsc.frequency.setTargetAtTime(52 + k * 96, t, 0.08);
     this.engSub.frequency.setTargetAtTime(26 + k * 48, t, 0.08);
     this.engGain.gain.setTargetAtTime(0.035 + k * 0.05 + (p.throttle ? 0.035 : 0), t, 0.1);
+    const reversing = p.speed < -0.5;
+    this.whineOsc.frequency.setTargetAtTime(320 + k * 260, t, 0.08);
+    this.whineGain.gain.setTargetAtTime(reversing ? 0.012 + k * 0.02 : 0, t, 0.1);
 
-    this.rainGain.gain.setTargetAtTime(0.035 + p.rain * 0.045, t, 0.3);
-    this.hissGain.gain.setTargetAtTime(k * 0.05, t, 0.2);
+    this.rainGain.gain.setTargetAtTime(0.02 + p.rain * 0.06, t, 0.4);
+    this.hissGain.gain.setTargetAtTime(k * (0.02 + p.rain * 0.04), t, 0.2);
     this.rumbleGain.gain.setTargetAtTime(p.offroad ? 0.10 + k * 0.12 : 0, t, 0.05);
     this.skidGain.gain.setTargetAtTime(p.handbrake && k > 0.15 ? 0.06 : 0, t, 0.05);
 
-    /* radio: interference pulls every station down into the static */
+    /* radio */
+    const st = this.currentStation;
     const inr = this.interference;
-    const on = this.radioMode !== 'off' ? 1 : 0;
+    const on = st ? 1 : 0;
     this.radioBus.gain.setTargetAtTime(on * 0.9, t, 0.2);
-    const wantStatic = this.radioMode === 'static' ? 0.10 : 0.02 + inr * 0.12;
-    this.staticGain.gain.setTargetAtTime(on * wantStatic, t, 0.15);
-    this.staticFilter.frequency.setTargetAtTime(600 + Math.random() * 900 + inr * 600, t, 0.4);
-    this.musicGain.gain.setTargetAtTime(this.radioMode === 'music' ? 0.75 * (1 - inr * 0.85) : 0, t, 0.2);
-    this.voiceGain.gain.setTargetAtTime(this.radioMode === 'voices' ? 0.9 * (1 - inr * 0.6) : 0, t, 0.2);
+    if (!st) return;
 
-    if (this.radioMode === 'music') this.scheduleMusic();
-    if (this.radioMode === 'voices') this.scheduleVoices();
+    if (st.type === 'numbers') {
+      // the wrong station: interference is its carrier
+      this.staticGain.gain.setTargetAtTime(0.05 + (1 - inr) * 0.07, t, 0.15);
+      this.programGain.gain.setTargetAtTime(0.25 + inr * 0.75, t, 0.2);
+      this.scheduleNumbers();
+      return;
+    }
+
+    const wantStatic = st.type === 'static' ? 0.10 : 0.015 + inr * 0.12;
+    this.staticGain.gain.setTargetAtTime(wantStatic, t, 0.15);
+    this.staticFilter.frequency.setTargetAtTime(600 + Math.random() * 900 + inr * 600, t, 0.4);
+    this.programGain.gain.setTargetAtTime(st.type === 'static' ? 0 : 0.85 * (1 - inr * 0.85), t, 0.2);
+
+    if (st.type === 'phrygian') this.schedulePhrygian();
+    if (st.type === 'voices') this.scheduleVoices();
+    if (st.type === 'waltz') this.scheduleWaltz();
+    if (st.type === 'flute') this.scheduleFlute();
   }
 
-  /* sparse Phrygian plucks — a sad coplilla heard through one bad speaker */
-  private scheduleMusic() {
+  /* Cadena Sur — the sad coplilla through one bad speaker */
+  private schedulePhrygian() {
     const ctx = this.ctx;
-    const scale = [220.0, 233.1, 261.6, 293.7, 329.6, 349.2, 392.0]; // A Phrygian
+    const scale = [220.0, 233.1, 261.6, 293.7, 329.6, 349.2, 392.0];
     const line = [0, 2, 1, 0, 4, 3, 2, 1, 0, 2, 4, 5, 4, 2, 1, 0];
     if (this.nextNote < ctx.currentTime) this.nextNote = ctx.currentTime + 0.05;
     while (this.nextNote < ctx.currentTime + 0.25) {
       const step = this.noteIdx % line.length;
       const beat = this.noteIdx % 4 === 0;
-      // interference eats notes
       if (Math.random() > this.interference * 0.8) {
         const f = scale[line[step]] * (beat ? 0.5 : 1);
         const detune = 1 + (Math.random() - 0.5) * 0.004 * (1 + this.interference * 8);
@@ -251,7 +289,7 @@ export class GameAudio {
         g.gain.setValueAtTime(0.0001, this.nextNote);
         g.gain.linearRampToValueAtTime(beat ? 0.5 : 0.34, this.nextNote + 0.015);
         g.gain.exponentialRampToValueAtTime(0.001, this.nextNote + (beat ? 0.6 : 0.34));
-        o.connect(g).connect(this.musicGain);
+        o.connect(g).connect(this.programGain);
         o.start(this.nextNote);
         o.stop(this.nextNote + 0.7);
       }
@@ -260,7 +298,115 @@ export class GameAudio {
     }
   }
 
-  /* half-heard talk: syllable-shaped noise bursts wandering through formants */
+  /* Radio Baiona — a tired accordion waltz drifting over the border */
+  private scheduleWaltz() {
+    const ctx = this.ctx;
+    const roots = [110, 146.83, 164.81, 110];        // Am Dm E Am
+    const third = [1.189, 1.189, 1.26, 1.189];       // minor / minor / major / minor
+    const melody = [440, 523.25, 493.88, 440, 392, 440, 329.63, 392];
+    if (this.nextBeat < ctx.currentTime) this.nextBeat = ctx.currentTime + 0.05;
+    while (this.nextBeat < ctx.currentTime + 0.3) {
+      const t0 = this.nextBeat;
+      const bar = Math.floor(this.beatIdx / 3);
+      const beat = this.beatIdx % 3;
+      const root = roots[bar % 4];
+      if (Math.random() > this.interference * 0.7) {
+        if (beat === 0) {
+          const o = ctx.createOscillator();
+          o.type = 'sawtooth';
+          o.frequency.value = root;
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.linearRampToValueAtTime(0.5, t0 + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.5);
+          const lp = ctx.createBiquadFilter();
+          lp.type = 'lowpass';
+          lp.frequency.value = 500;
+          o.connect(lp).connect(g).connect(this.programGain);
+          o.start(t0); o.stop(t0 + 0.55);
+          if (bar % 2 === 1) {                       // melody phrase
+            const mf = melody[(bar >> 1) % melody.length];
+            for (const det of [-4, 4]) {             // accordion double reed
+              const m = ctx.createOscillator();
+              m.type = 'sawtooth';
+              m.frequency.value = mf;
+              m.detune.value = det;
+              const mg = ctx.createGain();
+              mg.gain.setValueAtTime(0.0001, t0);
+              mg.gain.linearRampToValueAtTime(0.14, t0 + 0.06);
+              mg.gain.linearRampToValueAtTime(0.10, t0 + 1.1);
+              mg.gain.linearRampToValueAtTime(0.0001, t0 + 1.5);
+              const ml = ctx.createBiquadFilter();
+              ml.type = 'lowpass';
+              ml.frequency.value = 1600;
+              m.connect(ml).connect(mg).connect(this.programGain);
+              m.start(t0); m.stop(t0 + 1.6);
+            }
+          }
+        } else {                                     // oom-pah chord stab
+          for (const mul of [2, 2 * third[bar % 4], 3]) {
+            const o = ctx.createOscillator();
+            o.type = 'triangle';
+            o.frequency.value = root * mul;
+            const g = ctx.createGain();
+            g.gain.setValueAtTime(0.0001, t0);
+            g.gain.linearRampToValueAtTime(0.16, t0 + 0.015);
+            g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.24);
+            o.connect(g).connect(this.programGain);
+            o.start(t0); o.stop(t0 + 0.3);
+          }
+        }
+      }
+      this.nextBeat += 0.55;
+      this.beatIdx++;
+    }
+  }
+
+  /* Herri Musika — a lone txistu over drone, pentatonic and patient */
+  private scheduleFlute() {
+    const ctx = this.ctx;
+    const scale = [440, 523.25, 587.33, 659.25, 783.99];
+    if (this.nextFlute < ctx.currentTime) this.nextFlute = ctx.currentTime + 0.05;
+    while (this.nextFlute < ctx.currentTime + 0.3) {
+      const t0 = this.nextFlute;
+      const dur = 0.7 + Math.random() * 0.9;
+      if (Math.random() > this.interference * 0.7) {
+        const f = scale[(Math.random() * scale.length) | 0];
+        const o = ctx.createOscillator();
+        o.type = 'sine';
+        o.frequency.value = f;
+        const vib = ctx.createOscillator();
+        vib.frequency.value = 5.2;
+        const vg = ctx.createGain();
+        vg.gain.value = f * 0.006;
+        vib.connect(vg).connect(o.frequency);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.linearRampToValueAtTime(0.30, t0 + 0.10);
+        g.gain.linearRampToValueAtTime(0.22, t0 + dur - 0.15);
+        g.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+        o.connect(g).connect(this.programGain);
+        o.start(t0); o.stop(t0 + dur + 0.05);
+        vib.start(t0); vib.stop(t0 + dur + 0.05);
+        // breath
+        const br = ctx.createBufferSource();
+        br.buffer = this.noise;
+        const bf = ctx.createBiquadFilter();
+        bf.type = 'bandpass';
+        bf.frequency.value = f * 2;
+        bf.Q.value = 2;
+        const bg = ctx.createGain();
+        bg.gain.setValueAtTime(0.0001, t0);
+        bg.gain.linearRampToValueAtTime(0.04, t0 + 0.08);
+        bg.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+        br.connect(bf).connect(bg).connect(this.programGain);
+        br.start(t0, Math.random(), dur + 0.05);
+      }
+      this.nextFlute += dur + 0.15 + Math.random() * 0.5;
+    }
+  }
+
+  /* Euskal Irratia — half-heard talk, formants wandering */
   private scheduleVoices() {
     const ctx = this.ctx;
     if (this.nextSyllable < ctx.currentTime) this.nextSyllable = ctx.currentTime + 0.05;
@@ -282,10 +428,55 @@ export class GameAudio {
         g.gain.setValueAtTime(0.0001, t0);
         g.gain.linearRampToValueAtTime(0.5 + Math.random() * 0.3, t0 + dur * 0.3);
         g.gain.linearRampToValueAtTime(0.0001, t0 + dur);
-        src.connect(formant).connect(muffle).connect(g).connect(this.voiceGain);
+        src.connect(formant).connect(muffle).connect(g).connect(this.programGain);
         src.start(t0, Math.random(), dur + 0.05);
       }
       this.nextSyllable += pause ? 0.5 + Math.random() * 0.9 : 0.09 + Math.random() * 0.16;
+    }
+  }
+
+  /* 66.6 — three tones, five numbers, again. It is reading them to someone. */
+  private scheduleNumbers() {
+    const ctx = this.ctx;
+    if (this.nextNum < ctx.currentTime) this.nextNum = ctx.currentTime + 0.1;
+    while (this.nextNum < ctx.currentTime + 0.3) {
+      const t0 = this.nextNum;
+      const step = this.numStep % 10;
+      if (step < 3) {                                // three marker tones
+        const o = ctx.createOscillator();
+        o.type = 'sine';
+        o.frequency.value = 880;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.linearRampToValueAtTime(0.25, t0 + 0.02);
+        g.gain.linearRampToValueAtTime(0.0001, t0 + 0.14);
+        o.connect(g).connect(this.programGain);
+        o.start(t0); o.stop(t0 + 0.16);
+        this.nextNum += 0.34;
+      } else if (step === 3) {
+        this.nextNum += 0.7;                          // breath before the digits
+      } else if (step < 9) {                          // five spoken digits
+        const digit = (Math.random() * 10) | 0;
+        const src = ctx.createBufferSource();
+        src.buffer = this.noise;
+        const formant = ctx.createBiquadFilter();
+        formant.type = 'bandpass';
+        formant.frequency.value = 300 + digit * 55;
+        formant.Q.value = 9;
+        const muffle = ctx.createBiquadFilter();
+        muffle.type = 'lowpass';
+        muffle.frequency.value = 900;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.linearRampToValueAtTime(0.8, t0 + 0.05);
+        g.gain.linearRampToValueAtTime(0.0001, t0 + 0.24);
+        src.connect(formant).connect(muffle).connect(g).connect(this.programGain);
+        src.start(t0, Math.random(), 0.3);
+        this.nextNum += 0.46;
+      } else {
+        this.nextNum += 1.4;                          // long silence, then again
+      }
+      this.numStep++;
     }
   }
 }
