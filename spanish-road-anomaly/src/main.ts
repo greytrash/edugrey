@@ -394,7 +394,7 @@ function bladeAngle(phase: number, from: number, to: number) {
   return from + (to - from) * e;
 }
 
-function drawInterior(dt: number, inr: number, rainI: number, darkness: number, inTunnel: boolean) {
+function drawInterior(dt: number, inr: number, rainI: number, darkness: number, inTunnel: boolean, hourStr: string) {
   const w = innerWidth, h = innerHeight;
 
   const ww = wet.width, wh = wet.height;
@@ -495,137 +495,237 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number, 
     }
   }
 
-  /* dashboard */
-  const dashTop = h * 0.74;
+  /* ---- retro-futuristic cockpit (Pacific-Drive-ish): dark moulded dash,
+     glowing teal light tube, CRT panels, incandescent analog gauges ---- */
+  const backlight = 0.4 + 0.55 * darkness;
+  const TEAL = '90,240,220';
+  const glowStroke = (color: string, blur: number, fn: () => void) => {
+    octx.save();
+    octx.shadowColor = color;
+    octx.shadowBlur = blur;
+    fn();
+    octx.restore();
+  };
+
+  const dashTop = h * 0.70;
   const g = octx.createLinearGradient(0, dashTop, 0, h);
-  g.addColorStop(0, '#12100d');
-  g.addColorStop(0.25, '#0d0b09');
-  g.addColorStop(1, '#050403');
+  g.addColorStop(0, '#0c0f11');
+  g.addColorStop(0.2, '#080a0b');
+  g.addColorStop(1, '#020303');
   octx.fillStyle = g;
   octx.beginPath();
   octx.moveTo(0, h);
-  octx.lineTo(0, dashTop + 46);
-  octx.quadraticCurveTo(w * 0.25, dashTop - 8, w * 0.5, dashTop + 6);
-  octx.quadraticCurveTo(w * 0.75, dashTop + 18, w, dashTop + 2);
+  octx.lineTo(0, dashTop + 56);
+  octx.quadraticCurveTo(w * 0.25, dashTop + 2, w * 0.5, dashTop + 14);
+  octx.quadraticCurveTo(w * 0.75, dashTop + 26, w, dashTop + 10);
   octx.lineTo(w, h);
   octx.closePath();
   octx.fill();
-  octx.strokeStyle = `rgba(180,170,150,${0.10 + 0.1 * (1 - darkness)})`;
-  octx.lineWidth = 2;
-  octx.beginPath();
-  octx.moveTo(0, dashTop + 46);
-  octx.quadraticCurveTo(w * 0.25, dashTop - 8, w * 0.5, dashTop + 6);
-  octx.quadraticCurveTo(w * 0.75, dashTop + 18, w, dashTop + 2);
-  octx.stroke();
 
-  /* steering wheel + hands that follow it */
-  const wcx = w * 0.34, wcy = h * 1.10, wr = h * 0.30;
+  /* the teal light tube along the dash lip */
+  const tubeY = dashTop + 20;
+  glowStroke(`rgba(${TEAL},0.9)`, 18, () => {
+    octx.strokeStyle = `rgba(${TEAL},${0.5 + 0.3 * darkness})`;
+    octx.lineWidth = 3;
+    octx.beginPath();
+    octx.moveTo(w * 0.18, tubeY + 8);
+    octx.quadraticCurveTo(w * 0.5, tubeY - 6, w * 0.82, tubeY + 4);
+    octx.stroke();
+  });
+
+  /* left CRT: fuel / temp cell bars */
+  {
+    const lx = w * 0.055, ly = h * 0.77, lw = w * 0.14, lh = h * 0.17;
+    octx.fillStyle = 'rgba(4,10,10,0.96)';
+    octx.fillRect(lx, ly, lw, lh);
+    octx.strokeStyle = `rgba(${TEAL},0.35)`;
+    octx.lineWidth = 1.5;
+    octx.strokeRect(lx, ly, lw, lh);
+    glowStroke(`rgba(${TEAL},0.7)`, 8, () => {
+      octx.fillStyle = `rgba(${TEAL},${0.5 + 0.35 * backlight})`;
+      octx.font = `${Math.round(h * 0.02)}px "Courier New", monospace`;
+      octx.textAlign = 'left';
+      octx.fillText('SISTEMA', lx + 8, ly + h * 0.032);
+      // segmented cells
+      const cells = [0.75, 0.5 + Math.sin(now * 0.3) * 0.05, 0.9];
+      const labels = ['GAS', 'TMP', 'BAT'];
+      cells.forEach((v, r) => {
+        const yy = ly + h * 0.055 + r * h * 0.035;
+        octx.fillText(labels[r], lx + 8, yy + h * 0.024);
+        for (let c = 0; c < 8; c++) {
+          octx.fillStyle = c / 8 < v ? `rgba(${TEAL},0.8)` : `rgba(${TEAL},0.12)`;
+          octx.fillRect(lx + lw * 0.42 + c * (lw * 0.06), yy + h * 0.006, lw * 0.045, h * 0.018);
+        }
+        octx.fillStyle = `rgba(${TEAL},${0.5 + 0.35 * backlight})`;
+      });
+    });
+  }
+
+  /* analog gauge binnacle behind the wheel */
+  const gauge = (sx: number, sy: number, sr: number, frac: number, rgb: string) => {
+    octx.fillStyle = 'rgba(6,6,7,0.98)';
+    octx.beginPath(); octx.arc(sx, sy, sr * 1.12, 0, 7); octx.fill();
+    octx.strokeStyle = 'rgba(40,40,44,0.9)';
+    octx.lineWidth = 3;
+    octx.beginPath(); octx.arc(sx, sy, sr * 1.12, 0, 7); octx.stroke();
+    // ticks
+    octx.strokeStyle = `rgba(${rgb},${0.35 * backlight + 0.15})`;
+    for (let i = 0; i <= 10; i++) {
+      const ta = Math.PI * 0.78 + (i / 10) * Math.PI * 1.44;
+      octx.lineWidth = i % 5 === 0 ? 2.2 : 1.2;
+      octx.beginPath();
+      octx.moveTo(sx + Math.cos(ta) * sr * 0.78, sy + Math.sin(ta) * sr * 0.78);
+      octx.lineTo(sx + Math.cos(ta) * sr * 0.94, sy + Math.sin(ta) * sr * 0.94);
+      octx.stroke();
+    }
+    // incandescent needle with glow
+    const na = Math.PI * 0.78 + Math.min(1, Math.max(0, frac)) * Math.PI * 1.44;
+    glowStroke(`rgba(${rgb},0.9)`, 10, () => {
+      octx.strokeStyle = `rgba(${rgb},${0.7 + 0.3 * backlight})`;
+      octx.lineWidth = 2.6;
+      octx.beginPath();
+      octx.moveTo(sx - Math.cos(na) * sr * 0.18, sy - Math.sin(na) * sr * 0.18);
+      octx.lineTo(sx + Math.cos(na) * sr * 0.82, sy + Math.sin(na) * sr * 0.82);
+      octx.stroke();
+    });
+    octx.fillStyle = `rgba(${rgb},0.9)`;
+    octx.beginPath(); octx.arc(sx, sy, sr * 0.09, 0, 7); octx.fill();
+    // glass sheen
+    const sheen = octx.createLinearGradient(sx - sr, sy - sr, sx + sr, sy + sr);
+    sheen.addColorStop(0, 'rgba(255,255,255,0.10)');
+    sheen.addColorStop(0.5, 'rgba(255,255,255,0)');
+    octx.fillStyle = sheen;
+    octx.beginPath(); octx.arc(sx, sy, sr * 1.12, 0, 7); octx.fill();
+  };
+  gauge(w * 0.29, h * 0.855, h * 0.072, Math.abs(speed) * 3.6 / 160, '235,70,55');       // speed, red
+  gauge(w * 0.415, h * 0.875, h * 0.058, 0.25 + Math.abs(speed) / MAX_SPEED * 0.7, '240,170,40'); // revs, amber
+
+  /* steering wheel + hands (drawn over the binnacle so the rim occludes) */
+  const wcx = w * 0.35, wcy = h * 1.20, wr = h * 0.36;
   octx.save();
   octx.translate(wcx, wcy);
   octx.rotate(steer * 1.4);
-  octx.strokeStyle = '#191512';
-  octx.lineWidth = h * 0.030;
+  const rim = octx.createLinearGradient(0, -wr, 0, wr);
+  rim.addColorStop(0, '#26221c');
+  rim.addColorStop(0.5, '#141210');
+  rim.addColorStop(1, '#0c0b09');
+  octx.strokeStyle = rim;
+  octx.lineWidth = h * 0.034;
   octx.beginPath();
   octx.arc(0, 0, wr, 0, Math.PI * 2);
   octx.stroke();
-  octx.strokeStyle = '#23201b';
-  octx.lineWidth = h * 0.008;
-  octx.beginPath();
-  octx.arc(0, 0, wr * 0.82, 0, Math.PI * 2);
-  octx.stroke();
+  // faint teal rim reflection from the light tube
+  glowStroke(`rgba(${TEAL},0.5)`, 6, () => {
+    octx.strokeStyle = `rgba(${TEAL},0.14)`;
+    octx.lineWidth = h * 0.010;
+    octx.beginPath();
+    octx.arc(0, 0, wr, Math.PI * 1.15, Math.PI * 1.85);
+    octx.stroke();
+  });
   octx.strokeStyle = '#171310';
-  octx.lineWidth = h * 0.017;
+  octx.lineWidth = h * 0.018;
   for (const sa of [-0.5, Math.PI + 0.5, Math.PI * 0.5]) {
     octx.beginPath();
     octx.moveTo(0, 0);
-    octx.lineTo(Math.cos(sa) * wr * 0.95, Math.sin(sa) * wr * 0.95);
+    octx.lineTo(Math.cos(sa) * wr * 0.94, Math.sin(sa) * wr * 0.94);
     octx.stroke();
   }
-  octx.fillStyle = '#12100d';
+  octx.fillStyle = '#100e0b';
   octx.beginPath();
-  octx.arc(0, 0, h * 0.045, 0, Math.PI * 2);
+  octx.arc(0, 0, h * 0.05, 0, Math.PI * 2);
   octx.fill();
-  /* hands at ten-to-two, gripping the rim */
   for (const ha of [-2.35, -0.75]) {
     const hx = Math.cos(ha) * wr, hy = Math.sin(ha) * wr;
-    // sleeve
-    octx.fillStyle = '#22201c';
+    octx.fillStyle = '#1c1a16';
     octx.beginPath();
-    octx.ellipse(hx * 1.22, hy * 1.22, h * 0.035, h * 0.026, ha, 0, 7);
+    octx.ellipse(hx * 1.2, hy * 1.2, h * 0.036, h * 0.027, ha, 0, 7);
     octx.fill();
-    // hand
-    octx.fillStyle = '#a67c5a';
+    octx.fillStyle = '#9c7350';
     octx.beginPath();
-    octx.ellipse(hx, hy, h * 0.030, h * 0.022, ha, 0, 7);
+    octx.ellipse(hx, hy, h * 0.031, h * 0.022, ha, 0, 7);
     octx.fill();
-    // knuckle shading
-    octx.fillStyle = 'rgba(60,38,24,0.35)';
+    octx.fillStyle = 'rgba(50,32,20,0.4)';
     octx.beginPath();
     octx.ellipse(hx + Math.cos(ha) * h * 0.012, hy + Math.sin(ha) * h * 0.012, h * 0.016, h * 0.010, ha, 0, 7);
     octx.fill();
   }
   octx.restore();
 
-  /* gauges */
-  const backlight = 0.35 + 0.55 * darkness;
-  const gauge = (sx: number, sy: number, sr: number, frac: number) => {
-    octx.fillStyle = 'rgba(18,13,6,0.97)';
-    octx.beginPath(); octx.arc(sx, sy, sr, 0, 7); octx.fill();
-    octx.strokeStyle = `rgba(217,160,40,${0.45 * backlight})`;
-    octx.lineWidth = 2;
-    octx.beginPath(); octx.arc(sx, sy, sr, 0, 7); octx.stroke();
-    octx.strokeStyle = `rgba(217,160,40,${0.6 * backlight})`;
-    for (let i = 0; i <= 8; i++) {
-      const ta = Math.PI * 0.8 + (i / 8) * Math.PI * 1.4;
-      octx.lineWidth = 1.4;
-      octx.beginPath();
-      octx.moveTo(sx + Math.cos(ta) * sr * 0.8, sy + Math.sin(ta) * sr * 0.8);
-      octx.lineTo(sx + Math.cos(ta) * sr * 0.92, sy + Math.sin(ta) * sr * 0.92);
-      octx.stroke();
-    }
-    const na = Math.PI * 0.8 + Math.min(1, frac) * Math.PI * 1.4;
-    octx.strokeStyle = `rgba(228,178,60,${0.55 + 0.45 * backlight})`;
-    octx.lineWidth = 2.4;
-    octx.beginPath();
-    octx.moveTo(sx, sy);
-    octx.lineTo(sx + Math.cos(na) * sr * 0.78, sy + Math.sin(na) * sr * 0.78);
-    octx.stroke();
-  };
-  gauge(w * 0.60, h * 0.905, h * 0.075, Math.abs(speed) * 3.6 / 160);
-  gauge(w * 0.695, h * 0.925, h * 0.045, 0.62 + Math.sin(now * 0.05) * 0.05);
-
-  /* radio face */
-  const st = audio.currentStation;
-  if (st) {
-    const rx = w * 0.76, ry = h * 0.875, rw = w * 0.13, rh = h * 0.052;
-    octx.fillStyle = 'rgba(6,12,8,0.97)';
-    octx.fillRect(rx, ry, rw, rh);
-    octx.strokeStyle = 'rgba(120,130,120,0.3)';
-    octx.strokeRect(rx, ry, rw, rh);
-    octx.strokeStyle = `rgba(140,220,120,${0.35 * backlight + 0.2})`;
+  /* the package on the passenger seat — brown paper, string, never opened */
+  {
+    const px = w * 0.55, py = h * 0.88, pw = w * 0.13, ph = h * 0.13;
+    octx.save();
+    octx.translate(px, py);
+    octx.rotate(-0.06);
+    const paper = octx.createLinearGradient(0, 0, 0, ph);
+    paper.addColorStop(0, '#6b5636');
+    paper.addColorStop(1, '#4a3c26');
+    octx.fillStyle = paper;
+    octx.fillRect(-pw / 2, 0, pw, ph);
+    // creases
+    octx.strokeStyle = 'rgba(30,22,12,0.4)';
     octx.lineWidth = 1;
     octx.beginPath();
-    octx.moveTo(rx + 8, ry + rh * 0.68);
-    octx.lineTo(rx + rw - 8, ry + rh * 0.68);
+    octx.moveTo(-pw / 2, ph * 0.4); octx.lineTo(pw / 2, ph * 0.5);
+    octx.moveTo(0, 0); octx.lineTo(pw * 0.1, ph);
     octx.stroke();
-    const fr = parseFloat(st.freq);
-    const fx = rx + 8 + (rw - 16) * Math.min(1, Math.max(0, (fr - 87) / 21));
-    octx.strokeStyle = st.type === 'sokoa' ? '#c85040' : '#8cdc78';
+    // string cross
+    octx.strokeStyle = 'rgba(20,16,10,0.75)';
     octx.lineWidth = 2;
     octx.beginPath();
-    octx.moveTo(fx, ry + rh * 0.5);
-    octx.lineTo(fx, ry + rh * 0.86);
+    octx.moveTo(0, 0); octx.lineTo(pw * 0.06, ph);
+    octx.moveTo(-pw / 2, ph * 0.45); octx.lineTo(pw / 2, ph * 0.5);
     octx.stroke();
-    let label = `${st.freq}  ${st.name}`;
-    if (inr > 0.45 && st.type !== 'sokoa' && Math.random() < inr * 0.5) {
-      label = label.replace(/\d/g, () => '' + ((Math.random() * 10) | 0));
-    }
-    octx.fillStyle = st.type === 'sokoa'
-      ? 'rgba(230,110,90,0.95)'
-      : inr > 0.6 ? 'rgba(230,120,90,0.9)' : `rgba(140,220,120,${0.6 + 0.35 * backlight})`;
-    octx.font = `${Math.round(h * 0.017)}px "Courier New", monospace`;
-    octx.textAlign = 'center';
-    octx.fillText(label, rx + rw / 2, ry + h * 0.021);
+    octx.restore();
+  }
+
+  /* right CRT: COMPONENT / ROUTE ANALYSIS vector screen */
+  {
+    const rx = w * 0.68, ry = h * 0.72, rw = w * 0.28, rh = h * 0.26;
+    const flick = (inr > 0.4 && Math.random() < inr * 0.4) ? 0.4 : 1;
+    octx.fillStyle = 'rgba(3,10,9,0.97)';
+    octx.fillRect(rx, ry, rw, rh);
+    octx.strokeStyle = `rgba(${TEAL},0.4)`;
+    octx.lineWidth = 1.5;
+    octx.strokeRect(rx, ry, rw, rh);
+    // scanlines
+    octx.fillStyle = 'rgba(0,0,0,0.18)';
+    for (let yy = ry; yy < ry + rh; yy += 3) octx.fillRect(rx, yy, rw, 1);
+
+    glowStroke(`rgba(${TEAL},0.8)`, 7, () => {
+      octx.fillStyle = `rgba(${TEAL},${flick * (0.55 + 0.35 * backlight)})`;
+      octx.font = `${Math.round(h * 0.019)}px "Courier New", monospace`;
+      octx.textAlign = 'left';
+      octx.fillText('ANÁLISIS DE RUTA', rx + 10, ry + h * 0.03);
+      octx.strokeStyle = `rgba(${TEAL},${flick * 0.7})`;
+      octx.lineWidth = 1.4;
+      octx.beginPath();
+      octx.moveTo(rx + 10, ry + h * 0.042); octx.lineTo(rx + rw - 10, ry + h * 0.042);
+      octx.stroke();
+
+      // top-down wireframe of the car with panel cells
+      const cx = rx + rw * 0.28, cy = ry + rh * 0.58, cw = rw * 0.22, cl = rh * 0.5;
+      octx.strokeStyle = `rgba(${TEAL},${flick * 0.8})`;
+      octx.lineWidth = 1.6;
+      octx.strokeRect(cx - cw / 2, cy - cl / 2, cw, cl);
+      octx.strokeRect(cx - cw / 2, cy - cl * 0.12, cw, cl * 0.34);   // cabin cell
+      for (const wy of [-cl * 0.34, cl * 0.34]) {
+        for (const wx of [-cw / 2 - 3, cw / 2 - 1]) {
+          octx.strokeRect(cx + wx, cy + wy - 4, 4, 8);
+        }
+      }
+      // route / mission readout
+      octx.font = `${Math.round(h * 0.017)}px "Courier New", monospace`;
+      const tx = rx + rw * 0.5;
+      const line1 = missionState === 'revealed'
+        ? '» ' + MISSIONS[missionIdx % MISSIONS.length].label.toUpperCase()
+        : missionState === 'broadcast' ? '» SEÑAL 91.8 ···' : '» EN RUTA';
+      octx.fillText(line1, tx, ry + h * 0.11, rw * 0.48);
+      const stx = audio.currentStation;
+      octx.fillText(stx ? `FM ${stx.freq}` : 'FM ---', tx, ry + h * 0.145);
+      octx.fillText(`${Math.round(Math.abs(speed) * 3.6)} KM/H`, tx, ry + h * 0.18);
+      octx.fillText(hourStr, tx, ry + h * 0.215);
+    });
   }
 
   /* rear-view mirror */
@@ -824,7 +924,9 @@ function frame() {
 
   /* --- overlay + map --- */
   octx.clearRect(0, 0, innerWidth, innerHeight);
-  if (interior && driving) drawInterior(dt, inr, rainI, day.darkness, inTun);
+  const inCabin = interior && driving;
+  document.body.classList.toggle('cabin', inCabin);   // diegetic screens replace the HUD
+  if (inCabin) drawInterior(dt, inr, rainI, day.darkness, inTun, hm.str);
   map.update(s, cycle, inr, now);
 
   /* --- HUD --- */

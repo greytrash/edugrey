@@ -1286,20 +1286,20 @@ export class World {
     const treeMat = new THREE.MeshStandardMaterial({ color: '#1b2a12', roughness: 1 });
     const treeMat2 = new THREE.MeshStandardMaterial({ color: '#243618', roughness: 1 });
     const trunkMat = new THREE.MeshStandardMaterial({ color: '#241c12', roughness: 1 });
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 54; i++) {
       const g = new THREE.Group();
       const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.2, 1.6, 6), trunkMat);
       trunk.position.y = 0.8;
       g.add(trunk);
       const mat = Math.random() < 0.5 ? treeMat : treeMat2;
       if (Math.random() < 0.4) {
-        const h = 4.5 + Math.random() * 4;
+        const h = 4.5 + Math.random() * 5;
         const c = new THREE.Mesh(new THREE.ConeGeometry(0.9, h, 7), mat);
         c.position.y = 1.2 + h / 2;
         c.castShadow = true;
         g.add(c);
       } else {
-        const r = 1.6 + Math.random() * 1.8;
+        const r = 1.6 + Math.random() * 1.9;
         const b = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), mat);
         b.scale.y = 0.82;
         b.position.y = 1.6 + r * 0.6;
@@ -1307,7 +1307,19 @@ export class World {
         g.add(b);
       }
       const side = Math.random() < 0.5 ? -1 : 1;
-      push(g, i * (VIEW / 40) + Math.random() * 8, side * (8 + Math.random() * 26), VIEW);
+      // forest crowds right up to the shoulder — the road is barely holding on
+      push(g, i * (VIEW / 54) + Math.random() * 7, side * (5.5 + Math.random() * 28), VIEW);
+    }
+    // low ferns / undergrowth hugging the verge
+    const fernMat = new THREE.MeshStandardMaterial({ color: '#2c3a1d', roughness: 1 });
+    for (let i = 0; i < 22; i++) {
+      const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5 + Math.random() * 0.5, 0), fernMat);
+      b.scale.y = 0.5;
+      b.position.y = 0.3;
+      const g = new THREE.Group();
+      g.add(b);
+      const side = Math.random() < 0.5 ? -1 : 1;
+      push(g, i * (VIEW / 22) + Math.random() * 10, side * (ROAD_HALF + 0.6 + Math.random() * 2), VIEW);
     }
 
     /* green hills and mountain masses off the road */

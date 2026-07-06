@@ -199,6 +199,9 @@ body.touch #horn { right: 108px; bottom: 108px; }
 body.touch #hud { left: 14px; bottom: 112px; font-size: 11px; line-height: 1.6; }
 body.touch #caption { bottom: 24%; }
 
+/* in the cockpit, the glowing dash screens carry the readouts, not the HUD */
+body.cabin #hud { display: none; }
+
 /* ------------------------------------------------------ small screens */
 @media (max-width: 820px) {
   #map { top: 64px; right: 10px; transform: scale(0.72) rotate(0.6deg); transform-origin: top right; }
