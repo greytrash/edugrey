@@ -1,4 +1,8 @@
-# Dalinian Roads · Lithograph Dream — Fase 0 (prototipo de estilo)
+# edugrey
+
+proyectos video
+
+## Dalinian Roads · Lithograph Dream — Fase 0 (prototipo de estilo)
 
 Prototipo jugable en el navegador que fusiona **"Dalinian Roads"** (surrealismo de
 carretera tipo Dalí) con **"Lithograph Dream"** (grabado / litografía de alto
