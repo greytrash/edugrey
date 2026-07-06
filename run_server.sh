@@ -1,8 +1,8 @@
 #!/bin/bash
-# Script para ejecutar el servidor HTTP local del juego (Mac/Linux)
+# Servidor HTTP local para Mundo Gris (Mac/Linux)
 
 echo ""
-echo "🚀 Iniciando servidor HTTP para Dalinian Roads..."
+echo "🚀 Iniciando servidor HTTP para Mundo Gris..."
 echo "📍 Abre tu navegador en: http://127.0.0.1:8099/"
 echo "⏹️  Presiona Ctrl+C para detener el servidor"
 echo ""
