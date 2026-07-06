@@ -114,6 +114,7 @@ export class GameAudio {
     if (this.started) return;
     this.started = true;
     const ctx = (this.ctx = new AudioContext());
+    void ctx.resume().catch(() => {});
     this.master = ctx.createGain();
     this.master.gain.value = 0.8;
     this.master.connect(ctx.destination);
