@@ -7,10 +7,9 @@
 import {
   VILLAGES, MAP_PATH, MAP_TAIL, MAP_DEST, MAP_PEAKS, MAP_TOWNS, CYCLE_LEN,
 } from './route';
+import { reverse } from './util';
 
 const W = 300, H = 340;
-
-function reverse(str: string) { return str.split('').reverse().join(''); }
 
 export class MiniMap {
   el: HTMLCanvasElement;

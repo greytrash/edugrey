@@ -6,6 +6,7 @@ import { sampleDay } from './daycycle';
 import { MiniMap } from './map';
 import { Weather } from './weather';
 import { CYCLE_LEN, VILLAGES, DEST, MISSIONS } from './route';
+import { reverse } from './util';
 
 /* ---------------------------------------------------------------- anomaly */
 const CAPTIONS = [
@@ -20,7 +21,6 @@ function hash(n: number) {
   const x = Math.sin(n * 12.9898) * 43758.5453;
   return x - Math.floor(x);
 }
-function reverse(str: string) { return str.split('').reverse().join(''); }
 
 let cycle = 0;
 
