@@ -118,7 +118,7 @@
 <div id="ui">
   <div id="title">
     <h1>Spanish Road Anomaly</h1>
-    <p>Años setenta. Eres el cartero comarcal — y correo de una red clandestina que lucha con cultura contra la dictadura. Pasas material por la muga y grabas mensajes para RADIO ZUBATO.</p>
+    <p>Operación Euskadi Norte. Un coche viejo, un paquete que no debes abrir, y un teléfono que suena cuando la carretera está más vacía.</p>
   </div>
   <div id="help">
     <b>W</b>/<b>S</b> gas · freno &nbsp; <b>A</b>/<b>D</b> volante &nbsp; <b>C</b> cámara &nbsp; <b>R</b> radio &nbsp; <b>L</b> luces &nbsp; <b>V</b> limpia/lluvia &nbsp; <b>Espacio</b> freno de mano &nbsp; <b>ratón</b> mirar &nbsp; <b>T</b> grabar &nbsp; <b>N</b> hora &nbsp; <b>P</b> pausa
@@ -147,27 +147,25 @@
   <div class="tbtn" id="t-brake">▼</div>
   <div class="tbtn" id="t-gas">▲</div>
 </div>
-<div id="boot"><span>arrancando el taxi…</span></div>
+<div id="boot"><span>sintonizando…</span></div>
 <div id="intro">
   <div class="intro-card">
-    <p class="eyebrow">SPANISH ROAD ANOMALY</p>
+    <p class="eyebrow">OPERACIÓN EUSKADI NORTE</p>
     <h1>La carretera no termina.</h1>
-    <p>Años setenta. Euskadi rural. Eres el cartero comarcal — y correo de una
-    red clandestina que lucha con cultura contra la dictadura: material que
-    cruza la muga escondido entre las sacas, y una radio pirata que espera tu
-    voz. <b>RADIO ZUBATO</b> emite donde la señal no llega.</p>
-    <p style="opacity:.7">Por el camino hay gente haciendo autostop: arrímate a la
-    derecha y reduce para recogerla. Te acompañará y te contará cosas hasta el
-    próximo pueblo.</p>
+    <p>Montes verdes ahogados en niebla. Ni un pueblo en kilómetros: un caserío
+    perdido, un dolmen, un cementerio sin lápidas. En el asiento, un paquete
+    envuelto en papel marrón que no debes abrir. Y en el soporte, un teléfono
+    que suena cuando la carretera está más vacía. <b>Él</b> te dirá dónde parar.</p>
+    <p style="opacity:.7">Cuando llegue el aviso de ENTREGA, busca el coche gris
+    en el arcén y párate a su lado. No preguntes. La radio te hará compañía.</p>
     <p class="controls">
       W/S · acelerar / frenar<br />
       A/D · girar<br />
       C · cámara<br />
-      R · radio (busca la ZUBATO en el dial)<br />
+      R · radio (lofi · synthwave · audiolibro · crimen)<br />
       L · luces<br />
       V · limpiaparabrisas<br />
       Espacio · freno de mano<br />
-      T · grabar para Radio Zubato<br />
       Móvil · botones en pantalla
     </p>
     <p class="small">Pulsa cualquier tecla (o toca la pantalla) para arrancar el audio y conducir.</p>
@@ -198,15 +196,15 @@ import * as THREE from 'three';
    ========================================================================== */
 
 const PALETTE = {
-  skyTop:   '#8fa3b2',      // overcast Basque grey-blue
-  horizon:  '#dfdfd6',      // pale mist
-  ground:   0x6f8f55,       // meadow green
-  gravel:   '#9a9478',
-  olive:    0x4e6b3a,       // oak crown green
-  cypress:  0x39543b,       // pine
-  terracotta: 0x9d4f30,
-  wall:     0xe8e4d8,       // caserío whitewash
-  mtn:      0x66805c,       // green mounts
+  skyTop:   '#7d8f9d',      // encapotado plomizo
+  horizon:  '#cfd2c9',      // bruma húmeda
+  ground:   0x567544,       // prado verde profundo
+  gravel:   '#8d8870',
+  olive:    0x415c34,       // roble viejo
+  cypress:  0x2f4a33,       // pino casi negro
+  terracotta: 0x8d4429,
+  wall:     0xd8d4c6,       // encalado desgastado
+  mtn:      0x4d6549,       // montes verde oscuro
   dashDark: 0x241f1a,
 };
 
@@ -218,7 +216,7 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
 
 const scene  = new THREE.Scene();
-const FOG_NEAR = 700, FOG_FAR = 1950;   // Basque mist, but with real draw distance
+const FOG_NEAR = 550, FOG_FAR = 1750;   // niebla persistente del norte
 scene.fog = new THREE.Fog(new THREE.Color(PALETTE.horizon), FOG_NEAR, FOG_FAR);
 
 const camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.3, 2600);
@@ -230,8 +228,8 @@ rig.position.set(0, 1.24, 0);
 rig.add(camera);
 scene.add(rig);
 
-/* toon gradient map — 4 hard bands -------------------------------------------*/
-const gradColors = new Uint8Array([60, 120, 190, 255]);
+/* toon gradient map — 6 bandas: casi liso, realismo estilizado ---------------*/
+const gradColors = new Uint8Array([40, 80, 120, 165, 210, 255]);
 const gradientMap = new THREE.DataTexture(gradColors, gradColors.length, 1, THREE.RedFormat);
 gradientMap.minFilter = gradientMap.magFilter = THREE.NearestFilter;
 gradientMap.needsUpdate = true;
@@ -394,8 +392,8 @@ function curveSignTexture() {
 }
 
 /* cockpit textures ------------------------------------------------------------ */
-const STATIONS = ['RNE 1', 'RADIO 3', 'LOS 40', 'CADENA SER', 'RADIO ZUBATO', 'APAGADA'];
-let stationIdx = 1, recOn = false;
+const STATIONS = ['LOFI', 'SYNTHWAVE', 'AUDIOLIBRO', 'CRIMEN', 'APAGADA'];
+let stationIdx = 0, recOn = false;
 const radioCanvas = makeCanvas(256, 96);
 function drawRadioFace() {
   const { x } = radioCanvas, W = 256;
@@ -403,11 +401,11 @@ function drawRadioFace() {
   x.fillStyle = '#efe6cf'; x.fillRect(14, 12, 228, 30);
   x.fillStyle = '#3a352c'; x.font = '12px monospace'; x.textAlign = 'center';
   ['88', '92', '96', '100', '104', '108'].forEach((f, i) => x.fillText(f, 32 + i * 39, 33));
-  if (stationIdx < 5) {
+  if (stationIdx < 4) {
     x.fillStyle = '#c23a2a';
-    x.fillRect(26 + stationIdx * 42, 12, 3, 30);
+    x.fillRect(32 + stationIdx * 52, 12, 3, 30);
   }
-  x.fillStyle = stationIdx === 4 ? '#e8935a' : stationIdx < 5 ? '#71d98a' : '#4a463c';
+  x.fillStyle = stationIdx < 4 ? '#71d98a' : '#4a463c';
   x.font = 'bold 16px monospace';
   x.fillText(STATIONS[stationIdx], W / 2, 72);
   return radioCanvas.c;
@@ -628,7 +626,7 @@ function buildCaserio() {
     win.position.set(wx, wy, face); house.add(win);
   }
   // pintada o mural en la fachada, muy de la época
-  if (Math.random() < 0.45) {
+  if (Math.random() < 0.15) {
     const m = muralPlane(w * 0.42, w * 0.42 * 0.5);
     m.position.set(w * 0.2, h * 0.55, face + 0.06);
     house.add(m);
@@ -1017,7 +1015,7 @@ function buildScrub() {
   return grp;
 }
 function buildField() {
-  const tones = [0x86a45c, 0x5e7d46, 0x9aa86a, 0x77935a];   // prados y helechales
+  const tones = [0x6a8a4e, 0x4f6e3e, 0x7a955c, 0x5d7d4a];   // prados húmedos y helechales
   const m = new THREE.Mesh(
     new THREE.PlaneGeometry(60 + Math.random() * 100, 50 + Math.random() * 120),
     toon({ color: tones[(Math.random() * tones.length) | 0] })
@@ -1027,7 +1025,7 @@ function buildField() {
 }
 /* domos suaves con normales continuas: montes pintados, no low-poly ---------- */
 const domeGeo = new THREE.SphereGeometry(1, 22, 12, 0, Math.PI * 2, 0, Math.PI / 2);
-const mtnMats = [toon({ color: 0x66805c }), toon({ color: 0x5d7a58 }), toon({ color: 0x70876a })];
+const mtnMats = [toon({ color: 0x4d6549 }), toon({ color: 0x455e44 }), toon({ color: 0x556d4e })];
 function buildMountain() {
   const grp = new THREE.Object3D();
   const n = 2 + (Math.random() * 3 | 0);
@@ -1040,7 +1038,7 @@ function buildMountain() {
   }
   return grp;
 }
-const hillMat = toon({ color: 0x76995e });
+const hillMat = toon({ color: 0x5b7d4a });
 function buildHills() {                       // colinas intermedias, suaves
   const grp = new THREE.Object3D();
   const n = 1 + (Math.random() * 3 | 0);
@@ -1109,6 +1107,85 @@ function buildGuardrail() {                   // quitamiedos en las curvas
   return grp;
 }
 
+/* ---- Operación Euskadi Norte: bosque cerrado, megalitos, roca -------------- */
+function buildForest() {                      // bosque antiguo, denso, pegado a la vía
+  const grp = new THREE.Object3D();
+  const n = 8 + (Math.random() * 6 | 0);
+  grp.userData.tail = 30;
+  for (let i = 0; i < n; i++) {
+    const t = new THREE.Object3D();
+    if (Math.random() < 0.55) {               // roble/haya viejo
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.38, 2.6, 7), trunkMat);
+      trunk.position.y = 1.3; t.add(trunk);
+      for (let k = 0; k < 3; k++) {
+        const s = 1.6 + Math.random() * 1.4;
+        const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 1), oliveMat);
+        crown.scale.y = 0.85;
+        crown.position.set((Math.random() - 0.5) * 2, 3.4 + Math.random() * 1.6, (Math.random() - 0.5) * 2);
+        t.add(crown);
+      }
+    } else {                                  // pino alto
+      const h = 9 + Math.random() * 5;
+      const c = new THREE.Mesh(new THREE.ConeGeometry(1.2, h, 8), cypressMat);
+      c.position.y = h / 2 + 1.0; t.add(c);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.2, 2.0, 6), trunkMat);
+      trunk.position.y = 1.0; t.add(trunk);
+    }
+    t.position.set((Math.random() - 0.5) * 10, 0, -Math.random() * 30);
+    grp.add(t);
+  }
+  return grp;
+}
+const megalithMat = toon({ color: 0x77736a });
+function buildDolmen() {                      // megalito junto al camino
+  const grp = new THREE.Object3D();
+  grp.userData.poi = 'Piedras más viejas que cualquier frontera. Nadie recuerda quién las puso.';
+  for (const sx of [-0.9, 0.9]) {
+    const up = new THREE.Mesh(new THREE.BoxGeometry(0.65, 2.3, 1.0), megalithMat);
+    up.position.set(sx, 1.1, 0); up.rotation.z = sx * 0.06; grp.add(up);
+  }
+  const cap = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.55, 1.6), megalithMat);
+  cap.position.y = 2.5; cap.rotation.z = 0.045; grp.add(cap);
+  return grp;
+}
+function buildCemetery() {                    // cementerio viejo, sin lápidas
+  const grp = new THREE.Object3D();
+  grp.userData.poi = 'Un cementerio sin lápidas. La hierba recuerda por todos.';
+  grp.userData.tail = 8;
+  for (const [w, d, px, pz] of [[8, 0.3, 0, 3], [8, 0.3, 0, -3], [0.3, 6, 4, 0], [0.3, 6, -4, 0]]) {
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 0.9, d), stoneMat2);
+    wall.position.set(px, 0.45, pz); grp.add(wall);
+  }
+  for (let i = 0; i < 5; i++) {
+    const mound = new THREE.Mesh(new THREE.SphereGeometry(0.55, 10, 6), toon({ color: 0x4a653c }));
+    mound.scale.y = 0.32;
+    mound.position.set((Math.random() - 0.5) * 5.5, 0.12, (Math.random() - 0.5) * 4);
+    grp.add(mound);
+  }
+  const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.4, 0.08), darkMat);
+  crossV.position.set(0, 0.7, 0); grp.add(crossV);
+  const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.08, 0.08), darkMat);
+  crossH.position.set(0, 1.05, 0); grp.add(crossH);
+  return grp;
+}
+function buildRockPortal() {                  // trinchera de roca: templo olvidado
+  const grp = new THREE.Object3D();
+  grp.userData.tail = 26;
+  grp.userData.poi = 'La roca huele a templo. El eco no devuelve tu motor.';
+  const rockMat = toon({ color: 0x59554b });
+  for (const sx of [-11.5, 11.5]) {
+    for (let z = 0; z >= -24; z -= 8) {
+      const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(5 + Math.random() * 2.5, 1), rockMat);
+      rock.scale.set(1, 1.5 + Math.random() * 0.7, 1);
+      rock.position.set(sx + (Math.random() - 0.5) * 2, 3.2, z);
+      grp.add(rock);
+    }
+  }
+  const lintel = new THREE.Mesh(new THREE.BoxGeometry(27, 2.4, 7), rockMat);
+  lintel.position.set(0, 8.6, -12); grp.add(lintel);
+  return grp;
+}
+
 function buildCarMesh(bodyColor, tail) {
   const g = new THREE.Group();
   const paint = toon({ color: bodyColor });
@@ -1162,41 +1239,39 @@ function spawnProp(s) {
   const roll = Math.random();
   const side = Math.random() < 0.5 ? -1 : 1;
   let obj, offset;
-  if (roll < 0.11)      { obj = buildOakGrove();     offset = side * (22 + Math.random() * 60); }
-  else if (roll < 0.18) { obj = buildPineRow();      offset = side * (13 + Math.random() * 35); }
-  else if (roll < 0.26) { obj = buildPole();         offset = side * 9.8; }
-  else if (roll < 0.36) {
-    const oncoming = Math.random() < 0.5;
-    obj = buildTraffic(oncoming);
-    offset = oncoming ? -2.2 : 2.2;
+  // Euskadi Norte: bosque cerrado, casi ninguna huella humana
+  if (roll < 0.24)      { obj = buildForest();       offset = side * (12 + Math.random() * 32); }
+  else if (roll < 0.32) { obj = buildPineRow();      offset = side * (13 + Math.random() * 35); }
+  else if (roll < 0.39) { obj = buildPole();         offset = side * 9.8; }
+  else if (roll < 0.44) {
+    obj = buildTraffic(Math.random() < 0.8);         // casi todo viene de frente
+    offset = Math.random() < 0.8 ? -2.2 : 2.2;
   }
-  else if (roll < 0.41) { obj = buildCyclists();     offset = 6.3; }          // en tu carril, a adelantar
-  else if (roll < 0.45) { obj = buildHitchhiker();   offset = 7.3; obj.userData.hitchOff = true; }  // arcén derecho
-  else if (roll < 0.50) { obj = buildVillage();      offset = 0; }            // travesía completa
-  else if (roll < 0.505){ obj = buildGasolinera();   offset = side * 15.5; }
-  else if (roll < 0.535){ obj = buildBridge();       offset = 0; }
-  else if (roll < 0.55) { obj = buildBull();         offset = side * (14 + Math.random() * 12); }
-  else if (roll < 0.58) { obj = buildMuralWall();    offset = side * (11 + Math.random() * 8); }
-  else if (roll < 0.615){ obj = buildSign();         offset = side * 9.2; }
-  else if (roll < 0.65) { obj = buildHito();         offset = side * 8.6; }
-  else if (roll < 0.685){ obj = buildGuardrail();    offset = side * 8.8; }
-  else if (roll < 0.72) { obj = buildHedge();        offset = side * (24 + Math.random() * 50); }
-  else if (roll < 0.755){ obj = buildHay();          offset = side * (20 + Math.random() * 50); }
-  else if (roll < 0.79) { obj = buildFlock();        offset = side * (18 + Math.random() * 45); }
-  else if (roll < 0.83) { obj = buildScrub();        offset = side * (14 + Math.random() * 25); }
-  else if (roll < 0.89) { obj = buildHills();        offset = side * (130 + Math.random() * 230); obj.userData.bendMul = 0.3; }
-  else if (roll < 0.97) { obj = buildField();        offset = side * (100 + Math.random() * 150); obj.userData.bendMul = 0.5; }
+  else if (roll < 0.49) { obj = buildGuardrail();    offset = side * 8.8; }
+  else if (roll < 0.535){ obj = buildHedge();        offset = side * (24 + Math.random() * 50); }
+  else if (roll < 0.57) { obj = buildFlock();        offset = side * (18 + Math.random() * 45); }
+  else if (roll < 0.60) { obj = buildBridge();       offset = 0; }
+  else if (roll < 0.625){ obj = buildDolmen();       offset = side * (13 + Math.random() * 15); }
+  else if (roll < 0.645){ obj = buildCemetery();     offset = side * (14 + Math.random() * 14); }
+  else if (roll < 0.665){ obj = buildRockPortal();   offset = 0; }
+  else if (roll < 0.685){ obj = buildCaserio();      offset = side * (26 + Math.random() * 45);  // caserío solitario
+                          obj.rotation.y = (Math.random() - 0.5) * 0.8; }
+  else if (roll < 0.71) { obj = buildHito();         offset = side * 8.6; }
+  else if (roll < 0.735){ obj = buildSign();         offset = side * 9.2; }
+  else if (roll < 0.79) { obj = buildScrub();        offset = side * (14 + Math.random() * 25); }
+  else if (roll < 0.86) { obj = buildHills();        offset = side * (130 + Math.random() * 230); obj.userData.bendMul = 0.3; }
+  else if (roll < 0.96) { obj = buildField();        offset = side * (100 + Math.random() * 150); obj.userData.bendMul = 0.5; }
   else                  { obj = buildMountain();     offset = side * (430 + Math.random() * 550); obj.userData.bendMul = 0.12; }
   obj.userData.s = s;
   obj.userData.off = offset;
   scene.add(obj); props.push(obj);
 }
-for (let d = 25; d < WORLD; d += 13 + Math.random() * 15) spawnProp(d);
-// garantiza un pueblo y un puente al arrancar
+for (let d = 25; d < WORLD; d += 12 + Math.random() * 13) spawnProp(d);
+// hitos garantizados del arranque: dolmen, puente, trinchera de roca
 {
-  const h = buildHitchhiker(); h.userData.s = 95;  h.userData.off = 7.3; scene.add(h); props.push(h);
-  const v = buildVillage();    v.userData.s = 150; v.userData.off = 0;   scene.add(v); props.push(v);
-  const b = buildBridge();     b.userData.s = 380; b.userData.off = 0;   scene.add(b); props.push(b);
+  const dm = buildDolmen();     dm.userData.s = 160; dm.userData.off = 15;  scene.add(dm); props.push(dm);
+  const b  = buildBridge();     b.userData.s = 380;  b.userData.off = 0;    scene.add(b);  props.push(b);
+  const rp = buildRockPortal(); rp.userData.s = 620; rp.userData.off = 0;   scene.add(rp); props.push(rp);
 }
 
 /* ============================================================================
@@ -1224,7 +1299,8 @@ const gearKnob = new THREE.Mesh(new THREE.SphereGeometry(0.032, 10, 8), toon({ c
 gearKnob.position.set(0.30, -0.40, -0.455); cab.add(gearKnob);
 
 // hood + wiper
-const hood = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.05, 2.4), whitePaint);
+const hoodPaint = toon({ color: 0x767a70 });
+const hood = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.05, 2.4), hoodPaint);
 hood.position.set(0, -0.62, -2.25); hood.rotation.x = -0.055; cab.add(hood);
 const wiperPivot = new THREE.Object3D();
 wiperPivot.position.set(-0.55, -0.545, -1.12);
@@ -1273,7 +1349,7 @@ column.position.set(0, -0.05, 0.12); column.rotation.x = 1.2; wheelGrp.add(colum
 
 // manos del cartero al volante (giran con él); mangas del uniforme azul
 const skinMat = toon({ color: 0xc9976b });
-const sleeveMat = toon({ color: 0x2a3c5c });
+const sleeveMat = toon({ color: 0x33312c });   // abrigo oscuro, anónimo
 for (const a of [2.35, 0.79]) {                         // 10 y 2
   const hx = Math.cos(a) * 0.185, hy = Math.sin(a) * 0.185;
   const hand = new THREE.Mesh(new THREE.SphereGeometry(0.038, 8, 6), skinMat);
@@ -1460,6 +1536,119 @@ cabinGlow.position.set(0.2, -0.2, -0.7);
 cab.add(cabinGlow);
 
 /* ============================================================================
+   INSTRUMENTOS "PACIFIC DRIVE": CRT verde de análisis, teléfono con llamada,
+   brújula, y el paquete de papel marrón que se desliza en las curvas.
+   ========================================================================== */
+macuto.visible = false;                          // el viaje ya no es de Correos
+
+// --- CRT vectorial verde: COMPONENT ANALYSIS --------------------------------
+const crtCanvas = makeCanvas(256, 192);
+function drawCRT(flick) {
+  const { x } = crtCanvas, W = 256, H = 192;
+  x.fillStyle = '#04140a'; x.fillRect(0, 0, W, H);
+  const G = flick ? '#2a7a4a' : '#37b768';
+  x.strokeStyle = G; x.fillStyle = G; x.lineWidth = 1.5;
+  x.font = 'bold 13px monospace'; x.textAlign = 'left';
+  x.fillText('COMPONENT ANALYSIS', 10, 18);
+  x.strokeRect(6, 26, 148, 130);
+  // silueta vectorial del coche (alzado lateral)
+  x.beginPath();
+  x.moveTo(20, 120); x.lineTo(30, 96); x.lineTo(52, 88); x.lineTo(66, 70);
+  x.lineTo(108, 70); x.lineTo(122, 88); x.lineTo(140, 96); x.lineTo(144, 120);
+  x.closePath(); x.stroke();
+  for (const wx of [48, 118]) { x.beginPath(); x.arc(wx, 120, 11, 0, 7); x.stroke(); }
+  // barras de estado a la derecha
+  x.font = '9px monospace';
+  const labels = ['STRUCTURE', 'ENGINE', 'SIGNAL', 'FUEL'];
+  labels.forEach((lb, i) => {
+    const y = 40 + i * 30;
+    x.fillText(lb, 162, y);
+    x.strokeRect(162, y + 4, 82, 9);
+    x.fillRect(163, y + 5, 80 * (0.55 + Math.sin(i * 3.7 + (flick ? 1 : 0)) * 0.2 + 0.2), 7);
+  });
+  // línea de escaneo
+  const sy = (Date.now() * 0.05) % H;
+  x.fillStyle = 'rgba(90,220,140,0.10)'; x.fillRect(0, sy, W, 5);
+  return crtCanvas.c;
+}
+const crtTex = texFrom(drawCRT(false), 1, 1);
+const crtGrp = new THREE.Object3D();
+crtGrp.position.set(-0.50, -0.29, -0.86);
+crtGrp.rotation.x = 0.18; crtGrp.rotation.y = 0.34;
+cab.add(crtGrp);
+const crtBox = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.23, 0.07), vinyl2);
+crtGrp.add(crtBox);
+const crtFace = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.19),
+  new THREE.MeshBasicMaterial({ map: crtTex }));
+crtFace.position.z = 0.043;
+crtGrp.add(crtFace);
+
+// --- teléfono en soporte: reloj en reposo, [VOZ ACTIVA] en llamada ----------
+const phoneCanvas = makeCanvas(128, 224);
+function drawPhone(state) {                      // 'idle' | 'ring' | 'talk'
+  const { x } = phoneCanvas, W = 128, H = 224;
+  x.fillStyle = '#0a0d10'; x.fillRect(0, 0, W, H);
+  x.textAlign = 'center';
+  if (state === 'idle') {
+    x.fillStyle = '#5a7a6a'; x.font = 'bold 30px monospace';
+    x.fillText('04:12', 64, 96);
+    x.fillStyle = '#3a4a44'; x.font = '11px monospace';
+    x.fillText('SIN SEÑAL', 64, 126);
+  } else {
+    x.fillStyle = '#e8e2d2'; x.font = 'bold 15px monospace';
+    x.fillText('DESCONOCIDO', 64, 40);
+    if (state === 'ring') {
+      x.fillStyle = (Date.now() / 400 | 0) % 2 ? '#71d98a' : '#2a4a38';
+      x.font = '11px monospace';
+      x.fillText('LLAMADA ENTRANTE', 64, 120);
+    } else {
+      x.fillStyle = '#71d98a'; x.font = '10px monospace';
+      x.fillText('[ VOZ ACTIVA ]', 64, 66);
+      // forma de onda dinámica
+      x.fillStyle = '#5adc8c';
+      for (let i = 0; i < 13; i++) {
+        const h = 6 + Math.abs(Math.sin(Date.now() * 0.013 + i * 1.7)) * 42;
+        x.fillRect(12 + i * 8, 130 - h / 2, 5, h);
+      }
+    }
+  }
+  return phoneCanvas.c;
+}
+const phoneTex = texFrom(drawPhone('idle'), 1, 1);
+const phoneGrp = new THREE.Object3D();
+phoneGrp.position.set(0.26, -0.155, -0.72);
+phoneGrp.rotation.x = 0.10; phoneGrp.rotation.y = -0.12;
+cab.add(phoneGrp);
+const phoneBody = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.135, 0.018), toon({ color: 0x14161a }));
+phoneGrp.add(phoneBody);
+const phoneScreen = new THREE.Mesh(new THREE.PlaneGeometry(0.064, 0.118),
+  new THREE.MeshBasicMaterial({ map: phoneTex }));
+phoneScreen.position.z = 0.011;
+phoneGrp.add(phoneScreen);
+const phoneArm = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.10, 0.015), vinyl2);
+phoneArm.position.set(0.26, -0.24, -0.75); phoneArm.rotation.x = 0.5; cab.add(phoneArm);
+
+// --- brújula de bola sobre el salpicadero ------------------------------------
+const compass = new THREE.Mesh(new THREE.SphereGeometry(0.032, 12, 10), toon({ color: 0x10141a }));
+compass.position.set(-0.24, -0.318, -0.93); cab.add(compass);
+const compassBase = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.03, 0.02, 10), vinyl2);
+compassBase.position.set(-0.24, -0.345, -0.93); cab.add(compassBase);
+
+// --- EL PAQUETE: papel marrón y cordel, en el asiento del copiloto ----------
+const pkgGrp = new THREE.Object3D();
+pkgGrp.position.set(0.72, -0.42, -0.20);
+cab.add(pkgGrp);
+const pkgBox = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.20, 0.26), toon({ color: 0x8a6a48 }));
+pkgGrp.add(pkgBox);
+const pkgT1 = new THREE.Mesh(new THREE.BoxGeometry(0.305, 0.205, 0.015), toon({ color: 0x4a4030 }));
+pkgGrp.add(pkgT1);
+const pkgT2 = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.205, 0.265), toon({ color: 0x4a4030 }));
+pkgGrp.add(pkgT2);
+const pkgKnot = new THREE.Mesh(new THREE.SphereGeometry(0.014, 6, 5), toon({ color: 0x4a4030 }));
+pkgKnot.position.y = 0.105; pkgGrp.add(pkgKnot);
+let pkgSlide = 0;
+
+/* ============================================================================
    PASAJEROS — road movie: recoges a alguien, viaja a tu lado y conversa;
    lo dejas en el siguiente pueblo. Personajes de la Euskadi de los 70.
    ========================================================================== */
@@ -1521,12 +1710,161 @@ function boardPassenger(ch) {
   updateModeline();
 }
 function dropPassenger() {
-  showSub(CHARACTERS[passenger].name, 'Aquí me quedo. Ondo ibili, cartero.');
+  showSub(CHARACTERS[passenger].name, 'Aquí me quedo. Ondo ibili.');
   passengerRig.visible = false;
-  macuto.visible = true;
   passenger = null; passWantsOff = false;
   setTimeout(hideSub, 3200);
   updateModeline();
+}
+
+/* ============================================================================
+   LA LLAMADA — el hombre sin nombre. Encargos que pesan cada vez más.
+   Fricción sin detalle: la incertidumbre es el juego.
+   ========================================================================== */
+const CALLS = [
+  ['¿Conduces? Bien. No preguntes quién soy.',
+   'Hay un paquete en el asiento. No lo abras.',
+   'Más adelante verás un coche gris parado. Entrega y sigue.'],
+  ['Anoche saliste limpio. El de hoy pesa más.',
+   'No pares donde haya gente. Ya no queda gente, ¿verdad?',
+   'Mismo trato: coche gris, motor en marcha.'],
+  ['Te han visto. Matrícula apuntada, dicen.',
+   'Gente seria. De despacho y gabardina.',
+   'Entrega rápido. Y no mires el retrovisor.'],
+  ['Este encargo no es como los otros.',
+   'Algunos lo llamarían "un objetivo necesario". Yo lo llamo trabajo.',
+   'Tú decide cómo quieres dormir esta noche.'],
+  ['"Operativo de seguridad", lo llaman ahora.',
+   'Las palabras cada vez significan menos en este país.',
+   'Última curva del encargo. Después hablamos de ti.'],
+  ['Última entrega.',
+   '¿Aún no lo entiendes? El paquete siempre fuiste tú.',
+   'Nos vemos donde la carretera termina.'],
+];
+let callIdx = 0;                 // próximo encargo
+let callPhase = 'idle';          // idle | ring | talk | deliver | done
+let callT = 0;                   // temporizador de fase
+let callLine = 0;
+let nextCallAt = 9;              // s de reloj de juego hasta la primera llamada
+let deliveryAt = null;           // scroll objetivo de entrega
+let meetProp = null;
+let phoneTalkUntil = 0, phoneNextT = 0;
+
+function buildMeetPoint() {                     // coche gris parado, figura al lado
+  const grp = new THREE.Object3D();
+  const car = buildCarMesh(0x84878a, false);
+  car.rotation.y = 0.12;
+  grp.add(car);
+  const fig = buildPersona();
+  fig.position.set(2.1, 0, -1.2); fig.rotation.y = -1.4;
+  grp.add(fig);
+  grp.userData.tail = 6;
+  return grp;
+}
+function ringPhone() {
+  if (!AC) return;
+  for (let b = 0; b < 2; b++) {
+    const t = AC.currentTime + b * 0.62;
+    for (const f of [430, 480]) {
+      const o = AC.createOscillator(); o.type = 'square'; o.frequency.value = f;
+      const g = AC.createGain();
+      g.gain.setValueAtTime(0.0, t);
+      g.gain.linearRampToValueAtTime(0.05, t + 0.02);
+      g.gain.setValueAtTime(0.05, t + 0.34);
+      g.gain.linearRampToValueAtTime(0, t + 0.4);
+      o.connect(g); g.connect(AC.destination);
+      o.start(t); o.stop(t + 0.45);
+    }
+  }
+}
+function schedulePhone() {                       // la voz del hombre, filtrada de auricular
+  if (!AC || AC.currentTime > phoneTalkUntil) return;
+  const horizon = AC.currentTime + 0.22;
+  if (phoneNextT < AC.currentTime - 0.4) phoneNextT = AC.currentTime + 0.04;
+  while (phoneNextT < horizon) {
+    const dur = 0.08 + Math.random() * 0.13;
+    const src = AC.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+    const g = AC.createGain();
+    g.gain.setValueAtTime(0, phoneNextT);
+    g.gain.linearRampToValueAtTime(0.22, phoneNextT + 0.015);
+    g.gain.linearRampToValueAtTime(0, phoneNextT + dur + 0.03);
+    for (const base of [300, 2400]) {
+      const f = AC.createBiquadFilter(); f.type = 'bandpass';
+      f.frequency.value = base * (0.85 + Math.random() * 0.3); f.Q.value = 8;
+      src.connect(f); f.connect(g);
+    }
+    g.connect(AC.destination);
+    src.start(phoneNextT); src.stop(phoneNextT + dur + 0.05);
+    phoneNextT += dur + 0.03 + Math.random() * 0.06;
+    if (Math.random() < 0.12) phoneNextT += 0.3 + Math.random() * 0.5;
+  }
+}
+function updateCallSystem(dt) {
+  if (callPhase === 'done') return;
+  if (callPhase === 'idle') {
+    nextCallAt -= dt;
+    if (nextCallAt <= 0 && callIdx < CALLS.length) {
+      callPhase = 'ring'; callT = 2.3;
+      ringPhone();
+      if (AC && radioOut) radioOut.gain.setTargetAtTime(0.10, AC.currentTime, 0.4);  // la radio se agacha
+    }
+  } else if (callPhase === 'ring') {
+    callT -= dt;
+    if (callT <= 0) { callPhase = 'talk'; callLine = -1; callT = 0.3; }
+  } else if (callPhase === 'talk') {
+    callT -= dt;
+    if (AC) phoneTalkUntil = Math.max(phoneTalkUntil, AC.currentTime + 0.3);
+    if (callT <= 0) {
+      callLine++;
+      const lines = CALLS[callIdx];
+      if (callLine < lines.length) {
+        showSub('EL HOMBRE', lines[callLine]);
+        callT = 2.2 + lines[callLine].split(' ').length * 0.42;
+      } else {
+        hideSub();
+        phoneTalkUntil = 0;
+        if (AC && radioOut) radioOut.gain.setTargetAtTime(0.42, AC.currentTime, 0.6);
+        if (callIdx === CALLS.length - 1) {
+          // la revelación: no hay más puntos; solo carretera
+          callPhase = 'done';
+          setTimeout(() => { showSub('', 'La carretera no termina.'); setTimeout(hideSub, 5000); }, 2500);
+          pkgGrp.visible = true;                 // el último paquete no se entrega
+          updateModeline();
+        } else {
+          callPhase = 'deliver';
+          deliveryAt = scroll + 650 + Math.random() * 450;
+          meetProp = null;
+        }
+      }
+    }
+  } else if (callPhase === 'deliver') {
+    const rem = deliveryAt - scroll;
+    if (!meetProp && rem < 320) {
+      meetProp = buildMeetPoint();
+      meetProp.userData.s = deliveryAt; meetProp.userData.off = 10.6;
+      scene.add(meetProp); props.push(meetProp);
+    }
+    if (rem > -40) {
+      showCue(`ENTREGA · <b>${Math.max(0, rem / 1000).toFixed(1)} km</b> — coche gris, para a su lado`);
+    }
+    if (Math.abs(rem) < 32 && speed < 3.5) {
+      // entregado
+      hideCue();
+      pkgGrp.visible = false;
+      showSub('', 'Entregado. El hombre cuelga sin decir nada.');
+      setTimeout(hideSub, 3400);
+      callIdx++;
+      callPhase = 'idle';
+      nextCallAt = 26 + Math.random() * 14;
+      setTimeout(() => { pkgGrp.visible = true; }, (nextCallAt - 4) * 1000);  // otro paquete aparece
+      updateModeline();
+    } else if (rem < -160) {
+      showSub('EL HOMBRE', 'Lo has pasado. No des la vuelta. Habrá otro punto.');
+      setTimeout(hideSub, 3000);
+      deliveryAt = scroll + 700 + Math.random() * 300;
+      meetProp = null;
+    }
+  }
 }
 
 /* ============================================================================
@@ -1541,15 +1879,8 @@ function correosTexture() {
   return texFrom(c, 1, 1);
 }
 const correosTex = correosTexture();
-function buildTaxi() {                                  // el coche del cartero
-  const g = buildCarMesh(0xd9a52c, true);               // amarillo Correos
-  for (const sx of [-0.96, 0.96]) {
-    const label = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.42),
-      new THREE.MeshBasicMaterial({ map: correosTex, transparent: true }));
-    label.position.set(sx * 1.01, 0.62, 0.3);
-    label.rotation.y = sx > 0 ? Math.PI / 2 : -Math.PI / 2;
-    g.add(label);
-  }
+function buildTaxi() {                                  // el clásico modificado
+  const g = buildCarMesh(0x767a70, true);               // gris verdoso, pátina
   const headGlass = new THREE.MeshBasicMaterial({ color: 0xf6eed6 });
   for (const lx of [-0.58, 0.58]) {
     const l = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.18, 0.06), headGlass);
@@ -1655,11 +1986,11 @@ const postMat = new THREE.ShaderMaterial({
       float lEdge =
         abs(lum(texture(tDiffuse, vUv+vec2(px.x,0)).rgb) - lum(texture(tDiffuse, vUv-vec2(px.x,0)).rgb)) +
         abs(lum(texture(tDiffuse, vUv+vec2(0,px.y)).rgb) - lum(texture(tDiffuse, vUv-vec2(0,px.y)).rgb));
-      lEdge = smoothstep(0.34, 0.80, lEdge);
+      lEdge = smoothstep(0.42, 0.90, lEdge);
 
       float hazeFade = 1.0 - smoothstep(fogNear * 0.8, fogFar * 0.95, dc);
       float edge = clamp(max(dEdge, lEdge*0.85), 0.0, 1.0) * hazeFade;
-      col = mix(col, inkColor, edge * 0.85);
+      col = mix(col, inkColor, edge * 0.45);   // contornos casi invisibles
 
       if (rain > 0.01){
         vec2 rp = vUv * vec2(resolution.x/resolution.y, 1.0) * 24.0;
@@ -1697,10 +2028,11 @@ const TOD = [
   { name:'atardecer', light:0xffb066, li:2.0, amb:0.30, grade:[1.08,0.88,0.78], lift:[0.12,0.05,0.03], exp:0.95, sun:[-9, 4,-6], glow:0.45 },
   { name:'noche',     light:0x9fb4e8, li:0.8, amb:0.20, grade:[0.62,0.70,1.00], lift:[0.02,0.05,0.14], exp:0.72, sun:[ 4, 7,-9], glow:1.5 },
 ];
-let todIndex = 2, rainOn = true, paused = false;   // arranque: atardecer, asfalto mojado
+let todIndex = 1, rainOn = true, paused = false;   // arranque: día lluvioso, luz difusa
 function updateModeline() {
+  const enc = callPhase === 'done' ? ' · sin encargos' : ` · encargo ${Math.min(callIdx + 1, CALLS.length)}/${CALLS.length}`;
   document.getElementById('modeline').textContent =
-    `${TOD[todIndex].name} · ${rainOn ? 'lluvia' : 'despejado'} · ${STATIONS[stationIdx]}${recOn ? ' · ● REC ZUBATO' : ''}${passenger !== null ? ' · 👤 ' + CHARACTERS[passenger].name : ''}`;
+    `${TOD[todIndex].name} · ${rainOn ? 'lluvia' : 'despejado'} · ${STATIONS[stationIdx]}${recOn ? ' · ● REC' : ''}${enc}`;
 }
 function applyTOD() {
   const t = TOD[todIndex];
@@ -1724,17 +2056,15 @@ let radioBus, radioBP, radioOut, hissGain;
 let radioNextT = 0, radioStep = 0, leadDeg = 4;
 
 const RADIO_PROG = [
-  { type: 'talk',  formants: [520, 1550], pace: 1.0,  bp: 1100, hiss: 0.020 },  // RNE 1 — tertulia
-  { type: 'music', style: 'rock',  bpm: 142, root: 82.41,  bp: 1500, hiss: 0.014 }, // RADIO 3
-  { type: 'music', style: 'pop',   bpm: 118, root: 110.0,  bp: 1600, hiss: 0.012 }, // LOS 40
-  { type: 'talk',  formants: [430, 2300], pace: 1.35, bp: 1300, hiss: 0.018 },  // CADENA SER — más nervioso
-  { type: 'music', style: 'folk',  bpm: 96,  root: 146.83, bp: 1350, hiss: 0.026 }, // RADIO ZUBATO — clandestina
-  { type: 'off' },                                                               // APAGADA
+  { type: 'music', style: 'lofi', bpm: 72,  root: 87.31, bp: 1150, hiss: 0.022 }, // LOFI — vinilo lento
+  { type: 'music', style: 'pop',  bpm: 98,  root: 110.0, bp: 1550, hiss: 0.012 }, // SYNTHWAVE
+  { type: 'talk',  formants: [420, 1750], pace: 0.72, bp: 1000, hiss: 0.018 },    // AUDIOLIBRO — voz calma
+  { type: 'talk',  formants: [380, 2150], pace: 0.95, bp: 1150, hiss: 0.026 },    // CRIMEN — tensa, con silencios
+  { type: 'off' },                                                                 // APAGADA
 ];
 const SCALES = {
-  rock:  [0, 3, 5, 7, 10],            // pentatónica menor
   pop:   [0, 2, 3, 5, 7, 8, 10],      // menor natural
-  folk:  [0, 2, 4, 5, 7, 9, 10],      // doinu mixolidio (txistu)
+  lofi:  [0, 3, 5, 7, 10],            // pentatónica menor, acordes largos
 };
 
 function initAudio() {
@@ -1774,7 +2104,7 @@ function initAudio() {
   hiss.start();
 
   radioNextT = AC.currentTime + 0.1;
-  setInterval(scheduleRadio, 60);
+  setInterval(() => { scheduleRadio(); schedulePhone(); }, 60);
   tuneRadio(false);
 }
 
@@ -1836,21 +2166,19 @@ function musicStep(t, i, st) {
       leadDeg = Math.max(0, Math.min(scale.length * 2 - 1, leadDeg + ((Math.random() * 5) | 0) - 2));
       tone(t, degF(leadDeg), stepDur * 0.8, 'sawtooth', 0.13, 2600);
     }
-  } else if (st.style === 'rock') {
-    if (i % 8 === 0 || i % 8 === 6) kick(t);
-    if (i % 8 === 4) noiseHit(t, 0.09, 'bandpass', 1900, 1.2, 0.22);       // caja
-    const RIFF = [0, 0, 3, 0, 5, 5, 3, 0, 0, 0, 3, 3, 7, 5, 3, 0];
-    const semi = RIFF[i];
-    const f = st.root * Math.pow(2, semi / 12);
-    tone(t, f, stepDur * 0.95, 'sawtooth', 0.20, 1300);
-    tone(t, f * 1.5, stepDur * 0.95, 'sawtooth', 0.10, 1300);              // quinta
-  } else { // folk clandestino: txistu (triángulo agudo) y tamboril
-    if (i % 4 === 0) kick(t);                                              // tamboril grave
-    if (i % 4 === 2) noiseHit(t, 0.05, 'bandpass', 3200, 2, 0.10);         // golpe seco
-    tone(t, st.root * 0.5, stepDur * 1.7, 'triangle', 0.22, 420);          // bordón
-    if (i % 2 === 0) {
-      leadDeg = Math.max(0, Math.min(scale.length * 2 - 1, leadDeg + ((Math.random() * 5) | 0) - 2));
-      tone(t, degF(leadDeg) * 2, stepDur * (Math.random() < 0.35 ? 1.8 : 0.9), 'triangle', 0.20, 4200);
+  } else { // lofi: batería perezosa, bajo cálido, acordes de piano eléctrico
+    if (i % 8 === 0 || i % 8 === 5) kick(t);                               // swing sutil
+    if (i % 4 === 2) noiseHit(t, 0.05, 'highpass', 7500, 1, 0.06);         // hat suave
+    if (i % 8 === 0 || i % 8 === 4)
+      tone(t, st.root * (i % 8 === 0 ? 0.5 : 0.375), stepDur * 3.4, 'sine', 0.26, 380);
+    if (i === 0 || i === 8) {                                              // acorde EP largo
+      tone(t, degF(0) , stepDur * 6, 'triangle', 0.10, 1400);
+      tone(t, degF(2) , stepDur * 6, 'triangle', 0.09, 1400);
+      tone(t, degF(4) , stepDur * 6, 'triangle', 0.08, 1400);
+    }
+    if (i % 4 === 3 && Math.random() < 0.4) {                              // nota perdida
+      leadDeg = Math.max(0, Math.min(scale.length * 2 - 1, leadDeg + ((Math.random() * 3) | 0) - 1));
+      tone(t, degF(leadDeg) * 2, stepDur * 1.4, 'triangle', 0.08, 2200);
     }
   }
 }
@@ -2006,6 +2334,7 @@ const TAXI_Z = -3.5;
 let carX = 0;
 let shake = 0, crashCooldown = 0, crashes = 0;
 let staticTimer = 18 + Math.random() * 20, staticFor = 0;   // radio interference
+let frameN = 0;
 
 /* ---------- main loop ------------------------------------------------------ */
 const clock = new THREE.Clock();
@@ -2048,7 +2377,6 @@ function frame() {
     if (crashCooldown > 0) crashCooldown -= dt;
     carX = THREE.MathUtils.lerp(carX, laneX, 0.2);
 
-    let hitchAhead = false;
     for (const p of props) {
       if (p.userData.traffic) p.userData.s += p.userData.v * dt;
       const d = p.userData.s - scroll;
@@ -2056,15 +2384,12 @@ function frame() {
       // el fondo lejano NO se dobla con la carretera (evita el "fondo sin sentido")
       p.position.x = p.userData.off + roadDX(d) * (p.userData.bendMul ?? 1);
 
-      // autoestopista: basta con pasar despacio a su lado (no en el carril contrario)
-      if (p.userData.hitch !== undefined && passenger === null) {
-        if (d > 0 && d < 55) hitchAhead = true;
-        if (d > -7 && d < 13 && speed < 9 && laneX > -0.5) {
-          const ch = p.userData.hitch;
-          scene.remove(p); props.splice(props.indexOf(p), 1);
-          spawnProp(scroll + WORLD - Math.random() * 60);
-          boardPassenger(ch);
-          break;
+      // paradas de contemplación: detenerse junto a un lugar extraño
+      if (p.userData.poi && !p.userData.poiSeen) {
+        if (Math.abs(d) < 45 && speed < 2.5) {
+          p.userData.poiSeen = true;
+          showSub('', p.userData.poi);
+          setTimeout(hideSub, 5200);
         }
       }
 
@@ -2110,12 +2435,8 @@ function frame() {
       }
     }
 
-    /* aviso de recogida */
-    if (passenger === null && hitchAhead && speed > 6.5) {
-      showCue('Alguien hace autostop — <b>arrímate a la derecha y reduce</b>');
-    } else if (passenger === null && !passWantsOff) {
-      hideCue();
-    }
+    /* La Llamada: timbres, encargos, puntos de entrega */
+    updateCallSystem(dt);
 
     /* diálogo del pasajero + petición de bajada */
     if (passenger !== null) {
@@ -2157,6 +2478,22 @@ function frame() {
   taxiExt.rotation.z = -steer * 0.08;
   taxiExt.rotation.y = -steer * 0.15;
   const spdN = speed / MAX_SPEED;
+
+  /* el paquete se desliza sutilmente con las curvas y la frenada */
+  const slideT = THREE.MathUtils.clamp(
+    -steer * 0.05 - curveK(scroll) * speed * speed * 0.0035 + rig.rotation.x * 0.8, -0.07, 0.07);
+  pkgSlide = THREE.MathUtils.lerp(pkgSlide, slideT, 0.04);
+  pkgGrp.position.x = 0.72 + pkgSlide;
+  pkgGrp.rotation.y = pkgSlide * 1.4;
+
+  /* pantallas vivas: CRT parpadea, el teléfono según la llamada */
+  if ((frameN & 3) === 0) {                     // cada 4 frames basta
+    drawCRT(Math.random() < 0.06);
+    crtTex.needsUpdate = true;
+    drawPhone(callPhase === 'ring' ? 'ring' : callPhase === 'talk' ? 'talk' : 'idle');
+    phoneTex.needsUpdate = true;
+  }
+  frameN++;
   cab.position.y = Math.sin(postUniforms.time.value * 34) * 0.0022 * spdN
                  + (Math.abs(laneX) > 7.2 && speed > 2 ? Math.sin(postUniforms.time.value * 60) * 0.004 : 0);
 
@@ -2197,7 +2534,7 @@ function frame() {
     engineGain.gain.setTargetAtTime(speed > 0.3 ? 0.030 + spdN * 0.034 : 0.012, AC.currentTime, 0.1);
 
     /* the anomaly: periodic interference swallows whatever station is on */
-    if (stationIdx < 5 && !paused) {
+    if (stationIdx < 4 && !paused) {
       staticTimer -= dt;
       if (staticTimer <= 0) {
         staticTimer = 25 + Math.random() * 30;
@@ -2242,13 +2579,16 @@ window.__dbg = () => {
   return { speed, laneX, scroll, crashes, impact: postUniforms.impact.value,
            station: STATIONS[stationIdx], rec: recOn,
            lookYaw, lookPitch, audio: !!AC, nearest, nearHitch,
-           passenger: passenger !== null ? CHARACTERS[passenger].name : null,
-           passWantsOff, subOn: subsEl.classList.contains('on'),
+           callPhase, callIdx,
+           deliveryRem: deliveryAt !== null && callPhase === 'deliver' ? Math.round(deliveryAt - scroll) : null,
+           pkgVisible: pkgGrp.visible,
+           subOn: subsEl.classList.contains('on'),
            subText: subsEl.querySelector('.line').textContent,
+           cueOn: cueEl.classList.contains('on'), cueText: cueEl.textContent,
            cam: camMode, lights: lightsOn, rain: rainOn };
 };
-window.__board = (i) => { if (passenger === null) boardPassenger(i ?? 0); };
-window.__askOff = () => { if (passenger !== null) { passLineIdx = CHARACTERS[passenger].lines.length; passLineT = 0; } };
+window.__call = () => { if (callPhase === 'idle') nextCallAt = 0.1; };
+window.__jumpToDelivery = () => { if (callPhase === 'deliver' && deliveryAt) { scroll = deliveryAt - 60; } };
 
 /* ---------- resize --------------------------------------------------------- */
 addEventListener('resize', () => {

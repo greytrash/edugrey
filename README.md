@@ -1,16 +1,27 @@
 # Spanish Road Anomaly
 
-> **La carretera no termina.** Años setenta. Euskadi rural. Eres el cartero
-> comarcal — y correo de una red clandestina que lucha con cultura contra la
-> dictadura: material que cruza la muga entre las sacas, y una radio pirata
-> que espera tu voz. **RADIO ZUBATO** emite donde la señal no llega.
+> **OPERACIÓN EUSKADI NORTE.** Montes verdes ahogados en niebla. Ni un pueblo
+> en kilómetros: un caserío perdido, un dolmen, un cementerio sin lápidas. En
+> el asiento, un paquete envuelto en papel marrón que no debes abrir. Y en el
+> soporte, un teléfono que suena cuando la carretera está más vacía. **Él** te
+> dirá dónde parar.
 
-Prototipo jugable en el navegador: conduces el **coche amarillo de Correos por
-las comarcales del País Vasco de los años 70**, con cámara interior y exterior, **cel shading**
-con contornos de tinta, curvas, tráfico con colisión, faros reales, clima y
-ciclo día/noche — y un **horizonte donde todo existe de verdad**: nada aparece
-de repente. Arranca al atardecer, con lluvia y los faros encendidos; cada
-20–55 s una interferencia se traga la emisora que estés escuchando.
+Prototipo jugable en el navegador (ref. *Pacific Drive* × *Kentucky Route
+Zero*): un coche clásico modificado por las comarcales despobladas del norte,
+con cámara interior y exterior, realismo estilizado (6 bandas toon, contornos
+mínimos), curvas de montaña, tráfico escaso casi todo de frente, faros
+reales, clima y ciclo día/noche — y un **horizonte donde todo existe de
+verdad**: nada aparece de repente.
+
+**La Llamada** es el eje: seis encargos de un hombre sin nombre, cada uno más
+pesado que el anterior — puntos de encuentro que huelen a vigilancia,
+"objetivos necesarios", "operativos de seguridad" — contados con ambigüedad e
+insinuación, sin detalle operativo. Suena el teléfono ([VOZ ACTIVA] con forma
+de onda), la radio se agacha, los subtítulos hablan frío e imperativo, y el
+aviso de ENTREGA te guía hasta un coche gris en el arcén. Para a su lado y el
+paquete desaparece del asiento… hasta la siguiente llamada. La verdad, en el
+último encargo. Además: **paradas de contemplación** — detente junto al
+dolmen, el cementerio o la trinchera de roca y la carretera te dirá algo.
 
 > La versión anterior (estética litografía/grabado con dithering Bayer) está en
 > el historial de git; el diseño técnico original sigue en `docs/DESIGN.md`.
@@ -32,14 +43,13 @@ de repente. Arranca al atardecer, con lluvia y los faros encendidos; cada
 | `W` / `S` | gas / freno |
 | `A` / `D` | volante (muerde con velocidad; menos agarre con lluvia o en la grava) |
 | `C` | cámara: interior ⇄ exterior (taxi visible, con su franja roja y cartel) |
-| `R` | cambiar emisora — cada una suena distinta (RNE 1, Radio 3, Los 40, SER, **Radio Zubato**, apagada) |
+| `R` | radio: **LOFI**, **SYNTHWAVE**, **AUDIOLIBRO**, **CRIMEN** (síntesis en vivo, libre de derechos), apagada |
 | `L` | faros (foco real que ilumina la carretera) |
 | `V` | lluvia + limpiaparabrisas animado |
 | `Espacio` | freno de mano (bloquea las ruedas, la trasera se suelta) |
 | `ratón` | arrastrar para mirar la cabina, el asiento o por la ventanilla |
 | **móvil** | botonera táctil automática: ◀ ▶ volante, ▲ gas, ▼ freno, ✋ freno de mano, y fila CAM · RADIO · LUZ · LLUVIA · HORA · REC; arrastra el dedo por la escena para mirar |
-| `T` | grabar tu mensaje para Radio Zubato con la emisora del macuto (● REC) |
-| **autostop** | pasa despacio junto a quien hace dedo para recogerlo; se baja cuando paras tras su charla |
+| `T` | grabar (● REC en la CB del asiento) |
 | `N` | hora del día (día → atardecer → noche) |
 | `P` | pausa |
 
