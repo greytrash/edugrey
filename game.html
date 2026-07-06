@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>El Juego · Carreteras Dalinianas</title>
+<style>
+    body {
+        background: linear-gradient(135deg, #0a0f1e 0%, #0c1222 100%);
+        font-family: 'Courier New', 'Segoe UI', monospace;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        margin: 0;
+    }
+
+    /* Contenedor principal estilo consola */
+    .game-console {
+        max-width: 800px;
+        width: 100%;
+        background: #0a0c15;
+        border-radius: 32px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+        overflow: hidden;
+        border: 1px solid #2a2e3f;
+    }
+
+    /* Pantalla estilo CRT */
+    .screen {
+        background: #03050a;
+        padding: 20px;
+        color: #b7f9e2;
+        text-shadow: 0 0 3px #0affb0;
+        border-bottom: 3px solid #1f2a3e;
+    }
+
+    .stats-panel {
+        background: #0e111c;
+        padding: 12px 20px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        justify-content: space-between;
+        border-bottom: 1px solid #23283c;
+        font-size: 0.8rem;
+    }
+
+    .stats-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .stat-badge {
+        background: #151c2a;
+        padding: 4px 8px;
+        border-radius: 20px;
+        color: #d1d9ff;
+        font-weight: bold;
+    }
+
+    .stat-badge span {
+        color: #ffb347;
+    }
+
+    .relato-box {
+        background: #0b0e18;
+        padding: 6px 12px;
+        border-radius: 20px;
+        border-left: 4px solid #ffb347;
+    }
+
+    /* Zona de historia */
+    .story-box {
+        background: #07090f;
+        border-radius: 20px;
+        padding: 20px;
+        margin: 15px 0;
+        min-height: 280px;
+        box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
+    }
+
+    .story-text p {
+        margin: 12px 0;
+        line-height: 1.5;
+        font-size: 1rem;
+    }
+
+    .dialogue {
+        background: #0e1320;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 16px;
+        border-left: 4px solid #3c6e71;
+    }
+
+    .ending-tag {
+        background: #3b1e2c;
+        color: #ffb3b3;
+        padding: 10px;
+        border-radius: 12px;
+        text-align: center;
+    }
+
+    /* Panel de mandos (gamepad) */
+    .gamepad {
+        background: #11141f;
+        padding: 25px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .buttons-row {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .action-btn {
+        background: #1e243b;
+        border: none;
+        font-family: monospace;
+        font-size: 2rem;
+        font-weight: bold;
+        padding: 15px 25px;
+        min-width: 100px;
+        border-radius: 60px;
+        color: white;
+        cursor: pointer;
+        box-shadow: 0 5px 0 #0a0c14;
+        transition: 0.05s linear;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+
+    .action-btn:active {
+        transform: translateY(3px);
+        box-shadow: 0 2px 0 #0a0c14;
+    }
+
+    .action-btn.special {
+        background: #2a2e4a;
+        color: #ffd966;
+        font-size: 1rem;
+    }
+
+    .action-btn:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: 0 5px 0 #0a0c14;
+    }
+
+    .system-bar {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        margin-top: 10px;
+    }
+
+    .sys-btn {
+        background: #191e2e;
+        border: none;
+        font-family: monospace;
+        padding: 8px 16px;
+        border-radius: 40px;
+        color: #aaa;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    .sys-btn:hover {
+        background: #252d42;
+        color: #fff;
+    }
+
+    .event-log {
+        background: #05070c;
+        border-radius: 16px;
+        padding: 12px;
+        font-size: 0.7rem;
+        color: #6f8f8f;
+        max-height: 100px;
+        overflow-y: auto;
+    }
+
+    h2 {
+        color: #ffcf8a;
+        font-size: 1.4rem;
+        margin-top: 0;
+    }
+
+    hr {
+        border-color: #23283c;
+    }
+
+    /* Choice buttons */
+    .choices {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 15px;
+    }
+
+    .choice-btn {
+        background: #131929;
+        border: 1px solid #2a3350;
+        font-family: monospace;
+        font-size: 0.9rem;
+        padding: 12px 18px;
+        border-radius: 12px;
+        color: #c4d4ff;
+        cursor: pointer;
+        text-align: left;
+        transition: 0.1s;
+    }
+
+    .choice-btn:hover {
+        background: #1a2236;
+        border-color: #4a6090;
+        color: #fff;
+    }
+
+    .choice-btn:active {
+        transform: translateY(1px);
+    }
+
+    /* Toast notification */
+    .toast {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1e2a40;
+        color: #b7f9e2;
+        padding: 10px 22px;
+        border-radius: 30px;
+        font-family: monospace;
+        font-size: 0.85rem;
+        border: 1px solid #2e4060;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+        z-index: 100;
+    }
+
+    .toast.show {
+        opacity: 1;
+    }
+</style>
+</head>
+<body>
+
+<div class="game-console">
+
+    <!-- Pantalla CRT -->
+    <div class="screen">
+        <div class="stats-panel">
+            <div class="stats-grid">
+                <div class="stat-badge">⏰ <span id="stat-time">06:00</span></div>
+                <div class="stat-badge">📍 <span id="stat-loc">—</span></div>
+                <div class="stat-badge">🎭 <span id="stat-state">—</span></div>
+            </div>
+            <div class="relato-box" id="relato-label">Relato: <em id="relato-name">—</em></div>
+        </div>
+
+        <div class="story-box">
+            <div class="story-text" id="story-text">
+                <p>Cargando...</p>
+            </div>
+            <div class="choices" id="choices"></div>
+        </div>
+    </div>
+
+    <!-- Panel de mandos -->
+    <div class="gamepad">
+        <div class="system-bar">
+            <button class="sys-btn" id="btn-save" onclick="saveGame()">💾 GUARDAR</button>
+            <button class="sys-btn" id="btn-load" onclick="loadGame()">📀 CARGAR</button>
+            <button class="sys-btn" onclick="restartGame()">🔄 REINICIAR</button>
+        </div>
+
+        <div>
+            <p style="color:#3e5060;font-size:0.7rem;margin-bottom:6px">📜 Registro de eventos</p>
+            <div class="event-log" id="event-log"></div>
+        </div>
+    </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =============================================================================
+   EL JUEGO — Carreteras Dalinianas
+   A text adventure set in a surreal road through impossible landscapes.
+   Self-contained. Save/load via localStorage. No build step required.
+   ============================================================================= */
+
+// ---------------------------------------------------------------------------
+// GAME DATA
+// ---------------------------------------------------------------------------
+
+const SCENES = {
+    intro: {
+        relato: "El amanecer imposible",
+        loc: "Km 0 — La Entrada",
+        time: "06:00",
+        state: "Inicio",
+        text: [
+            "Despiertas al volante. El motor ronronea suave, como un gato dormido bajo el capó.",
+            "Ante ti, una carretera de dos líneas amarillas se extiende hacia un horizonte que no debería existir: el sol es un sello rojo suspendido a media altura, los montes son recortes de papel contra un cielo de grafito.",
+            "Tienes el depósito lleno y un mapa que no coincide con ningún lugar conocido."
+        ],
+        choices: [
+            { text: "⬆ Arrancar el motor y avanzar hacia el horizonte", next: "camino_recto" },
+            { text: "🔍 Bajarse del coche e inspeccionar los alrededores", next: "borde_carretera" }
+        ]
+    },
+
+    camino_recto: {
+        relato: "La carretera que nunca termina",
+        loc: "Km 7 — La Recta",
+        time: "07:15",
+        state: "En marcha",
+        text: [
+            "La carretera se estira. Los kilómetros se suceden en perfecta simetría — línea, línea, línea — pero el horizonte no se acerca.",
+            "A tu izquierda, un arco de piedra demasiado grande para cualquier ciudad humana emerge de la llanura. No hay ciudad. Solo el arco.",
+            "A tu derecha, un obelisco cubierto de collage — recortes de periódico del futuro pegados con cera — proyecta una sombra en dirección equivocada."
+        ],
+        choices: [
+            { text: "🏛 Detenerse y examinar el arco de piedra", next: "arco" },
+            { text: "🗿 Acercarse al obelisco con el collage", next: "obelisco" },
+            { text: "⬆ Seguir conduciendo sin parar", next: "tormenta" }
+        ]
+    },
+
+    borde_carretera: {
+        relato: "Lo que crece en los márgenes",
+        loc: "Km 0 — Arcén",
+        time: "06:20",
+        state: "Explorando",
+        text: [
+            "El suelo fuera del asfalto es suave, casi esponjoso, como corcho pintado de ocre.",
+            "Junto a una roca encuentras una nota doblada. La letra es tuya, pero no la recuerdas:",
+            { type: "dialogue", text: "«No confíes en el espejo retrovisor. Lo que aparece allí ya no está aquí.»" },
+            "Guardas la nota. El sol-sello pulsa una vez, como un faro."
+        ],
+        choices: [
+            { text: "🚗 Volver al coche y arrancar", next: "camino_recto" },
+            { text: "👁 Mirar en el espejo retrovisor antes de volver", next: "espejo" }
+        ]
+    },
+
+    arco: {
+        relato: "La puerta sin ciudad",
+        loc: "Km 7 — El Arco",
+        time: "08:00",
+        state: "Contemplando",
+        text: [
+            "El arco mide treinta metros de altura. Sus dovelas son huesos de ballena pulidos a mano.",
+            "Al pasar por debajo oyes una voz que habla en un idioma que entiendes pero no puedes repetir. Te dice que la carretera tiene tres estados: la que fue, la que es y la que aún no ha sido.",
+            "Atraviesas el arco. El cielo al otro lado es el mismo, pero el sol-sello ha cambiado de color: ahora es de un azul profundo."
+        ],
+        choices: [
+            { text: "🌀 Adentrarse en el territorio del arco azul", next: "territorio_azul" },
+            { text: "↩ Volver a la carretera principal", next: "camino_recto" }
+        ]
+    },
+
+    obelisco: {
+        relato: "El periódico del mañana",
+        loc: "Km 7 — El Obelisco",
+        time: "08:30",
+        state: "Leyendo",
+        text: [
+            "Los recortes del obelisco hablan de eventos que aún no han sucedido: una tormenta de arena de color malva, el descubrimiento de un océano bajo el desierto, una carretera que conduce de vuelta al momento en que naciste.",
+            "Al fondo de uno de los recortes hay una coordenada: Km 33.",
+            { type: "dialogue", text: "Un texto añade: «La litografía no miente. La realidad, sí.»" }
+        ],
+        choices: [
+            { text: "🗺 Buscar el Km 33 en el mapa imposible", next: "km33" },
+            { text: "↩ Volver a la carretera principal", next: "camino_recto" }
+        ]
+    },
+
+    espejo: {
+        relato: "El reflejo diferido",
+        loc: "Km 0 — Arcén",
+        time: "06:25",
+        state: "Perturbado",
+        text: [
+            "En el espejo retrovisor ves la carretera tal como era hace una hora: vacía, sin coche, sin tú.",
+            "Luego el reflejo parpadea y muestra algo más: una figura en el arcén que te observa desde donde tú estabas hace un instante.",
+            "La figura lleva tu ropa. Se gira lentamente. Antes de que puedas ver su cara, el reflejo vuelve a ser normal.",
+            { type: "dialogue", text: "La nota tenía razón." }
+        ],
+        choices: [
+            { text: "🚗 Subir al coche rápidamente y alejarse", next: "camino_recto" },
+            { text: "🔄 Girarse para mirar directamente hacia atrás", next: "figura" }
+        ]
+    },
+
+    tormenta: {
+        relato: "La tormenta de grafito",
+        loc: "Km 19 — La Llanura",
+        time: "10:00",
+        state: "Bajo la tormenta",
+        text: [
+            "La lluvia llega sin aviso. No es agua: son trazos de grafito que caen en diagonal, cubriendo el parabrisas con líneas de sombreado.",
+            "La visibilidad cae a cero. Reduces la velocidad. El coche derrapa levemente sobre el asfalto mojado de tinta.",
+            "Por la radio — que no encendiste — suena una voz que enumera distancias: «Km 33, Km 33, Km 33…»"
+        ],
+        choices: [
+            { text: "🎯 Seguir hacia el Km 33 guiado por la radio", next: "km33" },
+            { text: "⛔ Parar el coche y esperar a que escampe", next: "espera_tormenta" }
+        ]
+    },
+
+    espera_tormenta: {
+        relato: "El ojo del grabado",
+        loc: "Km 19 — Parado",
+        time: "11:30",
+        state: "Esperando",
+        text: [
+            "Aparcas en el arcén y apagas el motor. La lluvia de grafito golpea el techo con ritmo de metrónomo.",
+            "Mientras esperas, observas cómo el paisaje se transforma: cada gota de tinta añade detalle, como una aguafuerte que se graba sola.",
+            "Las montañas al fondo ahora tienen texturas que antes no existían. Los árboles (que tampoco estaban antes) tienen sombras perfectas.",
+            "Cuando para de llover, el mundo es un grabado de Piranesi. Hermoso. Inquietante."
+        ],
+        choices: [
+            { text: "📸 Contemplar el paisaje y continuar", next: "km33" },
+            { text: "↩ Volver al inicio para repensar la ruta", next: "camino_recto" }
+        ]
+    },
+
+    figura: {
+        relato: "El doble",
+        loc: "Km 0 — Arcén",
+        time: "06:30",
+        state: "Confrontado",
+        text: [
+            "Te giras. El arcén está vacío.",
+            "Pero en el suelo, donde la figura estaba, hay huellas de tus propias botas — que van hacia ti en lugar de alejarse.",
+            { type: "dialogue", text: "Una voz que es la tuya dice desde ningún lugar: «Ya he llegado. Ahora te toca a ti.»" },
+            "Decides no pensar en ello. La carretera espera."
+        ],
+        choices: [
+            { text: "🚗 Subir al coche. La carretera espera.", next: "camino_recto" }
+        ]
+    },
+
+    territorio_azul: {
+        relato: "El país del sol azul",
+        loc: "Más allá del Km 7",
+        time: "09:15",
+        state: "Tierra extraña",
+        text: [
+            "Al otro lado del arco, la carretera continúa pero el cielo ha cambiado de estado.",
+            "El sol azul proyecta sombras alargadas en tonos malva. Las rocas flotan a media altura, ancladas al suelo por finos hilos de luz.",
+            "Encuentras una gasolinera que vende combustible de recuerdos. El precio es un minuto de tu infancia por cada diez litros.",
+            { type: "dialogue", text: "El empleado —un señor con bigote de mariposa— dice: «El Km 33 está cerca. ¿Lleno?»" }
+        ],
+        choices: [
+            { text: "⛽ Llenar el depósito (ceder un recuerdo)", next: "km33_lleno" },
+            { text: "🚗 Continuar sin repostar", next: "km33" }
+        ]
+    },
+
+    km33: {
+        relato: "El destino imposible",
+        loc: "Km 33 — El Horizonte",
+        time: "13:00",
+        state: "Llegado",
+        text: [
+            "El Km 33 es un cruce. Cuatro carreteras. Ninguna indicación.",
+            "En el centro del cruce hay una mesa — la mesa de Dalí, con las patas demasiado largas — y sobre ella un mapa doblado.",
+            "El mapa muestra exactamente el territorio que has recorrido: el arco, el obelisco, la tormenta, el espejo. Y al final, una X sobre el Km 33.",
+            { type: "dialogue", text: "Al dorso del mapa: «El viaje era el destino. Elige tu siguiente imposible.»" }
+        ],
+        choices: [
+            { text: "🌅 Tomar la carretera del amanecer permanente", next: "final_amanecer" },
+            { text: "🌑 Tomar la carretera de la noche litográfica", next: "final_noche" },
+            { text: "🔄 Volver al Km 0 y empezar de nuevo", next: "intro" }
+        ]
+    },
+
+    km33_lleno: {
+        relato: "El destino con memoria",
+        loc: "Km 33 — El Horizonte",
+        time: "13:00",
+        state: "Llegado (cargado)",
+        text: [
+            "Llegas al Km 33 con el depósito lleno de recuerdos ajenos mezclados con los tuyos.",
+            "El empleado de bigote de mariposa tenía razón: el Km 33 es un cruce.",
+            "Pero ahora, con el combustible de la memoria, el mapa sobre la mesa de Dalí cobra otro sentido: puedes ver rutas que los demás no ven.",
+            { type: "dialogue", text: "Una ruta adicional aparece en el mapa, trazada en tinta azul: «El camino que nunca recorriste.»" }
+        ],
+        choices: [
+            { text: "🔵 Tomar el camino de tinta azul (ruta secreta)", next: "final_secreto" },
+            { text: "🌅 Tomar la carretera del amanecer permanente", next: "final_amanecer" },
+            { text: "🌑 Tomar la carretera de la noche litográfica", next: "final_noche" }
+        ]
+    },
+
+    final_amanecer: {
+        relato: "Final: El amanecer que dura",
+        loc: "Más allá del mapa",
+        time: "06:00",
+        state: "★ Final conseguido",
+        text: [
+            "La carretera del amanecer permanente te lleva a un lugar donde siempre son las seis de la mañana.",
+            "La luz es dorada, larga, perfecta. El sol-sello está exactamente en el horizonte, ni sube ni baja.",
+            "Aparcas. Sales del coche. El aire huele a papel recién impreso y a cera caliente.",
+            "Delante de ti, la carretera continúa para siempre hacia un amanecer que nunca llegará a ser día.",
+            { type: "ending", text: "FIN · El Amanecer Eterno" }
+        ],
+        choices: [
+            { text: "🔄 Jugar de nuevo", next: "intro" }
+        ]
+    },
+
+    final_noche: {
+        relato: "Final: La litografía viva",
+        loc: "Más allá del mapa",
+        time: "00:00",
+        state: "★ Final conseguido",
+        text: [
+            "La carretera de la noche litográfica te sumerge en un mundo de tinta pura: blanco, negro, grises perfectamente tramados.",
+            "Cada objeto es un grabado en movimiento. Tú mismo te vuelves parte del estilo: tus bordes se definen, tu interior se hatcha con líneas oblicuas.",
+            "La carretera se convierte en una página. La página se convierte en un libro. El libro se cierra.",
+            { type: "ending", text: "FIN · La Litografía Viva" }
+        ],
+        choices: [
+            { text: "🔄 Jugar de nuevo", next: "intro" }
+        ]
+    },
+
+    final_secreto: {
+        relato: "Final: El camino no tomado",
+        loc: "Ningún lugar",
+        time: "??:??",
+        state: "★★ Final secreto",
+        text: [
+            "El camino de tinta azul no aparece en ningún mapa porque lleva a un lugar que no existe en el plano de la realidad: el espacio entre dos decisiones.",
+            "Aquí están todos los caminos que no tomaste. Puedes verlos a la vez, superpuestos como capas de una impresión mal registrada.",
+            "La figura del arcén está aquí. Te saluda. Ahora entiendes que eras tú en otra versión del mismo viaje.",
+            { type: "dialogue", text: "«Bienvenido», dices. «Bienvenido», responde." },
+            { type: "ending", text: "FIN SECRETO · El Camino No Tomado" }
+        ],
+        choices: [
+            { text: "🔄 Jugar de nuevo", next: "intro" }
+        ]
+    }
+};
+
+// ---------------------------------------------------------------------------
+// GAME STATE
+// ---------------------------------------------------------------------------
+
+let state = {
+    scene: "intro",
+    visited: [],
+    log: []
+};
+
+// ---------------------------------------------------------------------------
+// RENDERING
+// ---------------------------------------------------------------------------
+
+function render() {
+    const scene = SCENES[state.scene];
+    if (!scene) return;
+
+    // Stats
+    document.getElementById("stat-time").textContent = scene.time;
+    document.getElementById("stat-loc").textContent = scene.loc;
+    document.getElementById("stat-state").textContent = scene.state;
+    document.getElementById("relato-name").textContent = scene.relato;
+
+    // Story text
+    const storyEl = document.getElementById("story-text");
+    storyEl.innerHTML = "";
+    for (const item of scene.text) {
+        if (typeof item === "string") {
+            const p = document.createElement("p");
+            p.textContent = item;
+            storyEl.appendChild(p);
+        } else if (item.type === "dialogue") {
+            const div = document.createElement("div");
+            div.className = "dialogue";
+            div.textContent = item.text;
+            storyEl.appendChild(div);
+        } else if (item.type === "ending") {
+            const div = document.createElement("div");
+            div.className = "ending-tag";
+            div.textContent = item.text;
+            storyEl.appendChild(div);
+        }
+    }
+
+    // Choices
+    const choicesEl = document.getElementById("choices");
+    choicesEl.innerHTML = "";
+    for (const choice of scene.choices) {
+        const btn = document.createElement("button");
+        btn.className = "choice-btn";
+        btn.textContent = choice.text;
+        btn.onclick = () => choose(choice);
+        choicesEl.appendChild(btn);
+    }
+
+    // Event log
+    const logEl = document.getElementById("event-log");
+    logEl.innerHTML = state.log.slice(-30).map(e => `<div>${e}</div>`).join("");
+    logEl.scrollTop = logEl.scrollHeight;
+}
+
+// ---------------------------------------------------------------------------
+// GAME LOGIC
+// ---------------------------------------------------------------------------
+
+function choose(choice) {
+    const scene = SCENES[state.scene];
+    logEvent(`${scene.loc} → ${choice.text.replace(/^\p{Emoji_Presentation}\s*/u, "").trim()}`);
+
+    if (!state.visited.includes(state.scene)) {
+        state.visited.push(state.scene);
+    }
+
+    state.scene = choice.next;
+    render();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function logEvent(msg) {
+    const now = new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
+    state.log.push(`[${now}] ${msg}`);
+}
+
+// ---------------------------------------------------------------------------
+// SAVE / LOAD / RESTART
+// ---------------------------------------------------------------------------
+
+function saveGame() {
+    try {
+        localStorage.setItem("eljuego_save", JSON.stringify(state));
+        showToast("💾 Partida guardada");
+        logEvent("Partida guardada");
+        render();
+    } catch (e) {
+        showToast("⚠ No se pudo guardar");
+    }
+}
+
+function loadGame() {
+    try {
+        const raw = localStorage.getItem("eljuego_save");
+        if (!raw) { showToast("📀 No hay partida guardada"); return; }
+        state = JSON.parse(raw);
+        showToast("📀 Partida cargada");
+        logEvent("Partida cargada");
+        render();
+    } catch (e) {
+        showToast("⚠ Error al cargar");
+    }
+}
+
+function restartGame() {
+    if (!confirm("¿Reiniciar la partida desde el principio?")) return;
+    state = { scene: "intro", visited: [], log: [] };
+    logEvent("Partida reiniciada");
+    showToast("🔄 Reiniciando...");
+    render();
+}
+
+// ---------------------------------------------------------------------------
+// TOAST
+// ---------------------------------------------------------------------------
+
+let toastTimer = null;
+function showToast(msg) {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove("show"), 2000);
+}
+
+// ---------------------------------------------------------------------------
+// BOOT
+// ---------------------------------------------------------------------------
+
+logEvent("El juego ha comenzado");
+render();
+</script>
+</body>
+</html>
