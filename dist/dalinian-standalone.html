@@ -62,12 +62,14 @@
 
   #help {
     position: absolute; left: 26px; bottom: calc(4vh + 14px);
+    right: 330px;
     font-size: 11px; line-height: 1.7; opacity: .8;
   }
+  #hud .mode { max-width: 300px; }
 
   #subs {
     position: absolute; left: 50%; transform: translateX(-50%);
-    bottom: calc(4vh + 30px); width: min(70ch, 82vw); text-align: center;
+    bottom: calc(4vh + 64px); width: min(70ch, 82vw); text-align: center;
     font-size: 18px; line-height: 1.45; opacity: 0; transition: opacity .45s ease;
     text-shadow: 0 2px 6px rgba(0,0,0,.85);
   }
@@ -121,7 +123,7 @@
     <p>Operación Euskadi Norte. Un coche viejo, un paquete que no debes abrir, y un teléfono que suena cuando la carretera está más vacía.</p>
   </div>
   <div id="help">
-    <b>W</b>/<b>S</b> gas · freno &nbsp; <b>A</b>/<b>D</b> volante &nbsp; <b>C</b> cámara &nbsp; <b>R</b> radio &nbsp; <b>L</b> luces &nbsp; <b>V</b> limpia/lluvia &nbsp; <b>Espacio</b> freno de mano &nbsp; <b>ratón</b> mirar &nbsp; <b>T</b> grabar &nbsp; <b>N</b> hora &nbsp; <b>P</b> pausa
+    <b>W</b>/<b>S</b> gas · freno &nbsp; <b>A</b>/<b>D</b> volante &nbsp; <b>C</b> cámara ×3 &nbsp; <b>R</b> radio &nbsp; <b>±</b> volumen &nbsp; <b>H</b> claxon &nbsp; <b>F</b>/<b>G</b> teléfono &nbsp; <b>L</b> luces &nbsp; <b>V</b> lluvia &nbsp; <b>Espacio</b> freno mano &nbsp; <b>ratón/mando</b> mirar &nbsp; <b>N</b> hora &nbsp; <b>P</b> pausa
   </div>
   <div id="hud">
     <div><span class="spd">0</span> <span class="unit">km/h</span></div>
@@ -139,7 +141,9 @@
     <div class="tbtn" id="t-lights">LUZ</div>
     <div class="tbtn" id="t-rain">LLUVIA</div>
     <div class="tbtn" id="t-hora">HORA</div>
-    <div class="tbtn" id="t-rec">REC</div>
+    <div class="tbtn" id="t-horn">📢</div>
+    <div class="tbtn" id="t-ans">☎</div>
+    <div class="tbtn" id="t-hang">✕</div>
   </div>
   <div class="tbtn" id="t-left">◀</div>
   <div class="tbtn" id="t-right">▶</div>
@@ -156,8 +160,10 @@
     perdido, un dolmen, un cementerio sin lápidas. En el asiento, un paquete
     envuelto en papel marrón que no debes abrir. Y en el soporte, un teléfono
     que suena cuando la carretera está más vacía. <b>Él</b> te dirá dónde parar.</p>
-    <p style="opacity:.7">Cuando llegue el aviso de ENTREGA, busca el coche gris
-    en el arcén y párate a su lado. No preguntes. La radio te hará compañía.</p>
+    <p style="opacity:.7">Te llamas Gorka. Primero, sigue el aviso de RECOGIDA
+    hasta la gasolinera y aparca junto al surtidor. Después contesta al
+    teléfono (F) — o cuélgalo (G) y atente a las consecuencias. Cuando llegue
+    el aviso de ENTREGA, busca el coche gris y párate a su lado.</p>
     <p class="controls">
       W/S · acelerar / frenar<br />
       A/D · girar<br />
@@ -397,7 +403,8 @@ function curveSignTexture() {
 }
 
 /* cockpit textures ------------------------------------------------------------ */
-const STATIONS = ['LOFI', 'SYNTHWAVE', 'AUDIOLIBRO', 'CRIMEN', 'APAGADA'];
+const STATIONS = ['NIEBLA FM', 'COSTA NORTE', 'DESVÍO 98.5', 'RADIO ARCÉN',
+                  'EUSKADI FANTASMA', 'MONTE BAJO FM', 'ÚLTIMA GASOLINERA', 'KM CERO', 'APAGADA'];
 let stationIdx = 0, recOn = false;
 const radioCanvas = makeCanvas(256, 96);
 function drawRadioFace() {
@@ -406,12 +413,12 @@ function drawRadioFace() {
   x.fillStyle = '#efe6cf'; x.fillRect(14, 12, 228, 30);
   x.fillStyle = '#3a352c'; x.font = '12px monospace'; x.textAlign = 'center';
   ['88', '92', '96', '100', '104', '108'].forEach((f, i) => x.fillText(f, 32 + i * 39, 33));
-  if (stationIdx < 4) {
+  if (stationIdx < 8) {
     x.fillStyle = '#c23a2a';
-    x.fillRect(32 + stationIdx * 52, 12, 3, 30);
+    x.fillRect(20 + stationIdx * 28, 12, 3, 30);
   }
-  x.fillStyle = stationIdx < 4 ? '#71d98a' : '#4a463c';
-  x.font = 'bold 16px monospace';
+  x.fillStyle = stationIdx < 8 ? '#71d98a' : '#4a463c';
+  x.font = 'bold 13px monospace';
   x.fillText(STATIONS[stationIdx], W / 2, 72);
   return radioCanvas.c;
 }
@@ -1117,6 +1124,7 @@ function buildForest() {                      // bosque antiguo, denso, pegado a
   const grp = new THREE.Object3D();
   const n = 8 + (Math.random() * 6 | 0);
   grp.userData.tail = 30;
+  const sway = [];
   for (let i = 0; i < n; i++) {
     const t = new THREE.Object3D();
     if (Math.random() < 0.55) {               // roble/haya viejo
@@ -1128,17 +1136,20 @@ function buildForest() {                      // bosque antiguo, denso, pegado a
         crown.scale.y = 0.85;
         crown.position.set((Math.random() - 0.5) * 2, 3.4 + Math.random() * 1.6, (Math.random() - 0.5) * 2);
         t.add(crown);
+        sway.push({ m: crown, ph: Math.random() * 6.28 });
       }
     } else {                                  // pino alto
       const h = 9 + Math.random() * 5;
       const c = new THREE.Mesh(new THREE.ConeGeometry(1.2, h, 8), cypressMat);
       c.position.y = h / 2 + 1.0; t.add(c);
+      sway.push({ m: c, ph: Math.random() * 6.28 });
       const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.2, 2.0, 6), trunkMat);
       trunk.position.y = 1.0; t.add(trunk);
     }
     t.position.set((Math.random() - 0.5) * 10, 0, -Math.random() * 30);
     grp.add(t);
   }
+  grp.userData.sway = sway;
   return grp;
 }
 const megalithMat = toon({ color: 0x77736a });
@@ -1188,6 +1199,94 @@ function buildRockPortal() {                  // trinchera de roca: templo olvid
   }
   const lintel = new THREE.Mesh(new THREE.BoxGeometry(27, 2.4, 7), rockMat);
   lintel.position.set(0, 8.6, -12); grp.add(lintel);
+  grp.userData.portal = true;                   // la radio pierde cobertura aquí
+  return grp;
+}
+
+/* ---- fauna del norte --------------------------------------------------- */
+function buildBirds() {                         // bando cruzando el cielo
+  const grp = new THREE.Object3D();
+  const dark = toon({ color: 0x22201c });
+  const birds = [];
+  const n = 5 + (Math.random() * 5 | 0);
+  for (let i = 0; i < n; i++) {
+    const b = new THREE.Object3D();
+    const wings = [];
+    for (const sx of [-1, 1]) {
+      const w = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.012, 0.09), dark);
+      w.position.x = sx * 0.13; b.add(w); wings.push(w);
+    }
+    b.position.set((Math.random() - 0.5) * 8, 13 + Math.random() * 9 + i * 0.4, -i * 1.6);
+    grp.add(b);
+    birds.push({ wings, ph: Math.random() * 6.28 });
+  }
+  grp.userData.birds = birds;
+  grp.userData.fly = -(16 + Math.random() * 12);   // vienen hacia ti, altas
+  grp.userData.vx = (Math.random() - 0.5) * 2.4;
+  grp.userData.tail = n * 1.6;
+  return grp;
+}
+const hideMat = toon({ color: 0x7a5a3a });
+function buildDeer() {                          // corzo, observador silencioso
+  const g = new THREE.Object3D();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.42, 0.85), hideMat);
+  body.position.y = 0.85; g.add(body);
+  const neck = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.5, 0.14), hideMat);
+  neck.position.set(0, 1.25, 0.38); neck.rotation.x = 0.4; g.add(neck);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.16, 0.3), hideMat);
+  head.position.set(0, 1.5, 0.52); g.add(head);
+  for (const [ax, az] of [[-0.05, 0.02], [0.05, 0.02]]) {
+    const antler = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.24, 0.02), toon({ color: 0x4a3a28 }));
+    antler.position.set(ax, 1.66, az + 0.46); antler.rotation.z = ax * 6; g.add(antler);
+  }
+  for (const [lx, lz] of [[-0.1, 0.3], [0.1, 0.3], [-0.1, -0.3], [0.1, -0.3]]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.66, 0.06), hideMat);
+    leg.position.set(lx, 0.33, lz); g.add(leg);
+  }
+  g.rotation.y = Math.random() * 6.28;
+  return g;
+}
+function buildCows() {                          // vacas pastando
+  const grp = new THREE.Object3D();
+  const tones = [0x5a4a3e, 0x33302c, 0x6e5c4c];
+  const n = 2 + (Math.random() * 3 | 0);
+  for (let i = 0; i < n; i++) {
+    const c = new THREE.Object3D();
+    const mat = toon({ color: tones[(Math.random() * tones.length) | 0] });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.62, 1.2), mat);
+    body.position.y = 0.85; c.add(body);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.32, 0.42), mat);
+    head.position.set(0, 0.55, 0.72); c.add(head);
+    for (const [lx, lz] of [[-0.24, 0.42], [0.24, 0.42], [-0.24, -0.42], [0.24, -0.42]]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.55, 0.1), mat);
+      leg.position.set(lx, 0.27, lz); c.add(leg);
+    }
+    c.position.set((Math.random() - 0.5) * 14, 0, (Math.random() - 0.5) * 12);
+    c.rotation.y = Math.random() * 6.28;
+    grp.add(c);
+  }
+  return grp;
+}
+function buildHorses() {                        // caballos monteses
+  const grp = new THREE.Object3D();
+  const n = 1 + (Math.random() * 2 | 0);
+  for (let i = 0; i < n; i++) {
+    const c = new THREE.Object3D();
+    const mat = toon({ color: 0x6a4a32 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.55, 1.3), mat);
+    body.position.y = 1.15; c.add(body);
+    const neck = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.7, 0.22), mat);
+    neck.position.set(0, 1.6, 0.6); neck.rotation.x = 0.5; c.add(neck);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.2, 0.45), mat);
+    head.position.set(0, 1.92, 0.85); c.add(head);
+    for (const [lx, lz] of [[-0.17, 0.5], [0.17, 0.5], [-0.17, -0.5], [0.17, -0.5]]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.9, 0.09), mat);
+      leg.position.set(lx, 0.45, lz); c.add(leg);
+    }
+    c.position.set((Math.random() - 0.5) * 10, 0, (Math.random() - 0.5) * 8);
+    c.rotation.y = Math.random() * 6.28;
+    grp.add(c);
+  }
   return grp;
 }
 
@@ -1244,39 +1343,49 @@ function spawnProp(s) {
   const roll = Math.random();
   const side = Math.random() < 0.5 ? -1 : 1;
   let obj, offset;
-  // Euskadi Norte: bosque cerrado, casi ninguna huella humana
-  if (roll < 0.24)      { obj = buildForest();       offset = side * (12 + Math.random() * 32); }
-  else if (roll < 0.32) { obj = buildPineRow();      offset = side * (13 + Math.random() * 35); }
-  else if (roll < 0.39) { obj = buildPole();         offset = side * 9.8; }
-  else if (roll < 0.44) {
+  // Euskadi Norte: bosque cerrado, huella humana escasa pero presente
+  if (roll < 0.22)      { obj = buildForest();       offset = side * (12 + Math.random() * 32); }
+  else if (roll < 0.29) { obj = buildPineRow();      offset = side * (13 + Math.random() * 35); }
+  else if (roll < 0.355){ obj = buildPole();         offset = side * 9.8; }
+  else if (roll < 0.40) {
     obj = buildTraffic(Math.random() < 0.8);         // casi todo viene de frente
     offset = Math.random() < 0.8 ? -2.2 : 2.2;
   }
-  else if (roll < 0.49) { obj = buildGuardrail();    offset = side * 8.8; }
-  else if (roll < 0.535){ obj = buildHedge();        offset = side * (24 + Math.random() * 50); }
-  else if (roll < 0.57) { obj = buildFlock();        offset = side * (18 + Math.random() * 45); }
+  else if (roll < 0.44) { obj = buildGuardrail();    offset = side * 8.8; }
+  else if (roll < 0.475){ obj = buildHedge();        offset = side * (24 + Math.random() * 50); }
+  else if (roll < 0.505){ obj = buildFlock();        offset = side * (18 + Math.random() * 45); }
+  else if (roll < 0.53) { obj = buildBirds();        offset = side * (10 + Math.random() * 40); }
+  else if (roll < 0.55) { obj = buildCows();         offset = side * (20 + Math.random() * 40); }
+  else if (roll < 0.562){ obj = buildHorses();       offset = side * (26 + Math.random() * 45); }
+  else if (roll < 0.574){ obj = buildDeer();         offset = side * (12 + Math.random() * 18); }
   else if (roll < 0.60) { obj = buildBridge();       offset = 0; }
-  else if (roll < 0.625){ obj = buildDolmen();       offset = side * (13 + Math.random() * 15); }
-  else if (roll < 0.645){ obj = buildCemetery();     offset = side * (14 + Math.random() * 14); }
-  else if (roll < 0.665){ obj = buildRockPortal();   offset = 0; }
-  else if (roll < 0.685){ obj = buildCaserio();      offset = side * (26 + Math.random() * 45);  // caserío solitario
+  else if (roll < 0.622){ obj = buildDolmen();       offset = side * (13 + Math.random() * 15); }
+  else if (roll < 0.64) { obj = buildCemetery();     offset = side * (14 + Math.random() * 14); }
+  else if (roll < 0.658){ obj = buildRockPortal();   offset = 0; }
+  else if (roll < 0.672){ obj = buildGasolinera();   offset = side * 15.5; }
+  else if (roll < 0.69) { obj = buildVillage();      offset = 0; }            // aldea pequeña, rara
+  else if (roll < 0.71) { obj = buildCaserio();      offset = side * (26 + Math.random() * 45);
                           obj.rotation.y = (Math.random() - 0.5) * 0.8; }
-  else if (roll < 0.71) { obj = buildHito();         offset = side * 8.6; }
-  else if (roll < 0.735){ obj = buildSign();         offset = side * 9.2; }
-  else if (roll < 0.79) { obj = buildScrub();        offset = side * (14 + Math.random() * 25); }
-  else if (roll < 0.86) { obj = buildHills();        offset = side * (130 + Math.random() * 230); obj.userData.bendMul = 0.3; }
-  else if (roll < 0.96) { obj = buildField();        offset = side * (100 + Math.random() * 150); obj.userData.bendMul = 0.5; }
+  else if (roll < 0.732){ obj = buildHito();         offset = side * 8.6; }
+  else if (roll < 0.755){ obj = buildSign();         offset = side * 9.2; }
+  else if (roll < 0.80) { obj = buildScrub();        offset = side * (14 + Math.random() * 25); }
+  else if (roll < 0.865){ obj = buildHills();        offset = side * (130 + Math.random() * 230); obj.userData.bendMul = 0.3; }
+  else if (roll < 0.965){ obj = buildField();        offset = side * (100 + Math.random() * 150); obj.userData.bendMul = 0.5; }
   else                  { obj = buildMountain();     offset = side * (430 + Math.random() * 550); obj.userData.bendMul = 0.12; }
   obj.userData.s = s;
   obj.userData.off = offset;
   scene.add(obj); props.push(obj);
 }
 for (let d = 25; d < WORLD; d += 12 + Math.random() * 13) spawnProp(d);
-// hitos garantizados del arranque: dolmen, puente, trinchera de roca
+// hitos garantizados del arranque: dolmen, puente, y LA GASOLINERA de la misión
 {
   const dm = buildDolmen();     dm.userData.s = 160; dm.userData.off = 15;  scene.add(dm); props.push(dm);
   const b  = buildBridge();     b.userData.s = 380;  b.userData.off = 0;    scene.add(b);  props.push(b);
-  const rp = buildRockPortal(); rp.userData.s = 620; rp.userData.off = 0;   scene.add(rp); props.push(rp);
+  const gs = buildGasolinera(); gs.userData.s = 680; gs.userData.off = 15.5;
+  const groundPkg = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.24, 0.3), toon({ color: 0x8a6a48 }));
+  groundPkg.position.set(-1.2, 0.12, 1.4); gs.add(groundPkg);   // el paquete espera junto al surtidor
+  scene.add(gs); props.push(gs);
+  const rp = buildRockPortal(); rp.userData.s = 980; rp.userData.off = 0;   scene.add(rp); props.push(rp);
 }
 
 /* ============================================================================
@@ -1590,7 +1699,7 @@ crtGrp.add(crtFace);
 
 // --- teléfono en soporte: reloj en reposo, [VOZ ACTIVA] en llamada ----------
 const phoneCanvas = makeCanvas(128, 224);
-function drawPhone(state) {                      // 'idle' | 'ring' | 'talk'
+function drawPhone(state, who = 'DESCONOCIDO') { // 'idle' | 'ring' | 'talk'
   const { x } = phoneCanvas, W = 128, H = 224;
   x.fillStyle = '#0a0d10'; x.fillRect(0, 0, W, H);
   x.textAlign = 'center';
@@ -1601,7 +1710,7 @@ function drawPhone(state) {                      // 'idle' | 'ring' | 'talk'
     x.fillText('SIN SEÑAL', 64, 126);
   } else {
     x.fillStyle = '#e8e2d2'; x.font = 'bold 15px monospace';
-    x.fillText('DESCONOCIDO', 64, 40);
+    x.fillText(who || 'DESCONOCIDO', 64, 40);
     if (state === 'ring') {
       x.fillStyle = (Date.now() / 400 | 0) % 2 ? '#71d98a' : '#2a4a38';
       x.font = '11px monospace';
@@ -1652,6 +1761,7 @@ pkgGrp.add(pkgT2);
 const pkgKnot = new THREE.Mesh(new THREE.SphereGeometry(0.014, 6, 5), toon({ color: 0x4a4030 }));
 pkgKnot.position.y = 0.105; pkgGrp.add(pkgKnot);
 let pkgSlide = 0;
+pkgGrp.visible = false;                          // aún no lo has recogido
 
 /* ============================================================================
    PASAJEROS — road movie: recoges a alguien, viaja a tu lado y conversa;
@@ -1726,14 +1836,15 @@ function dropPassenger() {
    LA LLAMADA — el hombre sin nombre. Encargos que pesan cada vez más.
    Fricción sin detalle: la incertidumbre es el juego.
    ========================================================================== */
-const CALLS = [
-  ['¿Conduces? Bien. No preguntes quién soy.',
-   'Hay un paquete en el asiento. No lo abras.',
-   'Más adelante verás un coche gris parado. Entrega y sigue.'],
-  ['Anoche saliste limpio. El de hoy pesa más.',
-   'No pares donde haya gente. Ya no queda gente, ¿verdad?',
+/* Gorka: la misión del paquete. Nadie explica nada del todo. */
+const MAN_CALLS = [
+  ['Gorka… ¿lo tienes?',
+   'No hace falta que respondas. Sé que lo tienes.',
+   'Conduce. Un coche gris te espera más adelante. Ya sabes cómo va esto.'],
+  ['Saliste limpio. El siguiente pesa más.',
+   'No pares donde haya gente. Ya casi no queda gente, ¿verdad?',
    'Mismo trato: coche gris, motor en marcha.'],
-  ['Te han visto. Matrícula apuntada, dicen.',
+  ['Te han visto, Gorka. Matrícula apuntada, dicen.',
    'Gente seria. De despacho y gabardina.',
    'Entrega rápido. Y no mires el retrovisor.'],
   ['Este encargo no es como los otros.',
@@ -1746,14 +1857,38 @@ const CALLS = [
    '¿Aún no lo entiendes? El paquete siempre fuiste tú.',
    'Nos vemos donde la carretera termina.'],
 ];
-let callIdx = 0;                 // próximo encargo
-let callPhase = 'idle';          // idle | ring | talk | deliver | done
-let callT = 0;                   // temporizador de fase
-let callLine = 0;
-let nextCallAt = 9;              // s de reloj de juego hasta la primera llamada
-let deliveryAt = null;           // scroll objetivo de entrega
+const WIFE_POOL = [
+  '¿Gorka? ¿Me oyes? Dime que me oyes.',
+  '¿Dónde estás? Dijiste que hoy volvías pronto.',
+  'Te noto raro. No me digas que no, que te lo noto.',
+  'Ha llamado alguien preguntando por ti. No ha dado el nombre.',
+  '¿Qué es ese ruido? ¿Dónde estás metido?',
+  'La niña ha preguntado por ti en la cena.',
+  'Prométeme que no es como lo del invierno pasado.',
+  'Si no me lo quieres contar, no me lo cuentes. Pero vuelve.',
+  'Hay tormenta esta noche. No corras, ¿me oyes? No corras.',
+];
+const WIFE_RETRY = ['¿Me has colgado? Gorka.', 'Está bien. Está bien… Ten cuidado.'];
+function sample(arr, n) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; }
+  return a.slice(0, n);
+}
+
+let mission = 'toStation';       // toStation | cinematic | drive
+let stationAt = 680;             // la gasolinera de la recogida
+let cin = null, cinStep = -1;
+let callState = 'none';          // none | ring | talk
+let caller = null;               // { who, kind, lines }
+let callLine = 0, callT = 0, ringT = 0, ringBeep = 0;
+let pendingCalls = [];           // { at, make }
+let gameT = 0;
+let manIdx = 0;                  // encargos completados del hombre
+let manHung = false, wifeMissed = false, narrativeDone = false;
+let deliveryAt = null;
 let meetProp = null;
 let phoneTalkUntil = 0, phoneNextT = 0;
+let phoneFormants = [300, 2400];
 
 function buildMeetPoint() {                     // coche gris parado, figura al lado
   const grp = new THREE.Object3D();
@@ -1793,7 +1928,7 @@ function schedulePhone() {                       // la voz del hombre, filtrada 
     g.gain.setValueAtTime(0, phoneNextT);
     g.gain.linearRampToValueAtTime(0.22, phoneNextT + 0.015);
     g.gain.linearRampToValueAtTime(0, phoneNextT + dur + 0.03);
-    for (const base of [300, 2400]) {
+    for (const base of phoneFormants) {
       const f = AC.createBiquadFilter(); f.type = 'bandpass';
       f.frequency.value = base * (0.85 + Math.random() * 0.3); f.Q.value = 8;
       src.connect(f); f.connect(g);
@@ -1804,45 +1939,150 @@ function schedulePhone() {                       // la voz del hombre, filtrada 
     if (Math.random() < 0.12) phoneNextT += 0.3 + Math.random() * 0.5;
   }
 }
-function updateCallSystem(dt) {
-  if (callPhase === 'done') return;
-  if (callPhase === 'idle') {
-    nextCallAt -= dt;
-    if (nextCallAt <= 0 && callIdx < CALLS.length) {
-      callPhase = 'ring'; callT = 2.3;
-      ringPhone();
-      if (AC && radioOut) radioOut.gain.setTargetAtTime(0.10, AC.currentTime, 0.4);  // la radio se agacha
+/* --- llamadas: contestar (F/A) o colgar (G/B), con consecuencias --------- */
+function startRing(c) {
+  caller = c; callState = 'ring'; ringT = 8.5; ringBeep = 0;
+  phoneFormants = c.kind === 'wife' ? [520, 2550] : [300, 2400];
+  if (AC && radioOut) radioOut.gain.setTargetAtTime(0.10 * radioVol, AC.currentTime, 0.4);
+  showCue(`☎ <b>${c.who}</b> — F contestar · G colgar`);
+}
+function answerCall() {
+  if (callState !== 'ring') return;
+  callState = 'talk'; callLine = -1; callT = 0.35;
+  hideCue();
+}
+function hangCall() {
+  if (callState === 'none') return;
+  hideCue(); hideSub();
+  const c = caller;
+  callState = 'none'; caller = null; phoneTalkUntil = 0;
+  if (AC && radioOut) radioOut.gain.setTargetAtTime(0.42 * radioVol, AC.currentTime, 0.6);
+  if (c.kind === 'wife') {
+    if (!wifeMissed) {
+      wifeMissed = true;
+      pendingCalls.push({ at: gameT + 24, make: () => ({ who: 'AMAIA', kind: 'wife', lines: WIFE_RETRY.slice() }) });
+    } else {
+      showSub('', '(Amaia no vuelve a llamar esta noche.)'); setTimeout(hideSub, 3200);
+      queueMan(18);
     }
-  } else if (callPhase === 'ring') {
-    callT -= dt;
-    if (callT <= 0) { callPhase = 'talk'; callLine = -1; callT = 0.3; }
-  } else if (callPhase === 'talk') {
+  } else {
+    // al hombre no se le cuelga
+    manHung = true;
+    pendingCalls.push({ at: gameT + 14, make: () => {
+      const lines = ['No vuelvas a hacer eso.', ...MAN_CALLS[manIdx]];
+      return { who: 'DESCONOCIDO', kind: 'man', lines };
+    }});
+  }
+}
+function queueMan(delay) {
+  if (manIdx >= MAN_CALLS.length) return;
+  pendingCalls.push({ at: gameT + delay, make: () => ({ who: 'DESCONOCIDO', kind: 'man', lines: MAN_CALLS[manIdx].slice() }) });
+}
+function endTalk() {
+  hideSub();
+  const c = caller;
+  callState = 'none'; caller = null; phoneTalkUntil = 0;
+  if (AC && radioOut) radioOut.gain.setTargetAtTime(0.42 * radioVol, AC.currentTime, 0.6);
+  if (c.kind === 'wife') {
+    queueMan(20 + Math.random() * 8);
+  } else {
+    if (manIdx === MAN_CALLS.length - 1) {
+      narrativeDone = true;
+      setTimeout(() => { showSub('', 'La carretera no termina.'); setTimeout(hideSub, 5000); }, 2500);
+      updateModeline();
+    } else {
+      deliveryAt = scroll + 650 + Math.random() * 450;
+      meetProp = null;
+    }
+  }
+}
+
+/* --- guion de la Fase 1: recogida, Amaia, el hombre ----------------------- */
+const CINEMA = [
+  [0.0,  '(Gorka aparca junto al surtidor. El motor calla.)'],
+  [3.6,  '(Baja. La puerta suena a hojalata vieja.)'],
+  [7.2,  '(Junto al surtidor hay un paquete de papel marrón, atado con cordel. Nadie a la vista.)'],
+  [11.4, '(Lo coge. Pesa más de lo que parece.)'],
+  [14.8, '(Vuelve. Cierra. Arranca.)'],
+];
+function updateNarrative(dt) {
+  gameT += dt;
+
+  /* misión 1: llegar a la gasolinera */
+  if (mission === 'toStation') {
+    const rem = stationAt - scroll;
+    if (rem > -60) {
+      showCue(`RECOGIDA · <b>${Math.max(0, rem / 1000).toFixed(1)} km</b> — gasolinera, aparca junto al surtidor`);
+    }
+    if (Math.abs(rem) < 40 && speed < 2.4) {
+      mission = 'cinematic'; cin = { t: 0 }; cinStep = -1;
+      hideCue();
+      const keep = camMode; cin.prevCam = keep;
+      cab.visible = false; taxiExt.visible = true;   // nos vemos desde fuera
+      updateModeline();
+    } else if (rem < -140) {
+      showSub('', '(Se ha pasado el desvío. Hay otra gasolinera más adelante.)');
+      setTimeout(hideSub, 3000);
+      stationAt = scroll + 520;
+      const g2 = buildGasolinera(); g2.userData.s = stationAt; g2.userData.off = 15.5;
+      scene.add(g2); props.push(g2);
+    }
+    return;
+  }
+
+  /* cinemática de recogida */
+  if (mission === 'cinematic') {
+    cin.t += dt;
+    for (let i = cinStep + 1; i < CINEMA.length; i++) {
+      if (cin.t >= CINEMA[i][0]) {
+        cinStep = i;
+        showSub('', CINEMA[i][1]);
+        if (i === 1 || i === 4) doorThunk();
+        if (i === 3) pkgGrp.visible = true;
+      }
+    }
+    if (cin.t > 17.5) {
+      mission = 'drive'; hideSub();
+      camMode = cin.prevCam ?? 0; applyCam();
+      cin = null;
+      pendingCalls.push({ at: gameT + 16, make: () => ({ who: 'AMAIA', kind: 'wife', lines: sample(WIFE_POOL, 4) }) });
+      updateModeline();
+    }
+    return;
+  }
+
+  /* en ruta: llamadas pendientes */
+  if (callState === 'none') {
+    for (let i = 0; i < pendingCalls.length; i++) {
+      if (gameT >= pendingCalls[i].at) {
+        const c = pendingCalls.splice(i, 1)[0].make();
+        startRing(c);
+        break;
+      }
+    }
+  } else if (callState === 'ring') {
+    ringT -= dt; ringBeep -= dt;
+    if (ringBeep <= 0) { ringPhone(); ringBeep = 2.1; }
+    if (ringT <= 0) {
+      showSub('', '(No lo has cogido.)'); setTimeout(hideSub, 2200);
+      hangCall();
+    }
+  } else if (callState === 'talk') {
     callT -= dt;
     if (AC) phoneTalkUntil = Math.max(phoneTalkUntil, AC.currentTime + 0.3);
     if (callT <= 0) {
       callLine++;
-      const lines = CALLS[callIdx];
-      if (callLine < lines.length) {
-        showSub('EL HOMBRE', lines[callLine]);
-        callT = 2.2 + lines[callLine].split(' ').length * 0.42;
+      if (callLine < caller.lines.length) {
+        showSub(caller.who === 'AMAIA' ? 'AMAIA' : 'EL HOMBRE', caller.lines[callLine]);
+        callT = 2.2 + caller.lines[callLine].split(' ').length * 0.42;
       } else {
-        hideSub();
-        phoneTalkUntil = 0;
-        if (AC && radioOut) radioOut.gain.setTargetAtTime(0.42, AC.currentTime, 0.6);
-        if (callIdx === CALLS.length - 1) {
-          // la revelación: no hay más puntos; solo carretera
-          callPhase = 'done';
-          setTimeout(() => { showSub('', 'La carretera no termina.'); setTimeout(hideSub, 5000); }, 2500);
-          pkgGrp.visible = true;                 // el último paquete no se entrega
-          updateModeline();
-        } else {
-          callPhase = 'deliver';
-          deliveryAt = scroll + 650 + Math.random() * 450;
-          meetProp = null;
-        }
+        endTalk();
       }
     }
-  } else if (callPhase === 'deliver') {
+  }
+
+  /* entrega del encargo del hombre */
+  if (deliveryAt !== null && callState === 'none' && !narrativeDone) {
     const rem = deliveryAt - scroll;
     if (!meetProp && rem < 320) {
       meetProp = buildMeetPoint();
@@ -1852,16 +2092,15 @@ function updateCallSystem(dt) {
     if (rem > -40) {
       showCue(`ENTREGA · <b>${Math.max(0, rem / 1000).toFixed(1)} km</b> — coche gris, para a su lado`);
     }
-    if (Math.abs(rem) < 32 && speed < 3.5) {
-      // entregado
+    if (Math.abs(rem) < 45 && speed < 3.5) {
       hideCue();
       pkgGrp.visible = false;
+      deliveryAt = null;
       showSub('', 'Entregado. El hombre cuelga sin decir nada.');
       setTimeout(hideSub, 3400);
-      callIdx++;
-      callPhase = 'idle';
-      nextCallAt = 26 + Math.random() * 14;
-      setTimeout(() => { pkgGrp.visible = true; }, (nextCallAt - 4) * 1000);  // otro paquete aparece
+      manIdx++;
+      queueMan(24 + Math.random() * 14);
+      setTimeout(() => { if (!narrativeDone) pkgGrp.visible = true; }, 18000);   // otro paquete aparece
       updateModeline();
     } else if (rem < -160) {
       showSub('EL HOMBRE', 'Lo has pasado. No des la vuelta. Habrá otro punto.');
@@ -1907,18 +2146,21 @@ headlight.target = hlTarget;
 let lightsOn = false;
 function applyLights() { headlight.intensity = lightsOn ? 90 : 0; }
 
-let camMode = 0;                                        // 0 = interior, 1 = chase
-let basePitch = 0;
+let camMode = 0;                                        // 0 interior · 1 persecución · 2 isométrica
+let baseYawR = 0, baseXR = 0;
 function applyCam() {
-  if (camMode === 0) {
-    camera.position.set(0, 0, 0);
-    cab.visible = true; taxiExt.visible = false; basePitch = 0;
-  } else {
-    camera.position.set(0, 1.2, 4.8);
-    cab.visible = false; taxiExt.visible = true; basePitch = 0.15;
+  cab.visible = camMode === 0;
+  taxiExt.visible = camMode !== 0;
+  if (camMode === 0)      { camera.position.set(0, 0, 0);       baseYawR = 0;  baseXR = 0; }
+  else if (camMode === 1) { camera.position.set(0, 1.2, 4.8);   baseYawR = 0;  baseXR = -0.15; }
+  else {                                                 // Art of Rally: alta, lateral, lente larga
+    camera.position.set(9.5, 12.5, 8.0);
+    const dir = new THREE.Vector3(-9.5, -13.2, -11.0);
+    baseYawR = Math.atan2(-dir.x, -dir.z);
+    baseXR = Math.atan2(dir.y, Math.hypot(dir.x, dir.z));
   }
 }
-lightsOn = true; applyLights();                         // dusk start: headlights on
+lightsOn = true; applyLights();                         // amanece lloviendo: luces puestas
 
 /* ============================================================================
    POST-PROCESS — cel pass: ink outlines + faint grain + grade + rain + impact
@@ -1951,6 +2193,7 @@ const postUniforms = {
   exposure:   { value: 1.0 },
   rain:       { value: 0.0 },
   impact:     { value: 0.0 },
+  flash:      { value: 0.0 },   // relámpago
 };
 
 const postMat = new THREE.ShaderMaterial({
@@ -1967,7 +2210,7 @@ const postMat = new THREE.ShaderMaterial({
     uniform sampler2D tDiffuse;
     uniform sampler2D tDepth;
     uniform vec2  resolution;
-    uniform float near, far, fogNear, fogFar, time, exposure, rain, impact;
+    uniform float near, far, fogNear, fogFar, time, exposure, rain, impact, flash;
     uniform vec3  inkColor, grade, lift;
 
     float hash(vec2 p){ p = fract(p*vec2(123.34,456.21)); p += dot(p,p+45.32); return fract(p.x*p.y); }
@@ -2011,6 +2254,7 @@ const postMat = new THREE.ShaderMaterial({
       col *= grade * exposure;
       col += lift * (1.0 - smoothstep(0.0, 0.55, lum(col)));   // sombras tintadas
       col = mix(col, vec3(0.45, 0.10, 0.07), impact * 0.45);
+      col += flash * vec3(0.85, 0.92, 1.0);   // relámpago frío
 
       float v = smoothstep(1.35, 0.4, length(vUv - 0.5));
       col *= mix(0.86, 1.0, v);
@@ -2035,9 +2279,14 @@ const TOD = [
 ];
 let todIndex = 1, rainOn = true, paused = false;   // arranque: día lluvioso, luz difusa
 function updateModeline() {
-  const enc = callPhase === 'done' ? ' · sin encargos' : ` · encargo ${Math.min(callIdx + 1, CALLS.length)}/${CALLS.length}`;
+  const st = mission === 'toStation' ? 'recogida'
+    : mission === 'cinematic' ? '—'
+    : narrativeDone ? 'sin encargos'
+    : deliveryAt !== null ? 'entrega'
+    : manIdx > 0 || callState !== 'none' ? `encargo ${Math.min(manIdx + 1, MAN_CALLS.length)}/${MAN_CALLS.length}`
+    : 'en ruta';
   document.getElementById('modeline').textContent =
-    `${TOD[todIndex].name} · ${rainOn ? 'lluvia' : 'despejado'} · ${STATIONS[stationIdx]}${recOn ? ' · ● REC' : ''}${enc}`;
+    `Gorka · ${TOD[todIndex].name} · ${rainOn ? 'lluvia' : 'despejado'} · ${STATIONS[stationIdx]}${recOn ? ' · ● REC' : ''} · ${st}`;
 }
 function applyTOD() {
   const t = TOD[todIndex];
@@ -2056,15 +2305,24 @@ applyTOD();
    Everything is synthesized live: no audio assets.
    ========================================================================== */
 let AC = null, noiseBuf = null;
-let engineOsc, engineGain;
+let engineOsc, engineOsc2, engineGain, tireSrcGain, tireLP, skidGain;
+let windGain, rainAmbGain, rainAmbLP;
 let radioBus, radioBP, radioOut, hissGain;
 let radioNextT = 0, radioStep = 0, leadDeg = 4;
+let radioVol = 1.0;
+let gear = 1, gearT = 0;                        // caja de cambios (sensación)
+let hornUntil = 0;
+let ambBirdT = 6, ambBellT = 30, ambInsectT = 3, thunderT = 45;
 
 const RADIO_PROG = [
-  { type: 'music', style: 'lofi', bpm: 72,  root: 87.31, bp: 1150, hiss: 0.022 }, // LOFI — vinilo lento
-  { type: 'music', style: 'pop',  bpm: 98,  root: 110.0, bp: 1550, hiss: 0.012 }, // SYNTHWAVE
-  { type: 'talk',  formants: [420, 1750], pace: 0.72, bp: 1000, hiss: 0.018 },    // AUDIOLIBRO — voz calma
-  { type: 'talk',  formants: [380, 2150], pace: 0.95, bp: 1150, hiss: 0.026 },    // CRIMEN — tensa, con silencios
+  { type: 'music', style: 'lofi', bpm: 72,  root: 87.31, bp: 1150, hiss: 0.022 }, // NIEBLA FM — lofi lento
+  { type: 'music', style: 'pop',  bpm: 98,  root: 110.0, bp: 1550, hiss: 0.012 }, // COSTA NORTE — synthwave
+  { type: 'talk',  formants: [420, 1750], pace: 0.72, bp: 1000, hiss: 0.018 },    // DESVÍO 98.5 — audiolibro
+  { type: 'talk',  formants: [380, 2150], pace: 0.95, bp: 1150, hiss: 0.026 },    // RADIO ARCÉN — crimen
+  { type: 'music', style: 'lofi', bpm: 54,  root: 65.41, bp: 850,  hiss: 0.040 }, // EUSKADI FANTASMA — lentísima, lejana
+  { type: 'talk',  formants: [500, 1500], pace: 1.05, bp: 1200, hiss: 0.020 },    // MONTE BAJO FM — tertulia
+  { type: 'music', style: 'pop',  bpm: 84,  root: 92.5,  bp: 1350, hiss: 0.018 }, // ÚLTIMA GASOLINERA — synth melancólico
+  { type: 'talk',  formants: [460, 2000], pace: 0.85, bp: 1100, hiss: 0.022 },    // KM CERO — voces de madrugada
   { type: 'off' },                                                                 // APAGADA
 ];
 const SCALES = {
@@ -2083,13 +2341,46 @@ function initAudio() {
   for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
   noiseBuf = nb;
 
-  // engine: saw through a lowpass, pitch & volume follow speed
-  engineOsc = AC.createOscillator(); engineOsc.type = 'sawtooth';
-  engineOsc.frequency.value = 42;
-  const engLP = AC.createBiquadFilter(); engLP.type = 'lowpass'; engLP.frequency.value = 170;
+  // motor: dos osciladores (fundamental + sub), RPM por marcha, ralentí vivo
+  engineOsc = AC.createOscillator(); engineOsc.type = 'sawtooth'; engineOsc.frequency.value = 46;
+  engineOsc2 = AC.createOscillator(); engineOsc2.type = 'square'; engineOsc2.frequency.value = 23;
+  const engLP = AC.createBiquadFilter(); engLP.type = 'lowpass'; engLP.frequency.value = 240;
   engineGain = AC.createGain(); engineGain.gain.value = 0;
-  engineOsc.connect(engLP); engLP.connect(engineGain); engineGain.connect(AC.destination);
-  engineOsc.start();
+  const eg2 = AC.createGain(); eg2.gain.value = 0.4;
+  engineOsc.connect(engLP); engineOsc2.connect(eg2); eg2.connect(engLP);
+  engLP.connect(engineGain); engineGain.connect(AC.destination);
+  engineOsc.start(); engineOsc2.start();
+
+  // rodadura: ruido filtrado que sube con la velocidad (más brillante en mojado)
+  const tireSrc = AC.createBufferSource(); tireSrc.buffer = noiseBuf; tireSrc.loop = true;
+  tireLP = AC.createBiquadFilter(); tireLP.type = 'lowpass'; tireLP.frequency.value = 700;
+  tireSrcGain = AC.createGain(); tireSrcGain.gain.value = 0;
+  tireSrc.connect(tireLP); tireLP.connect(tireSrcGain); tireSrcGain.connect(AC.destination);
+  tireSrc.start();
+
+  // derrape ligero
+  const skidSrc = AC.createBufferSource(); skidSrc.buffer = noiseBuf; skidSrc.loop = true;
+  const skidBP = AC.createBiquadFilter(); skidBP.type = 'bandpass'; skidBP.frequency.value = 760; skidBP.Q.value = 2.2;
+  skidGain = AC.createGain(); skidGain.gain.value = 0;
+  skidSrc.connect(skidBP); skidBP.connect(skidGain); skidGain.connect(AC.destination);
+  skidSrc.start();
+
+  // viento del norte, con rachas
+  const windSrc = AC.createBufferSource(); windSrc.buffer = noiseBuf; windSrc.loop = true;
+  const windLP = AC.createBiquadFilter(); windLP.type = 'lowpass'; windLP.frequency.value = 380;
+  windGain = AC.createGain(); windGain.gain.value = 0.012;
+  windSrc.connect(windLP); windLP.connect(windGain); windGain.connect(AC.destination);
+  windSrc.start();
+  setInterval(() => {                            // rachas irregulares
+    if (AC) windGain.gain.setTargetAtTime(0.008 + Math.random() * 0.022 * (rainOn ? 1.6 : 1), AC.currentTime, 1.2);
+  }, 2600);
+
+  // lluvia ambiente (amortiguada dentro del coche, abierta fuera)
+  const rainSrc = AC.createBufferSource(); rainSrc.buffer = noiseBuf; rainSrc.loop = true;
+  rainAmbLP = AC.createBiquadFilter(); rainAmbLP.type = 'lowpass'; rainAmbLP.frequency.value = 900;
+  rainAmbGain = AC.createGain(); rainAmbGain.gain.value = 0;
+  rainSrc.connect(rainAmbLP); rainAmbLP.connect(rainAmbGain); rainAmbGain.connect(AC.destination);
+  rainSrc.start();
 
   // radio chain: instruments → soft clip → AM bandpass → out
   radioBus = AC.createGain(); radioBus.gain.value = 1.0;
@@ -2144,6 +2435,92 @@ function kick(t) {
   o.connect(g); g.connect(radioBus);
   o.start(t); o.stop(t + 0.2);
 }
+/* --- sonidos del mundo -------------------------------------------------- */
+function playHorn(dur = 0.55) {                 // claxon viejo, dos tonos
+  if (!AC) return;
+  const t = AC.currentTime;
+  hornUntil = t + dur;
+  for (const f of [352, 442]) {
+    const o = AC.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f;
+    const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 800; bp.Q.value = 1.1;
+    const g = AC.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.12, t + 0.03);
+    g.gain.setValueAtTime(0.12, t + dur - 0.06);
+    g.gain.linearRampToValueAtTime(0, t + dur);
+    o.connect(bp); bp.connect(g); g.connect(AC.destination);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+}
+function doorThunk() {                          // portazo a hojalata
+  if (!AC) return;
+  const t = AC.currentTime;
+  const src = AC.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+  const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 260;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.5, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+  src.connect(lp); lp.connect(g); g.connect(AC.destination);
+  src.start(t); src.stop(t + 0.3);
+}
+function thunderClap() {                        // relámpago + trueno con retardo
+  if (!AC) return;
+  postUniforms.flash.value = 0.55;
+  setTimeout(() => { postUniforms.flash.value = Math.max(postUniforms.flash.value, 0.35); }, 120);
+  const delay = 1.2 + Math.random() * 2.2;      // la luz llega antes que el sonido
+  const t = AC.currentTime + delay;
+  const src = AC.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+  const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 110;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(0.22, t + 0.25);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 2.8 + Math.random() * 1.5);
+  src.connect(lp); lp.connect(g); g.connect(AC.destination);
+  src.start(t); src.stop(t + 5);
+}
+function birdChirps() {                         // pajarillos lejanos
+  if (!AC) return;
+  const t0 = AC.currentTime;
+  const n = 2 + (Math.random() * 4 | 0);
+  for (let i = 0; i < n; i++) {
+    const t = t0 + i * (0.12 + Math.random() * 0.2);
+    const o = AC.createOscillator(); o.type = 'sine';
+    const f0 = 2600 + Math.random() * 1700;
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(f0 * (0.7 + Math.random() * 0.6), t + 0.07);
+    const g = AC.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.022, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+    o.connect(g); g.connect(AC.destination);
+    o.start(t); o.stop(t + 0.12);
+  }
+}
+function cowbell() {                            // cencerro perdido en el monte
+  if (!AC) return;
+  const t = AC.currentTime;
+  for (const f of [740, 1120]) {
+    const o = AC.createOscillator(); o.type = 'square'; o.frequency.value = f * (0.95 + Math.random() * 0.1);
+    const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 900; bp.Q.value = 4;
+    const g = AC.createGain();
+    g.gain.setValueAtTime(0.03, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    o.connect(bp); bp.connect(g); g.connect(AC.destination);
+    o.start(t); o.stop(t + 0.55);
+  }
+}
+function insectTick() {                         // grillos / moscas cerca del coche
+  if (!AC) return;
+  const t = AC.currentTime;
+  const src = AC.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+  const hp = AC.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 6800;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.012, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.16 + Math.random() * 0.25);
+  src.connect(hp); hp.connect(g); g.connect(AC.destination);
+  src.start(t); src.stop(t + 0.5);
+}
+
 function talkSyllable(t, dur, st) {
   const src = AC.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
   const g = AC.createGain();
@@ -2258,7 +2635,12 @@ addEventListener('keydown', e => {
   if (k === 'n') { todIndex = (todIndex + 1) % TOD.length; applyTOD(); }
   if (k === 'v') { rainOn = !rainOn; updateModeline(); }
   if (k === 'l') { lightsOn = !lightsOn; applyLights(); updateModeline(); }
-  if (k === 'c') { camMode = (camMode + 1) % 2; applyCam(); }
+  if (k === 'c') { camMode = (camMode + 1) % 3; applyCam(); }
+  if (k === 'f') answerCall();
+  if (k === 'g') hangCall();
+  if (k === 'h' && AC && AC.currentTime > hornUntil - 0.05) playHorn();
+  if (k === '+' || k === '=') { radioVol = Math.min(1.3, radioVol + 0.15); if (AC) radioOut.gain.setTargetAtTime(0.42 * radioVol, AC.currentTime, 0.1); }
+  if (k === '-') { radioVol = Math.max(0, radioVol - 0.15); if (AC) radioOut.gain.setTargetAtTime(0.42 * radioVol, AC.currentTime, 0.1); }
   if (k === 'p') { paused = !paused; }
   if (k === 'r' || k === 'e') { stationIdx = (stationIdx + 1) % STATIONS.length; refreshRadioFace(); tuneRadio(); updateModeline(); }
   if (k === 't') {
@@ -2327,7 +2709,8 @@ if (isCoarse && touchUI) {
     });
   };
   tap('t-cam', 'c'); tap('t-radio', 'r'); tap('t-lights', 'l');
-  tap('t-rain', 'v'); tap('t-hora', 'n'); tap('t-rec', 't');
+  tap('t-rain', 'v'); tap('t-hora', 'n');
+  tap('t-horn', 'h'); tap('t-ans', 'f'); tap('t-hang', 'g');
 }
 
 /* ---------- car state ------------------------------------------------------ */
@@ -2339,7 +2722,8 @@ const TAXI_Z = -3.5;
 let carX = 0;
 let shake = 0, crashCooldown = 0, crashes = 0;
 let staticTimer = 18 + Math.random() * 20, staticFor = 0;   // radio interference
-let frameN = 0;
+let frameN = 0, portalNear = Infinity;
+const gpPrev = [];
 
 /* ---------- main loop ------------------------------------------------------ */
 const clock = new THREE.Clock();
@@ -2351,10 +2735,30 @@ function frame() {
   const dt = Math.min(clock.getDelta(), 0.05);
   postUniforms.time.value += dt;
 
-  const up = keys['w'] || keys['arrowup'], down = keys['s'] || keys['arrowdown'];
+  /* mando: stick izq dirección, gatillos gas/freno, Y cámara, X claxon, A/B teléfono */
+  let gpSteer = 0, gpThr = 0, gpBrk = 0;
+  const gp = navigator.getGamepads && navigator.getGamepads()[0];
+  if (gp) {
+    if (Math.abs(gp.axes[0]) > 0.12) gpSteer = gp.axes[0];
+    gpThr = gp.buttons[7] ? gp.buttons[7].value : 0;
+    gpBrk = gp.buttons[6] ? gp.buttons[6].value : 0;
+    const pressed = i => gp.buttons[i] && gp.buttons[i].pressed && !gpPrev[i];
+    if (pressed(3)) { camMode = (camMode + 1) % 3; applyCam(); }
+    if (pressed(2) && AC) playHorn();
+    if (pressed(0)) answerCall();
+    if (pressed(1)) hangCall();
+    for (let i = 0; i < gp.buttons.length; i++) gpPrev[i] = gp.buttons[i].pressed;
+    if (Math.abs(gp.axes[2] || 0) > 0.15) lookYawT = THREE.MathUtils.clamp(lookYawT + gp.axes[2] * dt * 2.2, -2.2, 2.2);
+    if (Math.abs(gp.axes[3] || 0) > 0.15) lookPitchT = THREE.MathUtils.clamp(lookPitchT + gp.axes[3] * dt * 1.8, -0.55, 1.0);
+  }
+
+  const locked = mission === 'cinematic';
+  const up = !locked && (keys['w'] || keys['arrowup'] || gpThr > 0.06);
+  const down = !locked && (keys['s'] || keys['arrowdown'] || gpBrk > 0.06);
   if (!paused) {
-    if (up)   speed += 24 * dt;
+    if (up)   speed += 24 * (gpThr > 0.06 ? Math.max(gpThr, keys['w'] ? 1 : 0) : 1) * dt;
     if (down) speed -= 42 * dt;
+    if (locked) speed = THREE.MathUtils.lerp(speed, 0, 0.25);
     speed -= speed * 0.32 * dt;
     if (rainOn) speed -= speed * 0.10 * dt;
     const offRoad = Math.abs(laneX) > 7.2;
@@ -2368,7 +2772,7 @@ function frame() {
     }
     const grip = (rainOn ? 0.7 : 1.0) * (offRoad ? 0.6 : 1.0);
     const left = keys['a'] || keys['arrowleft'], right = keys['d'] || keys['arrowright'];
-    let sIn = (left ? -1 : 0) + (right ? 1 : 0);
+    let sIn = locked ? 0 : THREE.MathUtils.clamp((left ? -1 : 0) + (right ? 1 : 0) + gpSteer, -1, 1);
     steer = THREE.MathUtils.lerp(steer, sIn, 0.12);
     laneX += steer * (speed / MAX_SPEED) * 15 * grip * (handbrake ? 1.6 : 1.0) * dt;  // loose rear
     laneX -= curveK(scroll) * speed * speed * 1.05 * dt;
@@ -2382,12 +2786,38 @@ function frame() {
     if (crashCooldown > 0) crashCooldown -= dt;
     carX = THREE.MathUtils.lerp(carX, laneX, 0.2);
 
+    portalNear = Infinity;
     for (const p of props) {
       if (p.userData.traffic) p.userData.s += p.userData.v * dt;
+      if (p.userData.fly) {                     // bandos de pájaros
+        p.userData.s += p.userData.fly * dt;
+        p.userData.off += p.userData.vx * dt;
+      }
       const d = p.userData.s - scroll;
       p.position.z = -d;
       // el fondo lejano NO se dobla con la carretera (evita el "fondo sin sentido")
       p.position.x = p.userData.off + roadDX(d) * (p.userData.bendMul ?? 1);
+
+      if (p.userData.portal) portalNear = Math.min(portalNear, Math.abs(d + 12));
+
+      // vida procedural cercana: alas y copas al viento
+      if (Math.abs(d) < 420) {
+        if (p.userData.birds) {
+          for (const b of p.userData.birds) {
+            b.ph += dt * 9;
+            const w = Math.sin(b.ph) * 0.75;
+            b.wings[0].rotation.z = w; b.wings[1].rotation.z = -w;
+          }
+        }
+        if (p.userData.sway) {
+          const windK = (rainOn ? 1.7 : 1.0);
+          const tW = postUniforms.time.value;
+          for (const s of p.userData.sway) {
+            s.m.rotation.z = Math.sin(tW * 1.05 + s.ph) * 0.022 * windK;
+            s.m.rotation.x = Math.cos(tW * 0.83 + s.ph) * 0.016 * windK;
+          }
+        }
+      }
 
       // paradas de contemplación: detenerse junto a un lugar extraño
       if (p.userData.poi && !p.userData.poiSeen) {
@@ -2440,8 +2870,8 @@ function frame() {
       }
     }
 
-    /* La Llamada: timbres, encargos, puntos de entrega */
-    updateCallSystem(dt);
+    /* narrativa: misión, cinemática, llamadas, entregas */
+    updateNarrative(dt);
 
     /* diálogo del pasajero + petición de bajada */
     if (passenger !== null) {
@@ -2495,7 +2925,8 @@ function frame() {
   if ((frameN & 3) === 0) {                     // cada 4 frames basta
     drawCRT(Math.random() < 0.06);
     crtTex.needsUpdate = true;
-    drawPhone(callPhase === 'ring' ? 'ring' : callPhase === 'talk' ? 'talk' : 'idle');
+    drawPhone(callState === 'ring' ? 'ring' : callState === 'talk' ? 'talk' : 'idle',
+              caller ? caller.who : '');
     phoneTex.needsUpdate = true;
   }
   frameN++;
@@ -2515,10 +2946,22 @@ function frame() {
   lookYaw   = THREE.MathUtils.lerp(lookYaw, lookYawT, 0.18);
   lookPitch = THREE.MathUtils.lerp(lookPitch, lookPitchT, 0.18);
   const breathe = postUniforms.time.value;   // respiración sutil de cámara (road movie)
-  camera.rotation.y = -lookYaw + Math.sin(breathe * 0.31) * 0.0035 + (Math.random() - 0.5) * shake * 0.02;
-  camera.rotation.x = -lookPitch * 0.9 - basePitch + Math.sin(breathe * 0.23) * 0.0028 + (Math.random() - 0.5) * shake * 0.02;
-  camera.rotation.z = Math.sin(breathe * 0.4) * 0.0035;
-  camera.position.y = (camMode === 0 ? 0 : 1.2) + (Math.random() - 0.5) * shake * 0.06;
+  if (mission === 'cinematic' && cin) {
+    // órbita lenta alrededor del coche aparcado
+    const a = 1.15 + cin.t * 0.085;
+    camera.position.set(Math.sin(a) * 6.8, 1.5 + Math.sin(cin.t * 0.3) * 0.2, Math.cos(a) * 6.8 - 2.5);
+    const dir = new THREE.Vector3(0, -0.7, -3.5).sub(camera.position);
+    camera.rotation.y = Math.atan2(-dir.x, -dir.z);
+    camera.rotation.x = Math.atan2(dir.y, Math.hypot(dir.x, dir.z));
+    camera.rotation.z = 0;
+  } else {
+    const lookK = camMode === 2 ? 0.15 : 1;            // la iso apenas gira
+    const brK = camMode === 0 ? 1 : 0.4;
+    camera.rotation.y = baseYawR - lookYaw * lookK + Math.sin(breathe * 0.31) * 0.0035 * brK + (Math.random() - 0.5) * shake * 0.02;
+    camera.rotation.x = baseXR - lookPitch * 0.9 * lookK + Math.sin(breathe * 0.23) * 0.0028 * brK + (Math.random() - 0.5) * shake * 0.02;
+    camera.rotation.z = Math.sin(breathe * 0.4) * 0.0035 * brK;
+    camera.position.y = (camMode === 0 ? 0 : camMode === 1 ? 1.2 : 12.5) + (Math.random() - 0.5) * shake * 0.06;
+  }
 
   sky.position.x = rig.position.x;
 
@@ -2526,33 +2969,86 @@ function frame() {
   dropletMat.opacity = THREE.MathUtils.lerp(dropletMat.opacity, rainOn ? 0.75 : 0, 0.03);
   if (rainOn) dropletTex.offset.y -= dt * 0.012;
 
-  /* speed widens the FOV slightly; chase cam uses a longer lens */
-  const targetFov = (camMode === 0 ? 58 : 50) + spdN * 7;
+  /* speed widens the FOV slightly; chase 50°, isometric long lens 26° */
+  const targetFov = camMode === 0 ? 58 + spdN * 7 : camMode === 1 ? 50 + spdN * 7 : 26 + spdN * 2;
   if (Math.abs(camera.fov - targetFov) > 0.05) {
     camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, 0.08);
     camera.updateProjectionMatrix();
   }
 
-  /* engine sound follows the throttle */
+  /* ---- AUDIO VIVO: motor con marchas, rodadura, derrape, ambiente ---- */
+  postUniforms.flash.value *= Math.exp(-5 * dt);
   if (AC) {
-    engineOsc.frequency.setTargetAtTime(42 + speed * 1.9 + (up ? 6 : 0), AC.currentTime, 0.06);
-    engineGain.gain.setTargetAtTime(speed > 0.3 ? 0.030 + spdN * 0.034 : 0.012, AC.currentTime, 0.1);
+    const now = AC.currentTime;
+    // caja de cambios (sensación): 4 marchas con corte al subir
+    const GEARS = [0, 9, 17, 27, MAX_SPEED + 1];
+    let g = 1; while (g < 4 && speed > GEARS[g]) g++;
+    if (g !== gear) { gear = g; gearT = 0.22; }
+    if (gearT > 0) gearT -= dt;
+    const lo = GEARS[gear - 1], hi = GEARS[gear];
+    const rpmN = THREE.MathUtils.clamp((speed - lo) / (hi - lo), 0, 1);
+    const clutch = gearT > 0 ? 0.72 : 1;
+    const idleWob = Math.sin(now * 7.3) * 1.6 + Math.sin(now * 11.7);
+    const f0 = (44 + rpmN * 76 + (up ? 5 : 0)) * clutch + (speed < 1 ? idleWob : 0);
+    engineOsc.frequency.setTargetAtTime(f0, now, 0.05);
+    engineOsc2.frequency.setTargetAtTime(f0 * 0.5, now, 0.05);
+    engineGain.gain.setTargetAtTime(
+      (speed > 0.3 ? 0.024 + rpmN * 0.030 + (up ? 0.012 : 0) : 0.013) * clutch, now, 0.09);
+    // rodadura: más brillante y presente en mojado
+    tireSrcGain.gain.setTargetAtTime(spdN * (rainOn ? 0.075 : 0.05), now, 0.15);
+    tireLP.frequency.setTargetAtTime(rainOn ? 1500 : 750, now, 0.3);
+    // derrape ligero: freno de mano o volantazo a velocidad
+    const skidding = (keys[' '] && speed > 6) || (Math.abs(steer) > 0.8 && speed > 30);
+    skidGain.gain.setTargetAtTime(skidding ? 0.10 : 0, now, 0.08);
+    // lluvia: amortiguada dentro, abierta fuera
+    rainAmbGain.gain.setTargetAtTime(rainOn ? (camMode === 0 ? 0.045 : 0.075) : 0, now, 0.4);
+    rainAmbLP.frequency.setTargetAtTime(camMode === 0 ? 750 : 1650, now, 0.3);
+    // claxon mantenido
+    if (keys['h'] && now > hornUntil - 0.06) playHorn();
 
-    /* the anomaly: periodic interference swallows whatever station is on */
-    if (stationIdx < 4 && !paused) {
+    // ambiente rural: pájaros, grillos, cencerros — según hora y clima
+    if (!paused) {
+      ambBirdT -= dt;
+      if (ambBirdT <= 0) {
+        if (!rainOn && todIndex !== 3) birdChirps();
+        ambBirdT = (rainOn || todIndex === 3 ? 14 : 5) + Math.random() * 9;
+      }
+      ambInsectT -= dt;
+      if (ambInsectT <= 0) {
+        if (!rainOn && (todIndex === 1 || todIndex === 2) && speed < 20) insectTick();
+        ambInsectT = 2.5 + Math.random() * 5;
+      }
+      ambBellT -= dt;
+      if (ambBellT <= 0) {
+        if (todIndex !== 3) cowbell();
+        ambBellT = 35 + Math.random() * 45;
+      }
+      // trueno: muy de vez en cuando, solo con lluvia
+      if (rainOn) {
+        thunderT -= dt;
+        if (thunderT <= 0) { thunderClap(); thunderT = 40 + Math.random() * 55; }
+      }
+    }
+
+    /* interferencia periódica + pérdida de cobertura en la roca */
+    if (stationIdx < 8 && !paused) {
+      const covered = portalNear < 26;
       staticTimer -= dt;
-      if (staticTimer <= 0) {
-        staticTimer = 25 + Math.random() * 30;
-        staticFor = 2.4;
-        hissGain.gain.setTargetAtTime(0.13, AC.currentTime, 0.5);
-        radioBus.gain.setTargetAtTime(0.22, AC.currentTime, 0.5);
+      if (covered || staticTimer <= 0) {
+        if (staticTimer <= 0) { staticTimer = 25 + Math.random() * 30; staticFor = 2.4; }
+        hissGain.gain.setTargetAtTime(0.13, now, 0.4);
+        radioBus.gain.setTargetAtTime(0.20, now, 0.4);
       } else if (staticFor > 0) {
         staticFor -= dt;
         if (staticFor <= 0) {
           const st = RADIO_PROG[stationIdx];
-          hissGain.gain.setTargetAtTime(st.hiss, AC.currentTime, 0.6);
-          radioBus.gain.setTargetAtTime(1.0, AC.currentTime, 0.6);
+          hissGain.gain.setTargetAtTime(st.hiss, now, 0.6);
+          radioBus.gain.setTargetAtTime(1.0, now, 0.6);
         }
+      } else if (!covered && staticFor <= 0 && radioBus.gain.value < 0.6) {
+        const st = RADIO_PROG[stationIdx];
+        hissGain.gain.setTargetAtTime(st.hiss, now, 0.6);
+        radioBus.gain.setTargetAtTime(1.0, now, 0.6);
       }
     }
   }
@@ -2583,17 +3079,20 @@ window.__dbg = () => {
   }
   return { speed, laneX, scroll, crashes, impact: postUniforms.impact.value,
            station: STATIONS[stationIdx], rec: recOn,
-           lookYaw, lookPitch, audio: !!AC, nearest, nearHitch,
-           callPhase, callIdx,
-           deliveryRem: deliveryAt !== null && callPhase === 'deliver' ? Math.round(deliveryAt - scroll) : null,
-           pkgVisible: pkgGrp.visible,
+           lookYaw, lookPitch, audio: !!AC, nearest,
+           mission, callState, caller: caller ? caller.who : null, manIdx,
+           deliveryRem: deliveryAt !== null ? Math.round(deliveryAt - scroll) : null,
+           stationRem: mission === 'toStation' ? Math.round(stationAt - scroll) : null,
+           pkgVisible: pkgGrp.visible, gear, portalNear: portalNear === Infinity ? null : Math.round(portalNear),
            subOn: subsEl.classList.contains('on'),
            subText: subsEl.querySelector('.line').textContent,
            cueOn: cueEl.classList.contains('on'), cueText: cueEl.textContent,
            cam: camMode, lights: lightsOn, rain: rainOn };
 };
-window.__call = () => { if (callPhase === 'idle') nextCallAt = 0.1; };
-window.__jumpToDelivery = () => { if (callPhase === 'deliver' && deliveryAt) { scroll = deliveryAt - 60; } };
+window.__jump = (s) => { scroll = s; };
+window.__answer = () => answerCall();
+window.__ringNow = () => { if (pendingCalls.length) pendingCalls[0].at = gameT; };
+window.__setDelivery = (d) => { mission = 'drive'; hideCue(); deliveryAt = scroll + d; updateModeline(); };
 
 /* ---------- resize --------------------------------------------------------- */
 addEventListener('resize', () => {
