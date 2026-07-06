@@ -316,6 +316,12 @@ let pitch = 0;
 let roll = 0;
 let wheelSpin = 0;
 
+/* chassis damage: accumulates on impacts, pulls the steering, cracks glass */
+let damage = 0;
+let pullDir = 0;
+let crackX = 0.5, crackY = 0.4;
+let scraping = false;
+
 /* anomaly + mission bookkeeping */
 let gasCaptionCycle = -1;
 let borderCaptionShown = false;
@@ -394,7 +400,7 @@ function bladeAngle(phase: number, from: number, to: number) {
   return from + (to - from) * e;
 }
 
-function drawInterior(dt: number, inr: number, rainI: number, darkness: number, inTunnel: boolean, hourStr: string) {
+function drawInterior(dt: number, inr: number, rainI: number, darkness: number, inTunnel: boolean, hourStr: string, dmg: number) {
   const w = innerWidth, h = innerHeight;
 
   const ww = wet.width, wh = wet.height;
@@ -493,6 +499,34 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number, 
       octx.fillStyle = gg;
       octx.fillRect(mx2, my2, mw2, mh2);
     }
+  }
+
+  /* windshield cracks radiating from the last impact, once the glass is hurt */
+  if (dmg > 0.18) {
+    const cx = crackX * w, cy = crackY * h;
+    octx.save();
+    octx.strokeStyle = `rgba(220,225,235,${0.10 + dmg * 0.5})`;
+    octx.lineWidth = 1;
+    const arms = 4 + Math.floor(dmg * 8);
+    for (let a = 0; a < arms; a++) {
+      const ang = (a / arms) * Math.PI * 2 + crackX;
+      let x = cx, y = cy;
+      octx.beginPath();
+      octx.moveTo(x, y);
+      const segs = 3 + Math.floor(dmg * 4);
+      for (let sgm = 0; sgm < segs; sgm++) {
+        x += Math.cos(ang + (Math.sin(sgm * 9 + a) * 0.4)) * (10 + dmg * 30);
+        y += Math.sin(ang + (Math.sin(sgm * 9 + a) * 0.4)) * (10 + dmg * 30);
+        octx.lineTo(x, y);
+      }
+      octx.stroke();
+    }
+    // concentric fracture ring near the point of impact
+    octx.strokeStyle = `rgba(220,225,235,${0.08 + dmg * 0.35})`;
+    octx.beginPath();
+    octx.arc(cx, cy, 6 + dmg * 10, 0, 7);
+    octx.stroke();
+    octx.restore();
   }
 
   /* ---- retro-futuristic cockpit (Pacific-Drive-ish): dark moulded dash,
@@ -726,6 +760,14 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number, 
       octx.fillText(`${Math.round(Math.abs(speed) * 3.6)} KM/H`, tx, ry + h * 0.18);
       octx.fillText(hourStr, tx, ry + h * 0.215);
     });
+    // chassis damage warning, in red, blinking when severe
+    if (dmg > 0.05) {
+      const blink = dmg < 0.6 || Math.sin(now * 6) > 0;
+      octx.fillStyle = blink ? `rgba(230,90,70,${0.6 + 0.35 * backlight})` : 'rgba(230,90,70,0.15)';
+      octx.font = `${Math.round(h * 0.017)}px "Courier New", monospace`;
+      octx.textAlign = 'left';
+      octx.fillText(`CHASIS ${Math.round(100 - dmg * 100)}%`, rx + 10, ry + rh - h * 0.02);
+    }
   }
 
   /* rear-view mirror */
@@ -851,6 +893,45 @@ function frame() {
   if (Math.abs(laneX) > 8) { laneX = Math.sign(laneX) * 8; laneV *= -0.25; }
 
   s += speed * dt;
+
+  /* --- collisions: trees, walls, poles, signs, oncoming cars --- */
+  let scrapeNow = false;
+  if (driving) {
+    const hit = world.collide(s, laneX);
+    if (hit) {
+      const closingFwd = Math.abs(speed);
+      if (hit.penL < hit.penS) {
+        // glancing / side impact — pushed back onto the road, scrubs speed
+        laneX += hit.signL * hit.penL;
+        const into = laneV * -hit.signL;              // speed into the obstacle
+        laneV = hit.signL * Math.abs(laneV) * 0.35;
+        speed *= 0.9;
+        const sev = Math.min(1, (Math.max(0, into) * 2 + closingFwd * 0.25) / 14);
+        scrapeNow = closingFwd > 3;
+        if (sev > 0.05) {
+          shake = Math.max(shake, 0.4 + sev);
+          audio.crash(sev);
+          damage = Math.min(1, damage + sev * (hit.kind === 'wall' ? 0.14 : 0.1));
+          if (sev > 0.35) { pullDir = hit.signL; crackX = 0.3 + Math.random() * 0.4; crackY = 0.3 + Math.random() * 0.2; }
+        }
+      } else {
+        // head-on — bounce back off the obstacle
+        s += hit.signS * hit.penS;
+        const sev = Math.min(1, closingFwd / 12);
+        speed = -Math.sign(speed || 1) * Math.min(closingFwd * 0.35, 5);
+        laneV += (Math.random() - 0.5) * 4;
+        shake = Math.max(shake, 0.7 + sev);
+        audio.crash(Math.max(0.4, sev));
+        damage = Math.min(1, damage + sev * 0.28 + 0.04);
+        pullDir = Math.random() < 0.5 ? -1 : 1;
+        crackX = 0.35 + Math.random() * 0.3; crackY = 0.32 + Math.random() * 0.18;
+      }
+    }
+  }
+  // damaged steering pulls to one side; heavier damage, stronger pull
+  if (damage > 0.15) laneV += pullDir * damage * 1.4 * dt * (Math.abs(speed) / MAX_SPEED);
+  if (scrapeNow !== scraping) { scraping = scrapeNow; audio.scrape(scraping); }
+
   wheelSpin += speed * dt / 0.34;
 
   /* suspension: bumps + weight transfer */
@@ -901,6 +982,7 @@ function frame() {
     time: now, tDay, day, rainI,
     cloud: weather.current.cloud,
     lightning: weather.lightning,
+    damage,
   });
 
   /* --- cinematic camera --- */
@@ -926,7 +1008,7 @@ function frame() {
   octx.clearRect(0, 0, innerWidth, innerHeight);
   const inCabin = interior && driving;
   document.body.classList.toggle('cabin', inCabin);   // diegetic screens replace the HUD
-  if (inCabin) drawInterior(dt, inr, rainI, day.darkness, inTun, hm.str);
+  if (inCabin) drawInterior(dt, inr, rainI, day.darkness, inTun, hm.str, damage);
   map.update(s, cycle, inr, now);
 
   /* --- HUD --- */
@@ -956,7 +1038,9 @@ function frame() {
   }
   $('state-row').textContent =
     `${hm.str} · ${weather.name} · ${world.headlightsOn ? 'luces' : 'luces off'} · ` +
-    `${interior ? 'cabina' : 'exterior'} · P pausa · ESC menú`;
+    `${interior ? 'cabina' : 'exterior'}` +
+    (damage > 0.05 ? ` · chasis ${Math.round(100 - damage * 100)}%` : '') +
+    ` · P pausa · ESC menú`;
 
   audio.update(dt, {
     speed, maxSpeed: MAX_SPEED, throttle: !!up,

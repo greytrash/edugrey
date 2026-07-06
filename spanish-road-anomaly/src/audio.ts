@@ -730,6 +730,76 @@ export class GameAudio {
     src.start(t, Math.random(), 0.32);
   }
 
+  /* metal impact: low thud + a burst of noise + a couple of dissonant
+     partials that ring briefly, scaled by severity 0..1 */
+  crash(sev: number) {
+    if (!this.started) return;
+    const t = this.ctx.currentTime;
+    const v = Math.min(1, sev);
+    // body thud
+    const o = this.ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(140, t);
+    o.frequency.exponentialRampToValueAtTime(45, t + 0.18);
+    const og = this.ctx.createGain();
+    og.gain.setValueAtTime(0.0001, t);
+    og.gain.linearRampToValueAtTime(0.5 * v, t + 0.01);
+    og.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    o.connect(og).connect(this.master);
+    o.start(t); o.stop(t + 0.3);
+    // crunch of noise
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noise;
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 1600;
+    bp.Q.value = 0.7;
+    const ng = this.ctx.createGain();
+    ng.gain.setValueAtTime(0.5 * v, t);
+    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.12 + v * 0.1);
+    src.connect(bp).connect(ng).connect(this.master);
+    src.start(t, Math.random(), 0.25);
+    // ringing metal partials on a hard hit
+    if (v > 0.4) {
+      for (const f of [523, 622, 831]) {
+        const m = this.ctx.createOscillator();
+        m.type = 'triangle';
+        m.frequency.value = f * (1 + (Math.random() - 0.5) * 0.03);
+        const mg = this.ctx.createGain();
+        mg.gain.setValueAtTime(0.0001, t);
+        mg.gain.linearRampToValueAtTime(0.08 * v, t + 0.01);
+        mg.gain.exponentialRampToValueAtTime(0.001, t + 0.5 + v * 0.4);
+        m.connect(mg).connect(this.master);
+        m.start(t); m.stop(t + 1);
+      }
+    }
+  }
+
+  /* tyre / metal scrape while grinding along an obstacle */
+  private scrapeGain?: GainNode;
+  scrape(on: boolean) {
+    if (!this.started) return;
+    const t = this.ctx.currentTime;
+    if (on && !this.scrapeGain) {
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.noise;
+      src.loop = true;
+      const bp = this.ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 2600;
+      bp.Q.value = 1.4;
+      const g = this.ctx.createGain();
+      g.gain.value = 0.0001;
+      src.connect(bp).connect(g).connect(this.master);
+      src.start();
+      this.scrapeGain = g;
+      (this.scrapeGain as GainNode & { _src?: AudioBufferSourceNode })._src = src;
+    }
+    if (this.scrapeGain) {
+      this.scrapeGain.gain.setTargetAtTime(on ? 0.09 : 0.0001, t, 0.05);
+    }
+  }
+
   thunder(delaySec: number) {
     if (!this.started) return;
     const t = this.ctx.currentTime + delaySec;

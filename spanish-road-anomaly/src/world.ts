@@ -31,6 +31,7 @@ interface WorldState {
   interior: boolean; braking: boolean;
   time: number; tDay: number; day: DayLight;
   rainI: number; cloud: number; lightning: boolean;
+  damage: number;
 }
 
 /* lateral path: long sweepers, a mid wave, and tight rural kinks */
@@ -332,6 +333,18 @@ interface Prop {
   span: number;
   align?: boolean;
   refresh?: (p: Prop) => void;
+  cr?: number;        // lateral collision radius (0/undefined = pass-through)
+  crS?: number;       // half-extent along the road (for long objects)
+  kind?: string;
+}
+
+export interface Collision {
+  kind: string;
+  penL: number;       // lateral penetration
+  penS: number;       // along-road penetration
+  signL: number;      // push direction laterally
+  signS: number;      // push direction along road
+  sev: number;        // 0..1 impact severity
 }
 interface FadeSprite { sp: THREE.Sprite; base: number }
 interface Splash { sp: THREE.Sprite; life: number; d: number; lane: number }
@@ -413,7 +426,7 @@ export class World {
   private sea!: THREE.Group;
   private seaS = 43200;
 
-  private oncoming: { g: THREE.Group; rig: CarRig; s: number; v: number }[] = [];
+  private oncoming: { g: THREE.Group; rig: CarRig; s: number; v: number; lane: number }[] = [];
   private fogBlend = new THREE.Color();
 
   constructor(hooks: WorldHooks) {
@@ -886,8 +899,43 @@ export class World {
       g.add(streak);
       this.reflStreaks.push(streak);
       this.scene.add(g);
-      this.oncoming.push({ g, rig, s: 600 + i * 900, v: 18 + Math.random() * 8 });
+      this.oncoming.push({ g, rig, s: 600 + i * 900, v: 18 + Math.random() * 8, lane: -1.75 });
     }
+  }
+
+  /* road-relative collision test against tagged props and oncoming cars.
+     Everything lives in (s, lane) space; the visual curve is ignored here. */
+  collide(carS: number, carLane: number): Collision | null {
+    const HW = 0.85, HL = 2.05;
+    let best: Collision | null = null;
+    const consider = (pS: number, pLane: number, rS: number, rL: number, kind: string) => {
+      const penS = (HL + rS) - Math.abs(pS - carS);
+      const penL = (HW + rL) - Math.abs(pLane - carLane);
+      if (penS <= 0 || penL <= 0) return;
+      const sep = Math.min(penS, penL);
+      if (best && sep <= best.sev * 0) return;         // keep the deepest
+      if (!best || sep > Math.min(best.penS, best.penL)) {
+        best = {
+          kind, penL, penS,
+          signL: Math.sign(carLane - pLane) || 1,
+          signS: Math.sign(carS - pS) || 1,
+          sev: 0,
+        };
+      }
+    };
+    for (const p of this.props) {
+      if (!p.cr) continue;
+      const d = p.s - carS;
+      if (d < -12 || d > 30) continue;                 // cheap cull
+      consider(p.s, p.lane, p.crS ?? p.cr, p.cr, p.kind ?? 'obs');
+    }
+    for (const oc of this.oncoming) {
+      if (!oc.g.visible) continue;
+      const d = oc.s - carS;
+      if (d < -8 || d > 12) continue;
+      consider(oc.s, oc.lane, 2.0, 0.9, 'car');
+    }
+    return best;
   }
 
   /* ------------------------------------------------------------ landmarks */
@@ -1277,9 +1325,11 @@ export class World {
   /* ------------------------------------------------------------ roadside */
   private populate() {
     const sc = this.scene;
-    const push = (obj: THREE.Object3D, s: number, lane: number, span: number, align = false, refresh?: (p: Prop) => void) => {
+    const push = (obj: THREE.Object3D, s: number, lane: number, span: number, align = false, refresh?: (p: Prop) => void): Prop => {
       sc.add(obj);
-      this.props.push({ obj, s, lane, span, align, refresh });
+      const p: Prop = { obj, s, lane, span, align, refresh };
+      this.props.push(p);
+      return p;
     };
 
     /* wet forest bands */
@@ -1308,7 +1358,7 @@ export class World {
       }
       const side = Math.random() < 0.5 ? -1 : 1;
       // forest crowds right up to the shoulder — the road is barely holding on
-      push(g, i * (VIEW / 54) + Math.random() * 7, side * (5.5 + Math.random() * 28), VIEW);
+      push(g, i * (VIEW / 54) + Math.random() * 7, side * (5.5 + Math.random() * 28), VIEW).cr = 0.9;
     }
     // low ferns / undergrowth hugging the verge
     const fernMat = new THREE.MeshStandardMaterial({ color: '#2c3a1d', roughness: 1 });
@@ -1356,7 +1406,8 @@ export class World {
       const g = new THREE.Group();
       g.add(w);
       const side = Math.random() < 0.5 ? -1 : 1;
-      push(g, i * (VIEW * 1.5 / 10) + Math.random() * 12, side * (ROAD_HALF + 2.2 + Math.random() * 3), VIEW * 1.5, true);
+      const wp = push(g, i * (VIEW * 1.5 / 10) + Math.random() * 12, side * (ROAD_HALF + 2.2 + Math.random() * 3), VIEW * 1.5, true);
+      wp.cr = 0.5; wp.crS = len / 2; wp.kind = 'wall';
     }
 
     /* bridges: stone parapets over the streams */
@@ -1387,7 +1438,7 @@ export class World {
       const arm = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.09, 0.09), poleMat);
       arm.position.y = 6.4;
       g.add(arm);
-      push(g, i * 63, (i % 2 ? 1 : -1) * 6.6, 7 * 63);
+      push(g, i * 63, (i % 2 ? 1 : -1) * 6.6, 7 * 63).cr = 0.35;
     }
 
     /* delineator posts */
@@ -1425,7 +1476,7 @@ export class World {
       push(g, i * 220 + 90, ROAD_HALF + 1.1, 2 * 220, false, (p) => {
         const inf = this.hooks.kmMarker(p.s);
         kmStoneTexture(inf.road, inf.km, p.obj.userData.tex);
-      });
+      }).cr = 0.4;
     }
 
     /* distance signs — board in front, galvanized posts behind */
@@ -1455,7 +1506,7 @@ export class World {
       push(g, i * 600 + 320, ROAD_HALF + 1.8, 2 * 600, false, (p) => {
         const inf = this.hooks.distanceSign(p.s);
         distSignTexture(inf.l1, inf.l2, p.obj.userData.tex);
-      });
+      }).cr = 0.9;
     }
   }
 
@@ -1669,8 +1720,11 @@ export class World {
     rig.root.position.x = st.laneX;
     rig.root.rotation.y = st.visualYaw;
     rig.body.position.y = st.bodyY;
-    rig.body.rotation.z = st.roll;
-    rig.body.rotation.x = st.pitch;
+    // a battered chassis sits crooked and darkens with damage
+    rig.body.rotation.z = st.roll + st.damage * 0.05;
+    rig.body.rotation.x = st.pitch - st.damage * 0.03;
+    const dent = 1 - st.damage * 0.32;
+    rig.paint.color.setRGB(0.886 * dent, 0.874 * dent, 0.839 * dent);
     for (const w of rig.wheels) w.rotation.x = st.wheelSpin;
     for (const fw of rig.frontWheels) fw.rotation.y = -st.steer * 0.42;
     rig.root.visible = true;
