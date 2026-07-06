@@ -39,6 +39,7 @@ de repente. Arranca al atardecer, con lluvia y los faros encendidos; cada
 | `ratón` | arrastrar para mirar la cabina, el asiento o por la ventanilla |
 | **móvil** | botonera táctil automática: ◀ ▶ volante, ▲ gas, ▼ freno, ✋ freno de mano, y fila CAM · RADIO · LUZ · LLUVIA · HORA · REC; arrastra el dedo por la escena para mirar |
 | `T` | grabar tu mensaje para Radio Zubato con la emisora del macuto (● REC) |
+| **autostop** | pasa despacio junto a quien hace dedo para recogerlo; se baja cuando paras tras su charla |
 | `N` | hora del día (día → atardecer → noche) |
 | `P` | pausa |
 
@@ -117,6 +118,16 @@ más allá de 500 m el trazado continúa linealmente para que la geometría leja
 no se dispare). Tráfico en ambos sentidos — coches lentos en tu carril y
 coches de frente con faros — con colisión AABB: frenazo, empujón lateral,
 sacudida y pulso rojo.
+
+**Pasajeros (road movie):** por las comarcales hay gente haciendo **autostop**.
+Pasa despacio a su lado (por debajo de ~30 km/h, en tu carril) y **sube al
+coche**: se sienta a tu lado con animación sutil (respira, mira el paisaje) y
+te va contando cosas en **subtítulos cinematográficos** dentro de las barras de
+cine. Cuatro personajes de la Euskadi de los 70 — la **Amona** camino del
+mercado, el **Estudiante** con sus "apuntes", el **Bertsolari** que paga con un
+verso, el **Marinero** de Lekeitio — cada uno con su hilo y guiños a Radio
+Zubato. Cuando acaba su charla te pide bajar; **párate** y se despide. El
+macuto pasa atrás mientras hay pasajero. `T` sigue grabando para Zubato.
 
 **Dirección artística (estilo *Mixtape*):** realismo estilizado y
 cinematográfico — barras de película, cuatro momentos del día (amanecer, día,

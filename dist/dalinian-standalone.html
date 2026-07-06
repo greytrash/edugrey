@@ -64,6 +64,27 @@
     position: absolute; left: 26px; bottom: calc(4vh + 14px);
     font-size: 11px; line-height: 1.7; opacity: .8;
   }
+
+  #subs {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    bottom: calc(4vh + 30px); width: min(70ch, 82vw); text-align: center;
+    font-size: 18px; line-height: 1.45; opacity: 0; transition: opacity .45s ease;
+    text-shadow: 0 2px 6px rgba(0,0,0,.85);
+  }
+  #subs.on { opacity: 1; }
+  #subs .who { display:block; font-size: 11px; letter-spacing: .22em;
+    color: #e8935a; margin-bottom: 4px; text-transform: uppercase; }
+  #subs .line { color: #f6efe0; font-style: italic; }
+
+  #cue {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    top: calc(4vh + 22px); padding: 7px 16px;
+    background: rgba(22,17,12,.72); border: 1px solid rgba(232,147,90,.6);
+    border-radius: 20px; color: #f3ecdb; font-size: 12px; letter-spacing: .04em;
+    opacity: 0; transition: opacity .3s ease; pointer-events: none;
+  }
+  #cue.on { opacity: 1; }
+  #cue b { color: #e8935a; }
   #help b { color: #d9553f; font-weight: 700; }
 
   #boot {
@@ -106,6 +127,8 @@
     <div><span class="spd">0</span> <span class="unit">km/h</span></div>
     <div class="mode" id="modeline">día · despejado</div>
   </div>
+  <div id="cue"></div>
+  <div id="subs"><span class="who"></span><span class="line"></span></div>
 </div>
 <div class="cine" id="cineTop"></div>
 <div class="cine" id="cineBot"></div>
@@ -133,6 +156,9 @@
     red clandestina que lucha con cultura contra la dictadura: material que
     cruza la muga escondido entre las sacas, y una radio pirata que espera tu
     voz. <b>RADIO ZUBATO</b> emite donde la señal no llega.</p>
+    <p style="opacity:.7">Por el camino hay gente haciendo autostop: arrímate a la
+    derecha y reduce para recogerla. Te acompañará y te contará cosas hasta el
+    próximo pueblo.</p>
     <p class="controls">
       W/S · acelerar / frenar<br />
       A/D · girar<br />
@@ -703,6 +729,38 @@ function buildFronton() {
   court.rotation.x = -Math.PI / 2; court.position.set(5.2, 0.015, 0); grp.add(court);
   return grp;
 }
+/* personajes de la road movie: viajan a tu lado y conversan ------------------ */
+const CHARACTERS = [
+  { name: 'Amona', coat: 0x4a4a52, scarf: 0x6a2a2a, skin: 0xc9a074,
+    lines: [
+      'Eskerrik asko, semea. A estas horas ya no para nadie.',
+      'Voy al mercado de Gernika. Con la niebla no se ve el ganado.',
+      'Mi nieto anda en Iparralde. Dicen que estudia… yo sé lo que estudia.',
+      'Ese paquete que llevas detrás no lo he visto. Ni tú tampoco.',
+      'Cuando pares, llévate huevos. Y cuídate en la muga.' ] },
+  { name: 'Estudiante', coat: 0x2f4a3a, scarf: null, skin: 0xd8b090,
+    lines: [
+      '¿Me acercas a Oñati? Perdí el último coche de línea.',
+      'Solo llevo apuntes. De literatura. (sonríe)',
+      'En Gasteiz han vuelto a cerrar la facultad esta semana.',
+      '¿Radio Zubato? No sé de qué me hablas… pero sube el volumen.',
+      'Dicen que la voz también cruza fronteras. Sin papeles.' ] },
+  { name: 'Bertsolari', coat: 0x3a3340, scarf: 0x243b52, skin: 0xc8a070,
+    lines: [
+      'Si me acercas al frontón, te pago con un bertso.',
+      'La carretera es un verso largo que nunca termina.',
+      'Ocho versos improvisé anoche. Ninguno se puede escribir.',
+      'Toda muga es una rima: dos tierras que suenan igual.',
+      'Gracias, cartero. Tú repartes cartas; yo, palabras.' ] },
+  { name: 'Marinero', coat: 0x24405c, scarf: 0xb8b0a0, skin: 0xcf9f78,
+    lines: [
+      'Vengo de Lekeitio. El puerto está tomado desde ayer.',
+      'Huele a lluvia del norte. Esta noche cae con ganas.',
+      'Guarda bien el sobre. Hay quien pagaría por saber qué dice.',
+      'Yo no pregunto. El mar tampoco pregunta.',
+      'Déjame en el cruce. El resto lo hago a pie.' ] },
+];
+
 /* peatones: figuras con txapela que pasean con piernas y brazos animados ----- */
 function buildPersona() {
   const g = new THREE.Object3D();
@@ -727,6 +785,38 @@ function buildPersona() {
     arm.position.y = -0.25; sh.add(arm); g.add(sh); arms.push(sh);
   }
   g.userData.hips = hips; g.userData.arms = arms;
+  return g;
+}
+
+/* autoestopista en el arcén: figura con el brazo en alto y una maleta ------- */
+function buildHitchhiker() {
+  const ch = (Math.random() * CHARACTERS.length) | 0;
+  const g = new THREE.Object3D();
+  const c = CHARACTERS[ch];
+  const coat = toon({ color: c.coat }), skin = toon({ color: c.skin }), dark = toon({ color: 0x241f1a });
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.56, 0.2), coat);
+  torso.position.y = 1.05; g.add(torso);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.115, 12, 10), skin);
+  head.position.y = 1.48; g.add(head);
+  if (c.scarf !== null) {
+    const wrap = new THREE.Mesh(new THREE.SphereGeometry(0.125, 12, 8, 0, 6.3, 0, 1.9), toon({ color: c.scarf }));
+    wrap.position.y = 1.51; g.add(wrap);
+  } else {
+    const beret = new THREE.Mesh(new THREE.CylinderGeometry(0.135, 0.135, 0.035, 12), dark);
+    beret.position.y = 1.57; g.add(beret);
+  }
+  for (const sx of [-0.09, 0.09]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.78, 0.13), dark);
+    leg.position.set(sx, 0.39, 0); g.add(leg);
+  }
+  // brazo hacia la carretera (izquierda del muñeco), pidiendo parada
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.1), coat);
+  arm.position.set(-0.42, 1.3, 0); arm.rotation.z = 0.35; g.add(arm);
+  // maleta de cartón
+  const bag = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.26, 0.16), toon({ color: 0x7a5a38 }));
+  bag.position.set(0.3, 0.42, 0); g.add(bag);
+  g.rotation.y = -Math.PI / 2;                    // de cara a la calzada
+  g.userData.hitch = ch;
   return g;
 }
 
@@ -1086,7 +1176,8 @@ function spawnProp(s) {
     offset = oncoming ? -2.2 : 2.2;
   }
   else if (roll < 0.41) { obj = buildCyclists();     offset = 6.3; }          // en tu carril, a adelantar
-  else if (roll < 0.47) { obj = buildVillage();      offset = 0; }            // travesía completa
+  else if (roll < 0.45) { obj = buildHitchhiker();   offset = 7.3; obj.userData.hitchOff = true; }  // arcén derecho
+  else if (roll < 0.50) { obj = buildVillage();      offset = 0; }            // travesía completa
   else if (roll < 0.505){ obj = buildGasolinera();   offset = side * 15.5; }
   else if (roll < 0.535){ obj = buildBridge();       offset = 0; }
   else if (roll < 0.55) { obj = buildBull();         offset = side * (14 + Math.random() * 12); }
@@ -1108,8 +1199,9 @@ function spawnProp(s) {
 for (let d = 25; d < WORLD; d += 13 + Math.random() * 15) spawnProp(d);
 // garantiza un pueblo y un puente al arrancar
 {
-  const v = buildVillage(); v.userData.s = 150; v.userData.off = 0; scene.add(v); props.push(v);
-  const b = buildBridge();  b.userData.s = 380; b.userData.off = 0; scene.add(b); props.push(b);
+  const h = buildHitchhiker(); h.userData.s = 95;  h.userData.off = 7.3; scene.add(h); props.push(h);
+  const v = buildVillage();    v.userData.s = 150; v.userData.off = 0;   scene.add(v); props.push(v);
+  const b = buildBridge();     b.userData.s = 380; b.userData.off = 0;   scene.add(b); props.push(b);
 }
 
 /* ============================================================================
@@ -1242,16 +1334,17 @@ const headrest = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.18, 0.12), seatMat)
 headrest.position.set(0.72, 0.24, 0.22); cab.add(headrest);
 
 const canvasMat = toon({ color: 0x6d6a45 });
+const macuto = new THREE.Object3D(); cab.add(macuto);   // se oculta cuando hay pasajero
 const duffel = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.4, 12), canvasMat);
 duffel.rotation.z = Math.PI / 2 - 0.1; duffel.rotation.y = 0.5;
-duffel.position.set(0.72, -0.45, -0.20); cab.add(duffel);
+duffel.position.set(0.72, -0.45, -0.20); macuto.add(duffel);
 for (const ex of [-0.2, 0.2]) {
   const cap = new THREE.Mesh(new THREE.SphereGeometry(0.128, 10, 8), canvasMat);
   cap.position.set(0.72 + ex * Math.cos(0.5), -0.45 - ex * 0.1, -0.20 - ex * Math.sin(0.5));
-  cab.add(cap);
+  macuto.add(cap);
 }
 const strap = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.09, 0.28), toon({ color: 0x4a4630 }));
-strap.position.set(0.72, -0.41, -0.20); strap.rotation.y = 0.5; cab.add(strap);
+strap.position.set(0.72, -0.41, -0.20); strap.rotation.y = 0.5; macuto.add(strap);
 
 // CB emisora on the macuto; REC led lights up with T
 const cbBox = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.055, 0.12), toon({ color: 0x1b1916 }));
@@ -1370,6 +1463,76 @@ cab.add(droplets);
 const cabinGlow = new THREE.PointLight(0xffb070, 0, 3.5, 1.8);
 cabinGlow.position.set(0.2, -0.2, -0.7);
 cab.add(cabinGlow);
+
+/* ============================================================================
+   PASAJEROS — road movie: recoges a alguien, viaja a tu lado y conversa;
+   lo dejas en el siguiente pueblo. Personajes de la Euskadi de los 70.
+   ========================================================================== */
+const passengerRig = new THREE.Object3D();
+passengerRig.position.set(0.72, -0.60, -0.02);   // asiento del copiloto
+passengerRig.visible = false;
+cab.add(passengerRig);
+let passSkin = null, passHead = null;
+
+function buildSeatedPassenger(ch) {
+  while (passengerRig.children.length) passengerRig.remove(passengerRig.children[0]);
+  const coat = toon({ color: ch.coat });
+  const skin = toon({ color: ch.skin });
+  const dark = toon({ color: 0x241f1a });
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.5, 0.22), coat);
+  torso.position.set(0, 0.5, 0.06); torso.rotation.x = -0.12; passengerRig.add(torso);
+  // muslos sentados
+  const lap = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.16, 0.42), dark);
+  lap.position.set(0, 0.22, -0.15); passengerRig.add(lap);
+  // manos en el regazo
+  for (const hx of [-0.1, 0.1]) {
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), skin);
+    hand.scale.set(1, 0.7, 1.2); hand.position.set(hx, 0.3, -0.24); passengerRig.add(hand);
+  }
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.115, 12, 10), skin);
+  head.position.set(0, 0.9, 0.02); passengerRig.add(head);
+  if (ch.scarf !== null) {                        // pañuelo o txapela
+    const wrap = new THREE.Mesh(new THREE.SphereGeometry(0.125, 12, 8, 0, 6.3, 0, 1.9),
+      toon({ color: ch.scarf }));
+    wrap.position.set(0, 0.93, 0.0); passengerRig.add(wrap);
+  } else {
+    const beret = new THREE.Mesh(new THREE.CylinderGeometry(0.135, 0.135, 0.035, 12), toon({ color: 0x1d1b18 }));
+    beret.position.set(0, 1.0, 0.0); passengerRig.add(beret);
+  }
+  passHead = head; passSkin = skin;
+}
+
+// estado del pasajero
+let passenger = null;          // índice de personaje o null
+let passLineIdx = 0, passLineT = 0, passTravel = 0, passWantsOff = false, passOffT = 0;
+const subsEl = document.getElementById('subs');
+const cueEl = document.getElementById('cue');
+function showSub(who, line) {
+  subsEl.querySelector('.who').textContent = who;
+  subsEl.querySelector('.line').textContent = '“' + line + '”';
+  subsEl.classList.add('on');
+}
+function hideSub() { subsEl.classList.remove('on'); }
+function showCue(html) { cueEl.innerHTML = html; cueEl.classList.add('on'); }
+function hideCue() { cueEl.classList.remove('on'); }
+
+function boardPassenger(ch) {
+  passenger = ch;
+  buildSeatedPassenger(CHARACTERS[ch]);
+  passengerRig.visible = true;
+  macuto.visible = false;                         // el macuto pasa atrás, va el viajero
+  passLineIdx = 0; passLineT = 1.2; passTravel = 0; passWantsOff = false; passOffT = 0;
+  hideCue();
+  updateModeline();
+}
+function dropPassenger() {
+  showSub(CHARACTERS[passenger].name, 'Aquí me quedo. Ondo ibili, cartero.');
+  passengerRig.visible = false;
+  macuto.visible = true;
+  passenger = null; passWantsOff = false;
+  setTimeout(hideSub, 3200);
+  updateModeline();
+}
 
 /* ============================================================================
    EXTERIOR TAXI (chase cam), HEADLIGHTS, CAMERA MODES
@@ -1542,7 +1705,7 @@ const TOD = [
 let todIndex = 2, rainOn = true, paused = false;   // arranque: atardecer, asfalto mojado
 function updateModeline() {
   document.getElementById('modeline').textContent =
-    `${TOD[todIndex].name} · ${rainOn ? 'lluvia' : 'despejado'} · ${STATIONS[stationIdx]}${recOn ? ' · ● REC ZUBATO' : ''}`;
+    `${TOD[todIndex].name} · ${rainOn ? 'lluvia' : 'despejado'} · ${STATIONS[stationIdx]}${recOn ? ' · ● REC ZUBATO' : ''}${passenger !== null ? ' · 👤 ' + CHARACTERS[passenger].name : ''}`;
 }
 function applyTOD() {
   const t = TOD[todIndex];
@@ -1890,12 +2053,25 @@ function frame() {
     if (crashCooldown > 0) crashCooldown -= dt;
     carX = THREE.MathUtils.lerp(carX, laneX, 0.2);
 
+    let hitchAhead = false;
     for (const p of props) {
       if (p.userData.traffic) p.userData.s += p.userData.v * dt;
       const d = p.userData.s - scroll;
       p.position.z = -d;
       // el fondo lejano NO se dobla con la carretera (evita el "fondo sin sentido")
       p.position.x = p.userData.off + roadDX(d) * (p.userData.bendMul ?? 1);
+
+      // autoestopista: basta con pasar despacio a su lado (no en el carril contrario)
+      if (p.userData.hitch !== undefined && passenger === null) {
+        if (d > 0 && d < 55) hitchAhead = true;
+        if (d > -7 && d < 13 && speed < 9 && laneX > -0.5) {
+          const ch = p.userData.hitch;
+          scene.remove(p); props.splice(props.indexOf(p), 1);
+          spawnProp(scroll + WORLD - Math.random() * 60);
+          boardPassenger(ch);
+          break;
+        }
+      }
 
       // vecinos paseando: piernas/brazos en péndulo, ida y vuelta por la travesía
       if (p.userData.walkers && d > -190 && d < 500) {
@@ -1936,6 +2112,42 @@ function frame() {
           crashCooldown = 0.8;
           crashes++;
         }
+      }
+    }
+
+    /* aviso de recogida */
+    if (passenger === null && hitchAhead && speed > 6.5) {
+      showCue('Alguien hace autostop — <b>arrímate a la derecha y reduce</b>');
+    } else if (passenger === null && !passWantsOff) {
+      hideCue();
+    }
+
+    /* diálogo del pasajero + petición de bajada */
+    if (passenger !== null) {
+      const ch = CHARACTERS[passenger];
+      passTravel += speed * dt;
+      if (!passWantsOff) {
+        passLineT -= dt;
+        if (passLineT <= 0 && passLineIdx < ch.lines.length) {
+          showSub(ch.name, ch.lines[passLineIdx]);
+          const words = ch.lines[passLineIdx].split(' ').length;
+          passLineT = 2.6 + words * 0.42;               // tiempo en pantalla según longitud
+          passLineIdx++;
+          if (passLineIdx >= ch.lines.length) passLineT += 1.5;
+        } else if (passLineIdx >= ch.lines.length && passLineT <= 0) {
+          hideSub();
+          passWantsOff = true;
+          showCue(`<b>${ch.name}</b> quiere bajar — párate en el próximo pueblo`);
+        }
+      } else {
+        // se baja al detenerte
+        if (speed < 5) { passOffT += dt; if (passOffT > 1.0) { hideCue(); dropPassenger(); } }
+        else passOffT = 0;
+      }
+      // vida sutil: respira y mira el paisaje
+      if (passHead) {
+        passHead.rotation.y = Math.sin(postUniforms.time.value * 0.5) * 0.25;
+        passengerRig.position.y = -0.60 + Math.sin(postUniforms.time.value * 1.7) * 0.004;
       }
     }
   }
@@ -2026,11 +2238,22 @@ window.__dbg = () => {
     if (d > 0 && (!nearest || d < nearest.d))
       nearest = { d: Math.round(d), x: +(p.userData.off + roadDX(d)).toFixed(2), v: +p.userData.v.toFixed(1) };
   }
+  let nearHitch = null;
+  for (const p of props) {
+    if (p.userData.hitch === undefined) continue;
+    const d = p.userData.s - scroll;
+    if (d > -3 && (!nearHitch || d < nearHitch)) nearHitch = Math.round(d);
+  }
   return { speed, laneX, scroll, crashes, impact: postUniforms.impact.value,
            station: STATIONS[stationIdx], rec: recOn,
-           lookYaw, lookPitch, audio: !!AC, nearest,
+           lookYaw, lookPitch, audio: !!AC, nearest, nearHitch,
+           passenger: passenger !== null ? CHARACTERS[passenger].name : null,
+           passWantsOff, subOn: subsEl.classList.contains('on'),
+           subText: subsEl.querySelector('.line').textContent,
            cam: camMode, lights: lightsOn, rain: rainOn };
 };
+window.__board = (i) => { if (passenger === null) boardPassenger(i ?? 0); };
+window.__askOff = () => { if (passenger !== null) { passLineIdx = CHARACTERS[passenger].lines.length; passLineT = 0; } };
 
 /* ---------- resize --------------------------------------------------------- */
 addEventListener('resize', () => {
