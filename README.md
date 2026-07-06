@@ -84,8 +84,20 @@ de la calzada. Es la regla "la carretera es real, el mundo no".
 ## Estructura
 
 ```
-index.html                 prototipo completo (sim + post)
+index.html                 prototipo 3D completo (sim + post)
+game.html                  aventura de texto interactiva (El Juego)
 vendor/three.module.js      Three.js r160 vendorizado (offline)
 docs/preview*.png           capturas
 docs/DESIGN.md              diseño técnico condensado desde el informe
 ```
+
+## El Juego — aventura de texto
+
+`game.html` es una aventura de texto interactiva ambientada en las mismas
+Carreteras Dalinianas. Sin build, sin dependencias externas: se puede abrir
+directamente con `file://` en el navegador.
+
+- Múltiples localizaciones y bifurcaciones narrativas
+- Sistema de guardado/carga por `localStorage`
+- Registro de eventos en pantalla
+- Tres finales (incluyendo uno secreto)
