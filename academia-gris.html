@@ -12,8 +12,6 @@
 :root{
   --blanco:#FCFCFA; --magenta:#F012B8; --negro:#0A0A0B;
   --rosa-claro:#FF3DD1; --rosa-tinta:#B60D8C; --velo:#FDEBF8;
-  /* synthwave — ACADEM(IA) GRIS */
-  --cian:#26E8D8; --violeta:#6D4AFF; --noche:#0B0618; --noche-2:#150A2A; --sol:#FF9CE6;
   --archivo:'Archivo',sans-serif; --cuerpo:'Instrument Sans',sans-serif; --mono:'Space Mono',monospace;
 }
 *{margin:0;padding:0;box-sizing:border-box}
@@ -38,7 +36,7 @@ img{max-width:100%;display:block}
 /* HEADER */
 header{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:center;justify-content:space-between;
   padding:14px 26px;background:rgba(252,252,250,.75);backdrop-filter:blur(14px);border-bottom:1px solid rgba(10,10,11,.08);transition:background .4s,color .4s}
-header.dark{background:rgba(11,6,24,.82);color:var(--blanco);border-bottom-color:rgba(255,255,255,.1)}
+header.dark{background:rgba(10,10,11,.82);color:var(--blanco);border-bottom-color:rgba(255,255,255,.1)}
 .logo{display:flex;align-items:center;gap:10px;font-family:var(--archivo);font-weight:900;text-decoration:none}
 .logo .disc{width:38px;height:38px;background:var(--magenta);border-radius:50%;display:grid;place-items:center;color:#fff;font-size:15px;box-shadow:0 3px 12px rgba(240,18,184,.5);letter-spacing:-.5px}
 .logo .tag{font-family:var(--mono);font-size:9px;font-weight:400;opacity:.6;letter-spacing:1px;text-transform:uppercase}
@@ -147,86 +145,56 @@ section{position:relative;z-index:2}
 .narrar{margin-top:26px;background:var(--magenta);color:#fff;border:none;font-family:var(--mono);font-size:14px;text-transform:uppercase;letter-spacing:1px;padding:16px 26px;border-radius:40px;cursor:pointer;box-shadow:0 6px 22px rgba(240,18,184,.5);transition:transform .2s,background .2s}
 .narrar:hover{transform:scale(1.04)}
 
-/* ===== ACADEM(IA) GRIS — synthwave ===== */
-.academia{background:linear-gradient(180deg,var(--noche) 0%,var(--noche-2) 55%,var(--noche) 100%);color:var(--blanco);position:relative;overflow:hidden;padding-bottom:80px}
-.academia .grid-canvas{position:absolute;left:0;right:0;bottom:0;height:60%;width:100%;z-index:0;opacity:.55;pointer-events:none}
-.academia .sun{position:absolute;top:80px;left:50%;transform:translateX(-50%);width:min(520px,80vw);height:min(520px,80vw);border-radius:50%;
-  background:radial-gradient(circle at 50% 45%,var(--sol),var(--magenta) 42%,transparent 66%);filter:blur(6px);opacity:.5;z-index:0;pointer-events:none}
-.academia .wrap{position:relative;z-index:2}
-.academia .sec-head{margin-top:0;padding-top:80px}
-.academia .sec-head h2{font-size:clamp(2.3rem,8vw,5.4rem);background:linear-gradient(90deg,var(--sol),var(--cian));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 20px rgba(240,18,184,.45))}
-.academia .sec-head .num{color:var(--cian)}
-.aca-intro{max-width:70ch;font-size:1.12rem;margin-bottom:12px;color:#Ebe4ff}
-.aca-intro b{color:#fff}
-.aca-intro a{color:var(--cian);text-decoration:none;border-bottom:1px solid var(--cian)}
-.aca-tag{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--cian);margin:34px 0 14px;display:flex;align-items:center;gap:10px}
-.aca-tag::before{content:'';width:26px;height:2px;background:var(--cian)}
+/* ===== ACADEM(IA) GRIS — limpio, en el mismo lenguaje del periódico ===== */
+.academia{background:var(--blanco);padding-bottom:20px}
+.aca-intro{max-width:64ch;font-size:1.12rem;margin-bottom:6px}
+.aca-intro b{font-weight:600}
+.aca-intro a{color:var(--rosa-tinta);text-decoration:none;border-bottom:1px solid var(--rosa-tinta)}
+.aca-intro a:hover{color:var(--magenta)}
+.aca-tag{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--magenta);margin:44px 0 16px;display:flex;align-items:center;gap:10px}
+.aca-tag::before{content:'';width:26px;height:2px;background:var(--magenta)}
 
-/* screening room (Canva facade) */
-.screening{margin:6px 0 10px}
-.screen-facade{position:relative;width:100%;padding-top:56.25%;border-radius:12px;overflow:hidden;cursor:pointer;
-  border:1px solid rgba(38,232,216,.35);box-shadow:0 0 0 1px rgba(240,18,184,.25),0 24px 60px rgba(0,0,0,.55);
-  background:
-    linear-gradient(115deg,rgba(240,18,184,.28),rgba(109,74,255,.28) 45%,rgba(38,232,216,.22)),
-    repeating-linear-gradient(0deg,rgba(255,255,255,.05) 0 2px,transparent 2px 4px),
-    var(--noche-2)}
-.screen-facade .sf-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:20px}
-.screen-facade .play{width:76px;height:76px;border-radius:50%;display:grid;place-items:center;font-size:26px;color:#0A0A0B;
-  background:var(--cian);box-shadow:0 0 34px rgba(38,232,216,.7);transition:transform .25s}
-.screen-facade:hover .play,.screen-facade:focus-visible .play{transform:scale(1.1)}
+/* screening room (Canva) */
+.screening{margin-bottom:6px}
+.screen-facade{position:relative;width:100%;padding-top:56.25%;overflow:hidden;cursor:pointer;border:2px solid var(--negro);background:linear-gradient(120deg,var(--magenta),var(--rosa-tinta))}
+.screen-facade .sf-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:20px;color:#fff}
+.screen-facade .play{width:74px;height:74px;border-radius:50%;display:grid;place-items:center;font-size:24px;color:var(--magenta);background:#fff;box-shadow:0 10px 28px rgba(0,0,0,.25);transition:transform .25s}
+.screen-facade:hover .play,.screen-facade:focus-visible .play{transform:scale(1.08)}
 .screen-facade .sf-t{font-family:var(--archivo);font-weight:900;font-size:clamp(1.1rem,3.2vw,1.7rem);text-transform:uppercase;font-stretch:112%;letter-spacing:.5px}
-.screen-facade .sf-s{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:1px;opacity:.85}
+.screen-facade .sf-s{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:1px;opacity:.9}
 .screen-facade iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 
 /* project grid */
-.aca-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:6px}
-.aca-card{position:relative;display:block;text-decoration:none;color:#fff;border-radius:12px;overflow:hidden;
-  background:var(--noche-2);border:1px solid rgba(255,255,255,.08);transition:transform .3s,box-shadow .3s,border-color .3s}
-.aca-card:hover{transform:translateY(-4px);border-color:rgba(38,232,216,.5);box-shadow:0 22px 46px rgba(0,0,0,.5),0 0 30px rgba(240,18,184,.22)}
-.aca-poster{position:relative;aspect-ratio:16/10;overflow:hidden;display:grid;place-items:center;
-  background-image:
-    repeating-linear-gradient(90deg,rgba(255,255,255,.06) 0 1px,transparent 1px 30px),
-    repeating-linear-gradient(0deg,rgba(255,255,255,.06) 0 1px,transparent 1px 30px);
-  background-color:#150a2a}
-.aca-poster::before{content:'';position:absolute;inset:0;background:var(--pg,linear-gradient(130deg,var(--magenta),var(--violeta)));opacity:.82;mix-blend-mode:screen}
-.aca-poster .pg-word{position:relative;z-index:2;font-family:var(--archivo);font-weight:900;font-size:clamp(1.3rem,4vw,2rem);text-transform:uppercase;font-stretch:120%;letter-spacing:1px;text-align:center;padding:0 14px;text-shadow:0 2px 18px rgba(0,0,0,.5);text-wrap:balance}
-.aca-poster .pg-play{position:absolute;right:12px;bottom:12px;z-index:3;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;
-  background:rgba(11,6,24,.6);border:1px solid var(--cian);color:var(--cian);font-size:15px;backdrop-filter:blur(4px);transition:transform .25s,background .25s}
-.aca-card:hover .pg-play{transform:scale(1.12);background:var(--cian);color:#0A0A0B}
-.aca-poster .scan{position:absolute;inset:0;z-index:2;background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 2px,transparent 2px 4px);opacity:.5;pointer-events:none}
-.aca-c-body{padding:16px 18px 20px}
-.aca-c-brand{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--cian);margin-bottom:8px}
-.aca-c-title{font-family:var(--archivo);font-weight:900;font-size:1.08rem;text-transform:uppercase;font-stretch:108%;line-height:1.06;margin-bottom:8px}
-.aca-c-desc{font-size:.9rem;color:#cfc6e8;line-height:1.5}
+.aca-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.aca-card{display:flex;flex-direction:column;text-decoration:none;color:var(--negro);border:1.5px solid rgba(10,10,11,.14);background:#fff;transition:transform .3s,box-shadow .3s}
+.aca-card:hover{transform:translateY(-4px);box-shadow:0 22px 46px rgba(10,10,11,.14)}
+.aca-poster{position:relative;aspect-ratio:16/10;display:grid;place-items:center;overflow:hidden;background:var(--pg,linear-gradient(130deg,var(--magenta),var(--rosa-tinta)))}
+.aca-poster .pg-word{font-family:var(--archivo);font-weight:900;font-size:clamp(1.2rem,3.4vw,1.8rem);text-transform:uppercase;font-stretch:118%;letter-spacing:1px;color:#fff;text-align:center;padding:0 14px;line-height:1;text-wrap:balance}
+.aca-poster .pg-play{position:absolute;right:12px;bottom:12px;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.92);color:var(--magenta);font-size:12px;transition:transform .25s}
+.aca-card:hover .pg-play{transform:scale(1.12)}
+.aca-c-body{padding:18px 20px 22px;display:flex;flex-direction:column;flex:1}
+.aca-c-brand{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--magenta);margin-bottom:8px}
+.aca-c-title{font-family:var(--archivo);font-weight:900;font-size:1.15rem;text-transform:uppercase;font-stretch:108%;line-height:1.06;margin-bottom:8px}
+.aca-c-desc{font-size:.92rem;color:#333;line-height:1.5;flex:1}
 
 /* brand wall */
-.brand-wall{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:8px}
-.brand-chip{display:flex;align-items:center;justify-content:center;text-align:center;min-height:96px;padding:18px 12px;border-radius:10px;
-  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);font-family:var(--archivo);font-weight:900;
-  text-transform:uppercase;font-stretch:110%;letter-spacing:1px;font-size:clamp(1rem,2.4vw,1.5rem);color:#fff;
-  transition:border-color .3s,background .3s,color .3s,transform .3s;position:relative;overflow:hidden}
-.brand-chip small{display:block;font-family:var(--mono);font-weight:400;font-size:9px;letter-spacing:1.5px;color:var(--cian);margin-top:6px}
-.brand-chip:hover{border-color:var(--cian);color:var(--cian);transform:translateY(-3px);background:rgba(38,232,216,.06);box-shadow:0 0 26px rgba(38,232,216,.2)}
-.brand-marquee{margin-top:16px;overflow:hidden;white-space:nowrap;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
-.brand-marquee .bm-track{display:inline-block;animation:scroll 32s linear infinite;font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#9a8fc0}
-.brand-marquee .bm-track span{margin:0 22px}
-.brand-marquee .bm-track b{color:var(--sol);font-weight:700}
-.brand-marquee:hover .bm-track{animation-play-state:paused}
+.brand-wall{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+.brand-chip{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:90px;padding:14px 10px;border:1.5px solid rgba(10,10,11,.16);
+  font-family:var(--archivo);font-weight:900;text-transform:uppercase;font-stretch:106%;letter-spacing:.5px;font-size:clamp(.82rem,1.5vw,1.02rem);line-height:1.02;color:var(--negro);transition:border-color .25s,color .25s,transform .25s}
+.brand-chip small{font-family:var(--mono);font-weight:400;font-size:8.5px;letter-spacing:1px;color:var(--magenta);margin-top:7px}
+.brand-chip:hover{border-color:var(--magenta);color:var(--magenta);transform:translateY(-3px)}
+.brand-extra{font-family:var(--mono);font-size:12px;letter-spacing:.4px;color:#666;margin-top:16px;line-height:1.9}
+.brand-extra b{color:var(--negro);font-weight:700}
 
-/* creator block */
-.creator{display:grid;grid-template-columns:150px 1fr;gap:30px;align-items:center;margin-top:16px;padding:28px;border-radius:14px;
-  background:linear-gradient(120deg,rgba(240,18,184,.12),rgba(109,74,255,.12));border:1px solid rgba(255,255,255,.1)}
-.creator .cr-av{width:150px;height:150px;border-radius:50%;display:grid;place-items:center;font-family:var(--archivo);font-weight:900;font-size:52px;
-  color:#0A0A0B;background:conic-gradient(from 210deg,var(--sol),var(--magenta),var(--violeta),var(--cian),var(--sol));
-  box-shadow:0 0 44px rgba(240,18,184,.45);position:relative}
-.creator .cr-av span{position:absolute;inset:6px;border-radius:50%;background:var(--noche);color:#fff;display:grid;place-items:center;letter-spacing:-1px}
-.creator .cr-name{font-family:var(--archivo);font-weight:900;font-size:clamp(1.6rem,4.5vw,2.6rem);text-transform:uppercase;font-stretch:115%;line-height:.95}
-.creator .cr-role{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--cian);margin:6px 0 12px}
-.creator .cr-bio{font-size:1rem;color:#e7e0fb;max-width:60ch}
+/* creator */
+.creator{display:grid;grid-template-columns:120px 1fr;gap:28px;align-items:center;margin-top:6px}
+.creator .cr-av{width:120px;height:120px;border-radius:50%;display:grid;place-items:center;font-family:var(--archivo);font-weight:900;font-size:40px;color:#fff;background:var(--magenta);box-shadow:0 8px 22px rgba(240,18,184,.4)}
+.creator .cr-name{font-family:var(--archivo);font-weight:900;font-size:clamp(1.6rem,4.5vw,2.4rem);text-transform:uppercase;font-stretch:115%;line-height:.95}
+.creator .cr-role{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--magenta);margin:6px 0 12px}
+.creator .cr-bio{font-size:1rem;color:#333;max-width:62ch}
 .creator .cr-links{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
-.creator .cr-links a{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.5px;text-decoration:none;
-  padding:9px 15px;border-radius:30px;border:1px solid var(--cian);color:var(--cian);transition:background .25s,color .25s}
-.creator .cr-links a:hover{background:var(--cian);color:#0A0A0B}
+.creator .cr-links a{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.5px;text-decoration:none;padding:9px 16px;border-radius:30px;background:var(--magenta);color:#fff;transition:transform .2s}
+.creator .cr-links a:hover{transform:scale(1.05)}
 
 /* REDACCIÓN */
 .staff{display:grid;grid-template-columns:repeat(5,1fr);gap:20px}
@@ -250,27 +218,23 @@ footer{background:var(--negro);color:var(--blanco);padding:70px 26px 40px;text-a
 .foot-links{margin-top:34px;font-family:var(--mono);font-size:13px;text-transform:uppercase;letter-spacing:1px;display:flex;gap:24px;justify-content:center;flex-wrap:wrap}
 .foot-links a{text-decoration:none;color:var(--rosa-claro)}
 .foot-credit{margin-top:26px;font-family:var(--mono);font-size:12px;letter-spacing:.5px;color:#cfc6e8}
-.foot-credit b{color:var(--cian)}
+.foot-credit b{color:var(--rosa-claro)}
 .foot-fine{margin-top:22px;font-family:var(--mono);font-size:10px;opacity:.4}
 
-/* AUDIO toggle (flotante) */
-.audio-btn{position:fixed;right:20px;bottom:20px;z-index:1200;display:flex;align-items:center;gap:10px;
-  font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#0A0A0B;
-  background:var(--cian);border:none;padding:12px 16px;border-radius:40px;cursor:pointer;
-  box-shadow:0 6px 22px rgba(38,232,216,.45);transition:transform .2s,box-shadow .2s,background .3s,color .3s}
+/* AUDIO toggle (minimal) */
+.audio-btn{position:fixed;right:18px;bottom:18px;z-index:1200;display:flex;align-items:center;gap:9px;
+  font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#fff;
+  background:var(--negro);border:none;padding:11px 15px;border-radius:40px;cursor:pointer;
+  box-shadow:0 6px 18px rgba(10,10,11,.28);transition:transform .2s,background .3s}
 .audio-btn:hover{transform:translateY(-2px)}
-.audio-btn .eq{display:inline-flex;align-items:flex-end;gap:2px;height:14px}
-.audio-btn .eq i{width:3px;height:5px;background:#0A0A0B;border-radius:1px}
-.audio-btn.on{background:var(--magenta);color:#fff;box-shadow:0 6px 22px rgba(240,18,184,.5)}
-.audio-btn.on .eq i{background:#fff;animation:eq .9s ease-in-out infinite}
+.audio-btn .eq{display:inline-flex;align-items:flex-end;gap:2px;height:12px}
+.audio-btn .eq i{width:3px;height:4px;background:#fff;border-radius:1px}
+.audio-btn.on{background:var(--magenta)}
+.audio-btn.on .eq i{animation:eq .9s ease-in-out infinite}
 .audio-btn.on .eq i:nth-child(2){animation-delay:.15s}
 .audio-btn.on .eq i:nth-child(3){animation-delay:.3s}
 .audio-btn.on .eq i:nth-child(4){animation-delay:.45s}
-@keyframes eq{0%,100%{height:4px}50%{height:14px}}
-.audio-hint{position:fixed;right:20px;bottom:66px;z-index:1200;font-family:var(--mono);font-size:10px;text-transform:uppercase;
-  letter-spacing:.5px;color:#0A0A0B;background:var(--velo);border:1px solid var(--magenta);padding:7px 11px;border-radius:8px;
-  box-shadow:0 6px 18px rgba(0,0,0,.15);max-width:210px;opacity:0;transform:translateY(8px);transition:opacity .4s,transform .4s;pointer-events:none}
-.audio-hint.show{opacity:1;transform:none}
+@keyframes eq{0%,100%{height:3px}50%{height:12px}}
 
 /* reveals */
 .reveal{opacity:0;transform:translateY(40px);filter:blur(8px);transition:opacity .8s,transform .8s,filter .8s}
@@ -279,7 +243,7 @@ footer{background:var(--negro);color:var(--blanco);padding:70px 26px 40px;text-a
 .word.in{opacity:1;transform:none}
 
 /* focus visibility */
-a:focus-visible,button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--cian);outline-offset:3px;border-radius:4px}
+a:focus-visible,button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--magenta);outline-offset:3px;border-radius:4px}
 
 /* responsive */
 @media(max-width:1040px){ nav.main{gap:13px;font-size:10px} }
@@ -294,7 +258,7 @@ a:focus-visible,button:focus-visible,[tabindex]:focus-visible{outline:3px solid 
   .lab-stage{grid-template-columns:1fr}
   .staff{grid-template-columns:repeat(2,1fr)}
   .aca-grid{grid-template-columns:repeat(2,1fr)}
-  .brand-wall{grid-template-columns:repeat(2,1fr)}
+  .brand-wall{grid-template-columns:repeat(3,1fr)}
   .creator{grid-template-columns:1fr;justify-items:center;text-align:center}
   .creator .cr-bio{margin:0 auto}
   .creator .cr-links{justify-content:center}
@@ -303,14 +267,14 @@ a:focus-visible,button:focus-visible,[tabindex]:focus-visible{outline:3px solid 
   .grid{grid-template-columns:1fr}
   .staff{grid-template-columns:1fr}
   .aca-grid{grid-template-columns:1fr}
-  .brand-wall{grid-template-columns:1fr}
+  .brand-wall{grid-template-columns:repeat(2,1fr)}
   .sec-head{margin-top:50px}
 }
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
   *{animation:none!important;transition:none!important}
   .reveal,.word{opacity:1;transform:none;filter:none}
-  .ticker-track,.bm-track{animation:none}
+  .ticker-track{animation:none}
 }
 </style>
 </head>
@@ -598,13 +562,10 @@ a:focus-visible,button:focus-visible,[tabindex]:focus-visible{outline:3px solid 
 
 <!-- ===== ACADEM(IA) GRIS ===== -->
 <section class="academia" id="academia">
-  <canvas class="grid-canvas" id="gridCanvas" aria-hidden="true"></canvas>
-  <div class="sun" aria-hidden="true"></div>
   <div class="wrap">
     <div class="sec-head reveal"><h2>ACADEM(IA) GRIS</h2><span class="num">05 — el portfolio de IA de Edu Naudín</span></div>
-    <p class="aca-intro reveal">Cine, publicidad y música hechos <b>íntegramente con inteligencia artificial</b> —imagen, voz, sonido y banda sonora— por <b>Edu Naudín</b>, <a href="https://instagram.com/grey_trash" target="_blank" rel="noopener">@grey_trash</a>. Piezas creadas de principio a fin, donde controla todo el proceso salvo lo que lleva guión externo.</p>
+    <p class="aca-intro reveal">Cine, publicidad y música hechos <b>íntegramente con inteligencia artificial</b> —imagen, voz, sonido y banda sonora— por <b>Edu Naudín</b>, <a href="https://instagram.com/grey_trash" target="_blank" rel="noopener">@grey_trash</a>. Piezas creadas de principio a fin.</p>
 
-    <!-- Screening room: portfolio Canva -->
     <div class="aca-tag reveal">▚ La sala de proyección</div>
     <div class="screening reveal">
       <div class="screen-facade" id="canvaFacade" role="button" tabindex="0"
@@ -613,45 +574,44 @@ a:focus-visible,button:focus-visible,[tabindex]:focus-visible{outline:3px solid 
         <div class="sf-inner">
           <div class="play" aria-hidden="true">▶</div>
           <div class="sf-t">PORTFOLIO IA · GREY TRASH</div>
-          <div class="sf-s">Pulsa para reproducir · 45 piezas de vídeo</div>
+          <div class="sf-s">Pulsa para reproducir · 45 piezas</div>
         </div>
       </div>
       <a class="src-link" href="https://canva.link/greytrash-edunaudin-ia" target="_blank" rel="noopener">Abrir el portfolio completo en Canva ↗</a>
     </div>
 
-    <!-- Project grid -->
     <div class="aca-tag reveal">▚ Piezas destacadas</div>
     <div class="aca-grid" id="acaGrid">
 
       <a class="aca-card reveal" href="https://canva.link/greytrash-edunaudin-ia" target="_blank" rel="noopener">
-        <div class="aca-poster" style="--pg:linear-gradient(130deg,#1428A0,#6D4AFF)"><span class="pg-word">SAMSUNG</span><span class="scan"></span><span class="pg-play" aria-hidden="true">▶</span></div>
+        <div class="aca-poster"><span class="pg-word">SAMSUNG</span><span class="pg-play" aria-hidden="true">▶</span></div>
         <div class="aca-c-body">
           <div class="aca-c-brand">SAMSUNG · REELS</div>
           <div class="aca-c-title">El reel que rozó el medio millón</div>
-          <p class="aca-c-desc">Pieza hiperrealista para redes, la primera de cuatro de una campaña de seis meses. Más de 500.000 visualizaciones y la prueba de que la IA sirve para contenido de marca viral.</p>
+          <p class="aca-c-desc">Pieza hiperrealista para redes, la primera de cuatro de una campaña de seis meses. Más de 500.000 visualizaciones.</p>
         </div>
       </a>
 
       <a class="aca-card reveal" href="https://canva.link/greytrash-edunaudin-ia" target="_blank" rel="noopener">
-        <div class="aca-poster" style="--pg:linear-gradient(130deg,#0A0A0B,#1428A0)"><span class="pg-word">SAMSUNG</span><span class="scan"></span><span class="pg-play" aria-hidden="true">▶</span></div>
+        <div class="aca-poster" style="--pg:linear-gradient(130deg,#0A0A0B,#B60D8C)"><span class="pg-word">SAMSUNG</span><span class="pg-play" aria-hidden="true">▶</span></div>
         <div class="aca-c-body">
           <div class="aca-c-brand">SAMSUNG · CORTO</div>
           <div class="aca-c-title">Deepfake, lipsync y una historia breve</div>
-          <p class="aca-c-desc">Corto protagonizado por él mismo, integrando deepfake, lipsync, sonido y música en una micronarrativa. Parte de una colaboración anual, con una pieza nueva cada dos meses.</p>
+          <p class="aca-c-desc">Corto protagonizado por él mismo, integrando deepfake, lipsync, sonido y música. Colaboración anual, una pieza cada dos meses.</p>
         </div>
       </a>
 
       <a class="aca-card reveal" href="https://canva.link/greytrash-edunaudin-ia" target="_blank" rel="noopener">
-        <div class="aca-poster" style="--pg:linear-gradient(130deg,#111,#F012B8)"><span class="pg-word">KINGS<br>LEAGUE</span><span class="scan"></span><span class="pg-play" aria-hidden="true">▶</span></div>
+        <div class="aca-poster"><span class="pg-word">KINGS LEAGUE</span><span class="pg-play" aria-hidden="true">▶</span></div>
         <div class="aca-c-body">
           <div class="aca-c-brand">KINGS LEAGUE · SOCIAL</div>
           <div class="aca-c-title">Cinco spots, cero rodaje</div>
-          <p class="aca-c-desc">Serie de cinco spots desarrollados íntegramente con IA —voz, música, imagen y animación— concebidos para televisión y adaptados a distintos formatos digitales.</p>
+          <p class="aca-c-desc">Serie de cinco spots íntegramente con IA —voz, música, imagen y animación— para televisión y adaptados a digital.</p>
         </div>
       </a>
 
       <a class="aca-card reveal" href="https://canva.link/greytrash-edunaudin-ia" target="_blank" rel="noopener">
-        <div class="aca-poster" style="--pg:linear-gradient(130deg,#0B3D2E,#26E8D8)"><span class="pg-word">LA LIGA</span><span class="scan"></span><span class="pg-play" aria-hidden="true">▶</span></div>
+        <div class="aca-poster" style="--pg:linear-gradient(130deg,#0A0A0B,#F012B8)"><span class="pg-word">LA LIGA</span><span class="pg-play" aria-hidden="true">▶</span></div>
         <div class="aca-c-body">
           <div class="aca-c-brand">LA LIGA</div>
           <div class="aca-c-title">Fútbol, reescrito con IA</div>
@@ -660,77 +620,70 @@ a:focus-visible,button:focus-visible,[tabindex]:focus-visible{outline:3px solid 
       </a>
 
       <a class="aca-card reveal" href="https://canva.link/greytrash-edunaudin-ia" target="_blank" rel="noopener">
-        <div class="aca-poster" style="--pg:linear-gradient(130deg,#0B5C2E,#8BE04B)"><span class="pg-word">IBERDROLA</span><span class="scan"></span><span class="pg-play" aria-hidden="true">▶</span></div>
+        <div class="aca-poster"><span class="pg-word">IBERDROLA</span><span class="pg-play" aria-hidden="true">▶</span></div>
         <div class="aca-c-body">
           <div class="aca-c-brand">IBERDROLA · KITCHEN</div>
           <div class="aca-c-title">Electrodomésticos que vuelan</div>
-          <p class="aca-c-desc">Maqueta realizada en una semana con IA: electrodomésticos surcando el cielo. Un ejercicio rápido de animación generativa aplicada a producto.</p>
+          <p class="aca-c-desc">Maqueta realizada en una semana con IA: electrodomésticos surcando el cielo. Un ejercicio de animación generativa aplicada a producto.</p>
         </div>
       </a>
 
       <a class="aca-card reveal" href="https://canva.link/greytrash-edunaudin-ia" target="_blank" rel="noopener">
-        <div class="aca-poster" style="--pg:linear-gradient(130deg,#F012B8,#FF9CE6)"><span class="pg-word">LA LA<br>LOVE YOU</span><span class="scan"></span><span class="pg-play" aria-hidden="true">▶</span></div>
+        <div class="aca-poster" style="--pg:linear-gradient(130deg,#B60D8C,#FF3DD1)"><span class="pg-word">LA LA LOVE YOU</span><span class="pg-play" aria-hidden="true">▶</span></div>
         <div class="aca-c-body">
           <div class="aca-c-brand">LA LA LOVE YOU · GIRA</div>
           <div class="aca-c-title">Un cantante y un oso, en directo</div>
-          <p class="aca-c-desc">Visuales para la gira 2025-2026 del grupo, donde el cantante interactúa con un oso a lo largo del concierto. Identidad visual y lore construidos pieza a pieza.</p>
+          <p class="aca-c-desc">Visuales para la gira 2025-2026 del grupo, donde el cantante interactúa con un oso. Identidad visual y lore pieza a pieza.</p>
         </div>
       </a>
 
       <a class="aca-card reveal" href="https://canva.link/greytrash-edunaudin-ia" target="_blank" rel="noopener">
-        <div class="aca-poster" style="--pg:linear-gradient(130deg,#0A0A0B,#6D4AFF)"><span class="pg-word">SANTIAGO<br>BERNABÉU</span><span class="scan"></span><span class="pg-play" aria-hidden="true">▶</span></div>
+        <div class="aca-poster" style="--pg:linear-gradient(130deg,#0A0A0B,#B60D8C)"><span class="pg-word">SANTIAGO BERNABÉU</span><span class="pg-play" aria-hidden="true">▶</span></div>
         <div class="aca-c-body">
           <div class="aca-c-brand">REAL MADRID · SOMOS</div>
           <div class="aca-c-title">Corto navideño para el Bernabéu</div>
-          <p class="aca-c-desc">Cortometraje para el evento «Somos Experience» del Santiago Bernabéu: personajes, imágenes, entornos y escenas. Todo salvo el sonido, el guión y el montaje.</p>
+          <p class="aca-c-desc">Cortometraje para el evento «Somos Experience» del Santiago Bernabéu: personajes, imágenes, entornos y escenas.</p>
         </div>
       </a>
 
       <a class="aca-card reveal" href="https://canva.link/greytrash-edunaudin-ia" target="_blank" rel="noopener">
-        <div class="aca-poster" style="--pg:linear-gradient(130deg,#2A0A3D,#F012B8)"><span class="pg-word">MOVISTAR<br>20 AÑOS</span><span class="scan"></span><span class="pg-play" aria-hidden="true">▶</span></div>
+        <div class="aca-poster"><span class="pg-word">MOVISTAR · 20 AÑOS</span><span class="pg-play" aria-hidden="true">▶</span></div>
         <div class="aca-c-body">
           <div class="aca-c-brand">MOVISTAR · «20 AÑOS»</div>
           <div class="aca-c-title">Un rostro, mil estilos</div>
-          <p class="aca-c-desc">Serie conceptual protagonizada por Gorgo y Taramona que combina distintos estilos visuales sobre un mismo rostro, explorando la versatilidad estética de la IA.</p>
+          <p class="aca-c-desc">Serie conceptual con Gorgo y Taramona que combina distintos estilos visuales sobre un mismo rostro, explorando la versatilidad de la IA.</p>
         </div>
       </a>
 
       <a class="aca-card reveal" href="https://canva.link/greytrash-edunaudin-ia" target="_blank" rel="noopener">
-        <div class="aca-poster" style="--pg:linear-gradient(130deg,#0B0618,#26E8D8)"><span class="pg-word">LÍNEA<br>DE CAL</span><span class="scan"></span><span class="pg-play" aria-hidden="true">▶</span></div>
+        <div class="aca-poster" style="--pg:linear-gradient(130deg,#0A0A0B,#F012B8)"><span class="pg-word">LÍNEA DE CAL</span><span class="pg-play" aria-hidden="true">▶</span></div>
         <div class="aca-c-body">
           <div class="aca-c-brand">DARÍO MH · CABECERA</div>
           <div class="aca-c-title">Idea, música y vídeo en una semana</div>
-          <p class="aca-c-desc">Cabecera para el programa «Línea de Cal» con canción original —letra y música— compuesta por él. Fotos históricas del fútbol intervenidas con IA. Millones de reproducciones.</p>
+          <p class="aca-c-desc">Cabecera para «Línea de Cal» con canción original —letra y música— compuesta por él. Fotos históricas del fútbol intervenidas. Millones de reproducciones.</p>
         </div>
       </a>
 
     </div>
 
-    <!-- Brand wall -->
     <div class="aca-tag reveal">▚ Marcas con las que ha trabajado</div>
     <div class="brand-wall reveal" id="brandWall">
       <div class="brand-chip" tabindex="0">SAMSUNG<small>REELS · CORTOS</small></div>
-      <div class="brand-chip" tabindex="0">KINGS LEAGUE<small>5 SPOTS · IA</small></div>
+      <div class="brand-chip" tabindex="0">KINGS LEAGUE<small>5 SPOTS</small></div>
       <div class="brand-chip" tabindex="0">LA LIGA<small>CONTENIDO</small></div>
       <div class="brand-chip" tabindex="0">IBERDROLA<small>KITCHEN</small></div>
       <div class="brand-chip" tabindex="0">LA LA LOVE YOU<small>GIRA 25-26</small></div>
-      <div class="brand-chip" tabindex="0">REAL MADRID<small>SANTIAGO BERNABÉU</small></div>
+      <div class="brand-chip" tabindex="0">REAL MADRID<small>BERNABÉU</small></div>
     </div>
-    <div class="brand-marquee reveal" aria-hidden="true">
-      <div class="bm-track">
-        <span><b>MOVISTAR</b></span><span><b>RTVE</b></span><span><b>FLY EMIRATES</b></span><span><b>LIQUID DEATH</b></span><span><b>BANCA MARCH</b></span><span><b>CUPIDO</b></span><span><b>BIZNAGA</b></span><span><b>B TRAVEL</b></span><span><b>REPSOL</b></span><span><b>IBERIA</b></span>
-        <span><b>MOVISTAR</b></span><span><b>RTVE</b></span><span><b>FLY EMIRATES</b></span><span><b>LIQUID DEATH</b></span><span><b>BANCA MARCH</b></span><span><b>CUPIDO</b></span><span><b>BIZNAGA</b></span><span><b>B TRAVEL</b></span><span><b>REPSOL</b></span><span><b>IBERIA</b></span>
-      </div>
-    </div>
+    <div class="brand-extra reveal">También: <b>Movistar</b> · <b>RTVE</b> · <b>Fly Emirates</b> · <b>Liquid Death</b> · <b>Banca March</b> · <b>Cupido</b> · <b>Biznaga</b> · <b>B Travel</b> · <b>Repsol</b> · <b>Iberia</b></div>
 
-    <!-- Creator -->
     <div class="aca-tag reveal">▚ Quién firma</div>
     <div class="creator reveal">
-      <div class="cr-av" aria-hidden="true"><span>EN</span></div>
+      <div class="cr-av" aria-hidden="true">EN</div>
       <div>
         <div class="cr-name">Edu Naudín</div>
-        <div class="cr-role">Dr. Grey Trash · Creativo AI · Director de Mundo Gris</div>
-        <p class="cr-bio">Creativo audiovisual especializado en inteligencia artificial. Crea sus piezas de principio a fin —imagen, voz en off, sonido y música— para marcas como Samsung, Kings League, LA LIGA, Iberdrola, La La Love You o el Santiago Bernabéu, además de Movistar, RTVE, Liquid Death o Banca March. En el portfolio completo hay también trabajos para Repsol, el Real Madrid, Iberia y grupos como La La Love You, Biznaga o Cupido.</p>
+        <div class="cr-role">Grey Trash · Creativo AI · Director de Mundo Gris</div>
+        <p class="cr-bio">Creativo audiovisual especializado en inteligencia artificial. Crea sus piezas de principio a fin —imagen, voz, sonido y música— para marcas como Samsung, Kings League, LA LIGA, Iberdrola, La La Love You o el Santiago Bernabéu, además de Movistar, RTVE, Liquid Death o Banca March.</p>
         <div class="cr-links">
           <a href="https://canva.link/greytrash-edunaudin-ia" target="_blank" rel="noopener">Ver portfolio ↗</a>
           <a href="https://instagram.com/grey_trash" target="_blank" rel="noopener">@grey_trash</a>
@@ -746,7 +699,7 @@ a:focus-visible,button:focus-visible,[tabindex]:focus-visible{outline:3px solid 
   <div class="wrap">
     <div class="sec-head reveal"><h2>La Redacción</h2><span class="num">06 — quién firma esto</span></div>
     <div class="staff">
-      <div class="m reveal"><div class="big-av" style="background:conic-gradient(from 210deg,#FF9CE6,#F012B8,#6D4AFF,#26E8D8,#FF9CE6);color:#0A0A0B">EN</div><h4>Edu Naudín</h4><div class="role">Director · Grey Trash</div><div class="bio">Creativo AI. Dirige Mundo Gris y firma ACADEM(IA) GRIS: cine, música y publicidad hechos íntegramente con inteligencia artificial.</div></div>
+      <div class="m reveal"><div class="big-av">EN</div><h4>Edu Naudín</h4><div class="role">Director · Grey Trash</div><div class="bio">Creativo AI. Dirige Mundo Gris y firma ACADEM(IA) GRIS: cine, música y publicidad hechos íntegramente con inteligencia artificial.</div></div>
       <div class="m reveal"><div class="big-av">DK</div><h4>Dani Kroll</h4><div class="role">Tecnología</div><div class="bio">Nativo digital, técnico y gamberro. Explica sin humo y detesta el hype. Si algo brilla demasiado, lo desmonta.</div></div>
       <div class="m reveal"><div class="big-av">IV</div><h4>Irene Valdés</h4><div class="role">Internacional</div><div class="bio">Corresponsal quemada de tanta cumbre. Fría, precisa, irónica. Ha visto aprobarse el futuro por consenso y no cumplirse jamás.</div></div>
       <div class="m reveal"><div class="big-av">BC</div><h4>Bruno Cendra</h4><div class="role">Reportajes</div><div class="bio">Cronista de calle, gonzo español. Frases largas que de repente. Baja al barro y vuelve con barro debajo de las uñas.</div></div>
@@ -779,10 +732,9 @@ a:focus-visible,button:focus-visible,[tabindex]:focus-visible{outline:3px solid 
 </footer>
 
 <!-- AUDIO -->
-<div class="audio-hint" id="audioHint">♪ Activa el modo synth: música ambiente + sonidos al pulsar</div>
-<button class="audio-btn" id="audioBtn" aria-pressed="false" aria-label="Activar música ambiente synthwave">
+<button class="audio-btn" id="audioBtn" aria-pressed="false" aria-label="Activar música ambiente">
   <span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-  <span id="audioLabel">MODO SYNTH</span>
+  <span id="audioLabel">Música</span>
 </button>
 
 <script>
@@ -800,7 +752,7 @@ if(!RM){
 
 /* header camaleónico */
 const header=document.getElementById('header');
-const darkSecs=[document.getElementById('editorial'),document.getElementById('lab'),document.getElementById('academia')];
+const darkSecs=[document.getElementById('editorial'),document.getElementById('lab')];
 function chkHeader(){
   let dark=false;
   darkSecs.forEach(s=>{if(!s)return;const r=s.getBoundingClientRect();if(r.top<70&&r.bottom>70)dark=true;});
@@ -860,9 +812,9 @@ document.querySelectorAll('img[data-fallback]').forEach(img=>{
 const canvaFacade=document.getElementById('canvaFacade');
 function loadCanva(){
   if(!canvaFacade || canvaFacade.dataset.loaded) return;
-  // Embedded (e.g. inside the Claude artifact sandbox) → external embeds are CSP-blocked, so open in a new tab instead.
+  // Embedded (p. ej. dentro del sandbox del artefacto) → los embeds externos se bloquean; abre en pestaña nueva.
   let embedded=false;try{embedded=(window.self!==window.top);}catch(e){embedded=true;}
-  if(embedded){window.open('https://canva.link/greytrash-edunaudin-ia','_blank','noopener');blip(660);return;}
+  if(embedded){window.open('https://canva.link/greytrash-edunaudin-ia','_blank','noopener');return;}
   canvaFacade.dataset.loaded='1';
   const src=canvaFacade.dataset.embed;
   const f=document.createElement('iframe');
@@ -870,7 +822,6 @@ function loadCanva(){
   f.setAttribute('allow','fullscreen');f.setAttribute('title','Portfolio IA Grey Trash — Edu Naudín');
   f.src=src;
   canvaFacade.innerHTML='';canvaFacade.appendChild(f);
-  blip(660);
 }
 if(canvaFacade){
   canvaFacade.addEventListener('click',loadCanva);
@@ -926,49 +877,8 @@ function onLabScroll(){if(labTicking)return;labTicking=true;requestAnimationFram
 if(RM){drawDiffusion(1);steps.forEach(s=>s.classList.add('active'));}
 else{window.addEventListener('scroll',onLabScroll,{passive:true});labScroll();}
 
-/* ===== SYNTHWAVE GRID (canvas) ===== */
-const gc=document.getElementById('gridCanvas');
-if(gc){
-  const gx=gc.getContext('2d');
-  let gw=0,gh=0;
-  function sizeGrid(){const r=gc.getBoundingClientRect();gw=gc.width=Math.max(2,Math.floor(r.width));gh=gc.height=Math.max(2,Math.floor(r.height));}
-  sizeGrid();window.addEventListener('resize',sizeGrid);
-  let go=0;
-  function drawGrid(t){
-    gx.clearRect(0,0,gw,gh);
-    const horizon=gh*0.02, vanishX=gw/2;
-    gx.strokeStyle='rgba(38,232,216,.55)';gx.lineWidth=1;
-    // horizontal lines receding
-    for(let i=0;i<18;i++){
-      const f=((i+ (go%1))/18);
-      const y=horizon+(gh-horizon)*(f*f);
-      gx.globalAlpha=Math.min(1,f*1.4)*0.7;
-      gx.beginPath();gx.moveTo(0,y);gx.lineTo(gw,y);gx.stroke();
-    }
-    // vertical perspective lines
-    gx.globalAlpha=0.5;gx.strokeStyle='rgba(240,18,184,.5)';
-    for(let i=-10;i<=10;i++){
-      const x=vanishX+i*(gw/9);
-      gx.beginPath();gx.moveTo(vanishX+i*22,horizon);gx.lineTo(x,gh);gx.stroke();
-    }
-    gx.globalAlpha=1;
-  }
-  let gridRAF=null,gridVisible=false;
-  function gridLoop(t){go+=0.006;drawGrid(t);gridRAF=requestAnimationFrame(gridLoop);}
-  const acaSec=document.getElementById('academia');
-  const gio=new IntersectionObserver(es=>{es.forEach(e=>{
-    gridVisible=e.isIntersecting;
-    if(gridVisible&&!RM){if(!gridRAF)gridLoop(0);}
-    else{if(gridRAF){cancelAnimationFrame(gridRAF);gridRAF=null;}}
-  });},{threshold:0.02});
-  gio.observe(acaSec);
-  drawGrid(0); // static first paint (also the reduced-motion state)
-}
-
-/* ===== WEB AUDIO — synthwave lofi + blips ===== */
+/* ===== MÚSICA AMBIENTE — synthwave/lofi (Web Audio), opcional y sutil ===== */
 let AC=null,master=null,ambGain=null,ambientOn=false,ambTimer=null,chordIdx=0,noiseNode=null;
-const SCALE=[220.00,261.63,293.66,329.63,392.00,440.00,523.25,587.33]; // A minor pentatonic-ish
-// progression: Am - F - C - G (roots+thirds+fifths, low)
 const CHORDS=[[110.00,130.81,164.81],[87.31,110.00,130.81],[130.81,164.81,196.00],[98.00,123.47,146.83]];
 function ensureAudio(){
   if(AC)return AC;
@@ -981,84 +891,48 @@ function makeNoise(){
   const len=AC.sampleRate*2;const buf=AC.createBuffer(1,len,AC.sampleRate);const d=buf.getChannelData(0);
   for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*0.5;
   const src=AC.createBufferSource();src.buffer=buf;src.loop=true;
-  const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=880;
-  const g=AC.createGain();g.gain.value=0.05;
+  const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=820;
+  const g=AC.createGain();g.gain.value=0.04;
   src.connect(lp);lp.connect(g);g.connect(ambGain);src.start();
   return src;
 }
 function playChord(freqs,dur){
   const t=AC.currentTime;
   const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.setValueAtTime(500,t);
-  lp.frequency.linearRampToValueAtTime(1400,t+dur*0.4);lp.frequency.linearRampToValueAtTime(600,t+dur);
+  lp.frequency.linearRampToValueAtTime(1300,t+dur*0.4);lp.frequency.linearRampToValueAtTime(600,t+dur);
   lp.connect(ambGain);
   const g=AC.createGain();g.gain.setValueAtTime(0.0001,t);
-  g.gain.exponentialRampToValueAtTime(0.16,t+0.8);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  g.gain.exponentialRampToValueAtTime(0.15,t+0.8);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
   g.connect(lp);
   freqs.forEach((f,i)=>{
     const o=AC.createOscillator();o.type='sawtooth';o.frequency.value=f;o.detune.value=(i-1)*6;
     o.connect(g);o.start(t);o.stop(t+dur+0.1);
   });
-  // soft bell arpeggio note
   const bo=AC.createOscillator();bo.type='triangle';bo.frequency.value=freqs[2]*2;
   const bg=AC.createGain();bg.gain.setValueAtTime(0.0001,t+0.2);
-  bg.gain.exponentialRampToValueAtTime(0.06,t+0.35);bg.gain.exponentialRampToValueAtTime(0.0001,t+1.6);
+  bg.gain.exponentialRampToValueAtTime(0.05,t+0.35);bg.gain.exponentialRampToValueAtTime(0.0001,t+1.6);
   bo.connect(bg);bg.connect(ambGain);bo.start(t+0.2);bo.stop(t+1.7);
 }
-function ambientStep(){
-  if(!ambientOn)return;
-  playChord(CHORDS[chordIdx%CHORDS.length],3.6);
-  chordIdx++;
-}
-let lastBlip=0;
-function blip(freq){
-  if(!AC||!ambientOn)return;
-  const now=(AC.currentTime*1000);
-  if(now-lastBlip<70)return; // rate limit
-  lastBlip=now;
-  const t=AC.currentTime;
-  const o=AC.createOscillator();o.type='triangle';
-  o.frequency.value=freq||SCALE[Math.floor(Math.random()*SCALE.length)];
-  const g=AC.createGain();g.gain.setValueAtTime(0.0001,t);
-  g.gain.exponentialRampToValueAtTime(0.10,t+0.012);g.gain.exponentialRampToValueAtTime(0.0001,t+0.28);
-  const dl=AC.createDelay();dl.delayTime.value=0.18;const dg=AC.createGain();dg.gain.value=0.22;
-  o.connect(g);g.connect(master);g.connect(dl);dl.connect(dg);dg.connect(master);
-  o.start(t);o.stop(t+0.3);
-}
-const audioBtn=document.getElementById('audioBtn'),audioLabel=document.getElementById('audioLabel'),audioHint=document.getElementById('audioHint');
+function ambientStep(){if(!ambientOn)return;playChord(CHORDS[chordIdx%CHORDS.length],3.6);chordIdx++;}
+const audioBtn=document.getElementById('audioBtn'),audioLabel=document.getElementById('audioLabel');
 function setAmbient(on){
   ensureAudio();if(!AC)return;
   if(AC.state==='suspended')AC.resume();
   ambientOn=on;
   audioBtn.classList.toggle('on',on);
   audioBtn.setAttribute('aria-pressed',on?'true':'false');
-  audioLabel.textContent=on?'SONANDO':'MODO SYNTH';
+  audioLabel.textContent=on?'Sonando':'Música';
   const t=AC.currentTime;
-  ambGain.gain.cancelScheduledValues(t);
-  ambGain.gain.setValueAtTime(ambGain.gain.value,t);
-  ambGain.gain.linearRampToValueAtTime(on?0.5:0.0,t+ (on?1.2:0.5));
+  ambGain.gain.cancelScheduledValues(t);ambGain.gain.setValueAtTime(ambGain.gain.value,t);
+  ambGain.gain.linearRampToValueAtTime(on?0.5:0.0,t+(on?1.2:0.5));
   if(on){
     if(!noiseNode)noiseNode=makeNoise();
     ambientStep();
     if(ambTimer)clearInterval(ambTimer);
     ambTimer=setInterval(ambientStep,3600);
-  }else{
-    if(ambTimer){clearInterval(ambTimer);ambTimer=null;}
-  }
+  }else{ if(ambTimer){clearInterval(ambTimer);ambTimer=null;} }
 }
-if(audioBtn){
-  audioBtn.addEventListener('click',()=>setAmbient(!ambientOn));
-  // hint pulse until first interaction
-  setTimeout(()=>{if(!ambientOn)audioHint.classList.add('show');},1600);
-  setTimeout(()=>audioHint.classList.remove('show'),7000);
-}
-
-/* click/hover blips — sólo suenan si el modo synth está activo */
-document.querySelectorAll('.aca-card,.brand-chip').forEach((el,i)=>{
-  el.addEventListener('mouseenter',()=>blip(SCALE[(i+2)%SCALE.length]));
-});
-document.querySelectorAll('nav.main a, .aca-card, .brand-chip, .ig-btn, .cr-links a, .foot-links a').forEach(el=>{
-  el.addEventListener('click',()=>blip());
-});
+if(audioBtn){audioBtn.addEventListener('click',()=>setAmbient(!ambientOn));}
 </script>
 </body>
 </html>
