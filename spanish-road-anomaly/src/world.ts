@@ -630,17 +630,24 @@ export class World {
     this.scene.add(road);
   }
 
+  /* four columns per row: the outer left wing can sink toward the bay
+     on the coastal stretch while the road shoulder stays level */
   private buildGround() {
     const rows = this.groundRows;
-    const HALF_W = 340;
-    const pos = new Float32Array((rows + 1) * 2 * 3);
+    const COLS = [-340, -10, 10, 340];
+    const pos = new Float32Array((rows + 1) * COLS.length * 3);
     const idx: number[] = [];
     for (let i = 0; i <= rows; i++) {
       const d = (i / rows) * (VIEW + 80) - 40;
-      pos.set([-HALF_W, -0.06, -d, HALF_W, -0.06, -d], i * 6);
+      for (let c = 0; c < COLS.length; c++) {
+        pos.set([COLS[c], -0.06, -d], (i * COLS.length + c) * 3);
+      }
       if (i < rows) {
-        const a = i * 2;
-        idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+        for (let c = 0; c < COLS.length - 1; c++) {
+          const a = i * COLS.length + c;
+          const b = a + COLS.length;
+          idx.push(a, a + 1, b, a + 1, b + 1, b);
+        }
       }
     }
     this.groundGeo = new THREE.BufferGeometry();
@@ -653,6 +660,13 @@ export class World {
     );
     ground.receiveShadow = true;
     this.scene.add(ground);
+  }
+
+  /* how far the land has fallen away to the sea at absolute distance s */
+  private coastDrop(sAbs: number): number {
+    const cs = ((sAbs % CYCLE_LEN) + CYCLE_LEN) % CYCLE_LEN;
+    const t = Math.min(1, Math.max(0, (cs - 41200) / 900));
+    return 46 * t * t * (3 - 2 * t);
   }
 
   /* --------------------------------------------------------------- car */
@@ -1033,13 +1047,13 @@ export class World {
   private buildSea() {
     const g = new THREE.Group();
     const water = new THREE.Mesh(
-      new THREE.PlaneGeometry(600, 900),
+      new THREE.PlaneGeometry(700, 1000),
       new THREE.MeshStandardMaterial({
         color: '#2e3d46', roughness: 0.22, metalness: 0.6, envMapIntensity: 1.3,
       })
     );
     water.rotation.x = -Math.PI / 2;
-    water.position.set(-320, -42, -200);
+    water.position.set(-300, -36, -200);
     g.add(water);
     // cliff shoulder between road and water
     const cliff = new THREE.Mesh(
@@ -1052,9 +1066,9 @@ export class World {
     for (let i = 0; i < 26; i++) {
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({
         map: this.glowTex, color: i % 4 ? '#ffd9a0' : '#ffeecb', transparent: true,
-        opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false,
+        opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
       }));
-      sp.position.set(-190 - Math.random() * 160, -30 + Math.random() * 8, -320 - Math.random() * 220);
+      sp.position.set(-190 - Math.random() * 160, -28 + Math.random() * 8, -320 - Math.random() * 220);
       sp.scale.setScalar(2.5 + Math.random() * 3);
       g.add(sp);
       this.fadeSprites.push({ sp, base: 0.5 });
@@ -1538,13 +1552,17 @@ export class World {
     this.roadTex.offset.y = (s % 6) / 6;
 
     const gpos = this.groundGeo.getAttribute('position') as THREE.BufferAttribute;
+    const COLS = [-340, -10, 10, 340];
     for (let i = 0; i <= this.groundRows; i++) {
       const d = (i / this.groundRows) * (VIEW + 80) - 40;
       const y = this.lift(s, s + d) - 0.06;
-      gpos.setY(i * 2, y);
-      gpos.setY(i * 2 + 1, y);
-      gpos.setX(i * 2, -340 + this.off(s, s + d));
-      gpos.setX(i * 2 + 1, 340 + this.off(s, s + d));
+      const o = this.off(s, s + d);
+      const drop = this.coastDrop(s + d);
+      for (let c = 0; c < COLS.length; c++) {
+        const vi = i * COLS.length + c;
+        gpos.setX(vi, COLS[c] + o);
+        gpos.setY(vi, y - (c === 0 ? drop : 0));
+      }
     }
     gpos.needsUpdate = true;
     this.groundGeo.computeVertexNormals();
@@ -1560,7 +1578,10 @@ export class World {
       p.obj.position.x = this.off(s, p.s) + p.lane;
       p.obj.position.y = this.lift(s, p.s);
       p.obj.visible = d < VIEW + 30;
-      if (p.align) p.obj.rotation.y = this.yawAt(s, p.s);
+      if (p.align) {
+        p.obj.rotation.y = this.yawAt(s, p.s);
+        p.obj.rotation.x = E1(p.s) - E1(s);   // long objects follow the grade
+      }
     }
 
     /* villages */
@@ -1609,7 +1630,7 @@ export class World {
       const sd = this.seaS - s;
       this.sea.visible = sd > -2000 && sd < 2400;
       if (this.sea.visible) {
-        this.sea.position.set(this.off(s, this.seaS), this.lift(s, this.seaS), 0);
+        this.sea.position.set(this.off(s, this.seaS), this.lift(s, this.seaS), -sd);
       }
     }
 

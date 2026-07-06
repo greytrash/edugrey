@@ -176,7 +176,11 @@ function pitido(long = false) {
 }
 (window as unknown as { pitido: typeof pitido }).pitido = pitido;
 // debug handle for scene inspection
-(window as unknown as { __dbg: unknown }).__dbg = { scene: world.scene, getS: () => s, world };
+(window as unknown as { __dbg: unknown }).__dbg = {
+  scene: world.scene, getS: () => s, world,
+  setS: (v: number) => { s = v; },
+  setT: (v: number) => { tDay = v; },
+};
 hornBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); if (state === 'driving') pitido(); });
 
 /* ------------------------------------------------------------------ input */
@@ -216,6 +220,7 @@ addEventListener('keydown', (e) => {
   if (k === '9') s += CYCLE_LEN - (s % CYCLE_LEN) - 150;
   if (k === '8') s += 1500;
   if (k === '0') tDay = (tDay + 0.06) % 1;
+  if (k === '7') showCaption('tiempo: ' + weather.force(), 2000);
 });
 addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
@@ -573,6 +578,25 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number, 
   }
 }
 
+/* adaptive resolution: hold ~50+ fps by trading internal pixel ratio */
+let pr = Math.min(devicePixelRatio, 1.75);
+let fpsAcc = 0;
+let fpsN = 0;
+let fpsTimer = 0;
+function adaptResolution(dt: number) {
+  fpsAcc += dt; fpsN++; fpsTimer += dt;
+  if (fpsTimer < 2.5) return;
+  const fps = fpsN / fpsAcc;
+  fpsAcc = 0; fpsN = 0; fpsTimer = 0;
+  const prev = pr;
+  if (fps < 42 && pr > 0.75) pr = Math.max(0.75, pr - 0.25);
+  else if (fps > 56 && pr < Math.min(devicePixelRatio, 1.75)) pr = Math.min(devicePixelRatio, pr + 0.25);
+  if (pr !== prev) {
+    renderer.setPixelRatio(pr);
+    renderer.setSize(innerWidth, innerHeight);
+  }
+}
+
 /* ------------------------------------------------------------------- loop */
 const clock = new THREE.Clock();
 let baseFov = 58;
@@ -587,6 +611,7 @@ function gameHHMM(): { str: string; hour: number } {
 function frame() {
   requestAnimationFrame(frame);
   const dt = Math.min(clock.getDelta(), 0.05);
+  adaptResolution(dt);
   if (state === 'paused') {
     map.update(s, cycle, 0, now);
     renderer.render(world.scene, camera);

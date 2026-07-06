@@ -44,6 +44,19 @@ export class Weather {
   lightning = false;
   private nextBolt = 0;
 
+  /* debug: jump straight to the next pattern, front arrives fast */
+  force() {
+    this.target = pick(this.name);
+    this.name = this.target.name;
+    this.nextChange = this.hoursElapsed + 2 + Math.random() * 4;
+    this.current.rainI = this.target.rain;
+    this.current.fogMul = this.target.fog;
+    this.current.cloud = this.target.cloud;
+    this.current.storm = this.target.storm;
+    this.nextBolt = 0.5;
+    return this.name;
+  }
+
   /* dtHours: elapsed game-time in hours */
   update(dtHours: number, dtReal: number) {
     this.hoursElapsed += dtHours;
