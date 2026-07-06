@@ -199,6 +199,7 @@ footer{background:var(--negro);color:var(--blanco);padding:70px 26px 40px;text-a
   .sec-head{margin-top:50px}
 }
 @media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
   *{animation:none!important;transition:none!important}
   .reveal,.word{opacity:1;transform:none;filter:none}
   .ticker-track{animation:none}
@@ -228,14 +229,14 @@ footer{background:var(--negro);color:var(--blanco);padding:70px 26px 40px;text-a
     <a href="#lab">El Lab</a>
   </nav>
   <a class="ig-btn" href="https://instagram.com/nuestromundogris" target="_blank" rel="noopener">@nuestromundogris</a>
-  <button class="burger" id="burger" aria-label="Abrir menú">☰</button>
+  <button class="burger" id="burger" aria-label="Abrir menú" aria-controls="nav" aria-expanded="false">☰</button>
 </header>
 
 <!-- HERO -->
 <section class="hero" id="top">
   <div class="kicker">
     <span class="dot"></span>
-    <span>Sábado 5 de julio de 2026 — Madrid</span>
+    <span>Domingo 5 de julio de 2026 — Madrid</span>
     <span>·</span><span>Edición nº 001</span>
     <span>·</span><span>mundogris.es</span>
   </div>
@@ -589,8 +590,9 @@ window.addEventListener('scroll',chkHeader);chkHeader();
 
 /* burger */
 const burger=document.getElementById('burger'),nav=document.getElementById('nav');
-burger.addEventListener('click',()=>nav.classList.toggle('open'));
-nav.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>nav.classList.remove('open')));
+function setMenu(open){nav.classList.toggle('open',open);burger.setAttribute('aria-expanded',open?'true':'false');}
+burger.addEventListener('click',()=>setMenu(!nav.classList.contains('open')));
+nav.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>setMenu(false)));
 
 /* parallax orbes */
 if(!RM){window.addEventListener('scroll',()=>{const y=window.scrollY;document.querySelectorAll('.orbe').forEach(o=>{o.style.transform='translateY('+(y*parseFloat(o.dataset.par))+'px)';});});}
@@ -702,8 +704,10 @@ function labScroll(){
   const idx=Math.min(steps.length-1,Math.floor(p*steps.length));
   steps.forEach((s,i)=>s.classList.toggle('active',i===idx));
 }
-window.addEventListener('scroll',labScroll);labScroll();
+let labTicking=false;
+function onLabScroll(){if(labTicking)return;labTicking=true;requestAnimationFrame(()=>{labScroll();labTicking=false;});}
 if(RM){drawDiffusion(1);steps.forEach(s=>s.classList.add('active'));}
+else{window.addEventListener('scroll',onLabScroll,{passive:true});labScroll();}
 
 /* animar orejas del gato al hover del retrato */
 const catSvg=document.getElementById('catSvg');
