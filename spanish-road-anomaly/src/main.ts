@@ -147,8 +147,8 @@ function toMenu() {
   state = 'menu';
   intro.classList.remove('hidden');
   introSmall.textContent = everStarted
-    ? 'ENTER · seguir conduciendo'
-    : 'Press any key to start audio and drive.';
+    ? (isTouch ? 'toca para seguir conduciendo' : 'ENTER · seguir conduciendo')
+    : (isTouch ? 'toca la pantalla para conducir' : 'Press any key to start audio and drive.');
   audio.suspend();
   map.setBig(false);
 }
@@ -168,6 +168,61 @@ function toPaused() {
   audio.suspend();
   map.setBig(true);
   showCaption('pausa — el mapa sobre el volante', 2400);
+}
+
+/* ------------------------------------------------------- touch controls */
+const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+
+function holdButton(el: HTMLElement, key: string) {
+  const down = (e: PointerEvent) => {
+    e.preventDefault();
+    el.setPointerCapture(e.pointerId);
+    el.classList.add('held');
+    keys[key] = true;
+  };
+  const up = () => { el.classList.remove('held'); keys[key] = false; };
+  el.addEventListener('pointerdown', down);
+  el.addEventListener('pointerup', up);
+  el.addEventListener('pointercancel', up);
+  el.addEventListener('lostpointercapture', up);
+}
+
+function buildTouchControls() {
+  document.body.classList.add('touch');
+  const wrap = document.createElement('div');
+  wrap.id = 'touch';
+  wrap.innerHTML =
+    '<div class="tc-chips">' +
+    '<button data-act="escape">☰</button>' +
+    '<button data-act="p">⏸</button>' +
+    '<button data-act="m">🗺</button>' +
+    '<button data-act="r">📻</button>' +
+    '<button data-act="c">🎥</button>' +
+    '<button data-act="l">💡</button>' +
+    '<button data-act="v">🌧</button>' +
+    '</div>' +
+    '<div class="tc-steer">' +
+    '<button id="tc-left">◀</button>' +
+    '<button id="tc-right">▶</button>' +
+    '</div>' +
+    '<div class="tc-pedals">' +
+    '<button id="tc-hand">✋</button>' +
+    '<button id="tc-gas">▲</button>' +
+    '<button id="tc-brake">▼</button>' +
+    '</div>';
+  document.body.appendChild(wrap);
+  holdButton(wrap.querySelector('#tc-left')!, 'a');
+  holdButton(wrap.querySelector('#tc-right')!, 'd');
+  holdButton(wrap.querySelector('#tc-gas')!, 'w');
+  holdButton(wrap.querySelector('#tc-brake')!, 's');
+  holdButton(wrap.querySelector('#tc-hand')!, ' ');
+  for (const b of wrap.querySelectorAll<HTMLElement>('.tc-chips button')) {
+    b.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      doAction(b.dataset.act!);
+    });
+  }
 }
 
 /* el pitido — exposed globally, wired to keyboard H and the touch button */
@@ -193,9 +248,9 @@ function radioRowText(): string {
   return st ? `radio · ${st.freq} MHz · ${st.name}` : 'radio off';
 }
 
-addEventListener('keydown', (e) => {
-  const k = e.key.toLowerCase();
-  if (k === 'escape') {                    // ESC → menú principal
+/* one action switch shared by keyboard and touch chips */
+function doAction(k: string) {
+  if (k === 'escape') {
     if (state !== 'menu') toMenu();
     return;
   }
@@ -203,26 +258,36 @@ addEventListener('keydown', (e) => {
     if (k !== 'p') toDriving();
     return;
   }
-  if (k === 'p') {                         // P → pausa (mapa en mano)
+  if (k === 'p') {
     state === 'paused' ? toDriving() : toPaused();
     return;
   }
   if (state === 'paused') return;
-  if (k === ' ') e.preventDefault();
-  if (keys[k]) return;
-  keys[k] = true;
   if (k === 'c') interior = !interior;
   if (k === 'l') world.headlightsOn = !world.headlightsOn;
   if (k === 'v') wipers = !wipers;
   if (k === 'm') map.toggle();
   if (k === 'h') pitido();
   if (k === 'r') { audio.cycleRadio(); $('radio-row').textContent = radioRowText(); }
+}
+
+addEventListener('keydown', (e) => {
+  const k = e.key.toLowerCase();
+  if (['escape', 'p'].includes(k) || state === 'menu') { doAction(k); return; }
+  if (state === 'paused') return;
+  if (k === ' ') e.preventDefault();
+  if (keys[k]) return;
+  keys[k] = true;
+  doAction(k);
   if (k === '9') s += CYCLE_LEN - (s % CYCLE_LEN) - 150;
   if (k === '8') s += 1500;
   if (k === '0') tDay = (tDay + 0.06) % 1;
   if (k === '7') showCaption('tiempo: ' + weather.force(), 2000);
 });
 addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+
+/* tapping the menu card starts the drive (mouse and touch alike) */
+intro.addEventListener('pointerdown', () => { if (state === 'menu') toDriving(); });
 
 /* -------------------------------------------------------------- car state */
 const MAX_SPEED = 33;
@@ -792,5 +857,6 @@ function frame() {
 
   renderer.render(world.scene, camera);
 }
+if (isTouch) buildTouchControls();
 toMenu();
 frame();

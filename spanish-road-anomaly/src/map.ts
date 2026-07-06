@@ -47,6 +47,12 @@ export class MiniMap {
   private sync() {
     this.el.classList.toggle('open', this.visible || this.big);
     this.el.classList.toggle('big', this.big);
+    if (this.big) {
+      const k = Math.min(innerWidth * 0.92 / W, innerHeight * 0.86 / H, 2.2);
+      this.el.style.transform = `translate(-50%, -50%) scale(${k.toFixed(3)}) rotate(-0.8deg)`;
+    } else {
+      this.el.style.transform = '';
+    }
   }
 
   setMission(s: number, label: string) { this.missionS = s; this.missionLabel = label; }
