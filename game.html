@@ -515,7 +515,7 @@ const SCENES = {
         text: [
             "La carretera del amanecer permanente te lleva a un lugar donde siempre son las seis de la mañana.",
             "La luz es dorada, larga, perfecta. El sol-sello está exactamente en el horizonte, ni sube ni baja.",
-            "Aparcase. Sales del coche. El aire huele a papel recién impreso y a cera caliente.",
+            "Aparcas. Sales del coche. El aire huele a papel recién impreso y a cera caliente.",
             "Delante de ti, la carretera continúa para siempre hacia un amanecer que nunca llegará a ser día.",
             { type: "ending", text: "FIN · El Amanecer Eterno" }
         ],
@@ -626,7 +626,7 @@ function render() {
 
 function choose(choice) {
     const scene = SCENES[state.scene];
-    logEvent(`${scene.loc} → ${choice.text.replace(/^[\u{1F000}-\u{1FFFF}\u{2600}-\u{26FF}⬆↩⛔⛽★🔄🔵🎯📸📷👁🔍🌀🌅🌑🗺🎭🏛🗿🚗] /u, "").trim()}`);
+    logEvent(`${scene.loc} → ${choice.text.replace(/^\p{Emoji_Presentation}\s*/u, "").trim()}`);
 
     if (!state.visited.includes(state.scene)) {
         state.visited.push(state.scene);
