@@ -111,7 +111,7 @@ for (const id of ['grain', 'vignette']) {
 /* horn button: works with touch and mouse */
 const hornBtn = document.createElement('button');
 hornBtn.id = 'horn';
-hornBtn.textContent = '📯';
+hornBtn.textContent = 'CLAXON';
 hornBtn.setAttribute('aria-label', 'bocina');
 document.body.appendChild(hornBtn);
 
@@ -187,28 +187,34 @@ function holdButton(el: HTMLElement, key: string) {
   el.addEventListener('lostpointercapture', up);
 }
 
+/* thin vector chevron for the steering pads — no emoji, just a stroke */
+function chevron(dir: -1 | 1): string {
+  const d = dir < 0 ? 'M16 6 L8 16 L16 26' : 'M8 6 L16 16 L8 26';
+  return `<svg viewBox="0 0 24 32" aria-hidden="true"><path d="${d}"/></svg>`;
+}
+
 function buildTouchControls() {
   document.body.classList.add('touch');
   const wrap = document.createElement('div');
   wrap.id = 'touch';
   wrap.innerHTML =
     '<div class="tc-chips">' +
-    '<button data-act="escape">☰</button>' +
-    '<button data-act="p">⏸</button>' +
-    '<button data-act="m">🗺</button>' +
-    '<button data-act="r">📻</button>' +
-    '<button data-act="c">🎥</button>' +
-    '<button data-act="l">💡</button>' +
-    '<button data-act="v">🌧</button>' +
+    '<button data-act="escape">MENÚ</button>' +
+    '<button data-act="p">PAUSA</button>' +
+    '<button data-act="m">MAPA</button>' +
+    '<button data-act="r">RADIO</button>' +
+    '<button data-act="c">CÁMARA</button>' +
+    '<button data-act="l">LUCES</button>' +
+    '<button data-act="v">LIMPIA</button>' +
     '</div>' +
     '<div class="tc-steer">' +
-    '<button id="tc-left">◀</button>' +
-    '<button id="tc-right">▶</button>' +
+    `<button id="tc-left" aria-label="izquierda">${chevron(-1)}</button>` +
+    `<button id="tc-right" aria-label="derecha">${chevron(1)}</button>` +
     '</div>' +
     '<div class="tc-pedals">' +
-    '<button id="tc-hand">✋</button>' +
-    '<button id="tc-gas">▲</button>' +
-    '<button id="tc-brake">▼</button>' +
+    '<button id="tc-hand" aria-label="freno de mano"><span>P</span></button>' +
+    '<button id="tc-brake" aria-label="freno y marcha atrás">FRENO</button>' +
+    '<button id="tc-gas" aria-label="acelerar">ACEL</button>' +
     '</div>';
   document.body.appendChild(wrap);
   holdButton(wrap.querySelector('#tc-left')!, 'a');

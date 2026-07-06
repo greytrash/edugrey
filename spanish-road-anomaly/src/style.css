@@ -125,10 +125,11 @@ html, body {
 /* horn — el pitido, touch friendly */
 #horn {
   position: fixed; right: 20px; bottom: 84px; z-index: 6;
-  width: 56px; height: 56px; border-radius: 50%;
-  border: 1px solid rgba(216,212,200,0.25);
+  width: 58px; height: 58px; border-radius: 50%;
+  border: 1px solid rgba(216,212,200,0.28);
   background: rgba(20,18,14,0.72);
-  font-size: 24px; line-height: 1;
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.08em;
   color: var(--bone);
   cursor: pointer;
   touch-action: manipulation;
@@ -136,40 +137,62 @@ html, body {
 }
 #horn:active { background: rgba(217,160,40,0.35); transform: scale(0.94); }
 
-/* ------------------------------------------------------ touch controls */
+/* ------------------------------------------------------ touch controls
+   dashboard aesthetic: matte buttons, monospace labels, no emoji */
 #touch { position: fixed; inset: 0; z-index: 6; pointer-events: none; }
 #touch button {
   pointer-events: auto;
-  border: 1px solid rgba(216,212,200,0.22);
-  background: rgba(16,15,12,0.55);
+  display: grid; place-items: center;
+  border: 1px solid rgba(216,212,200,0.24);
+  background: linear-gradient(180deg, rgba(34,31,26,0.72), rgba(14,13,10,0.78));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 6px rgba(0,0,0,0.5);
   color: var(--bone);
-  font-size: 26px; line-height: 1;
-  border-radius: 50%;
+  font-family: "Courier New", ui-monospace, monospace;
+  font-weight: 700; letter-spacing: 0.08em;
   touch-action: none;
   user-select: none; -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
 #touch button.held,
-#touch button:active { background: rgba(217,160,40,0.38); }
+#touch button:active {
+  background: linear-gradient(180deg, rgba(217,160,40,0.5), rgba(150,108,26,0.5));
+  color: #14110d;
+}
+#touch svg { width: 40%; height: 40%; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 
 .tc-steer {
   position: absolute; left: 16px; bottom: 18px;
   display: flex; gap: 14px;
 }
-.tc-steer button { width: 76px; height: 76px; font-size: 30px; }
+.tc-steer button { width: 80px; height: 80px; border-radius: 14px; }
 
 .tc-pedals {
   position: absolute; right: 16px; bottom: 18px;
-  display: flex; align-items: flex-end; gap: 14px;
+  display: flex; align-items: flex-end; gap: 12px;
 }
-.tc-pedals button { width: 76px; height: 76px; font-size: 30px; }
-#tc-hand { width: 58px; height: 58px; font-size: 22px; }
+/* rubber-faced pedals, taller than wide like the real thing */
+.tc-pedals button {
+  width: 74px; height: 92px; border-radius: 10px; font-size: 13px;
+}
+#tc-gas { background: linear-gradient(180deg, rgba(40,44,36,0.78), rgba(16,18,12,0.82)); }
+#tc-hand {
+  width: 54px; height: 70px; border-radius: 8px; font-size: 20px;
+}
+#tc-hand span {
+  display: grid; place-items: center;
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 2px solid currentColor; font-size: 15px;
+}
 
 .tc-chips {
   position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
-  display: flex; gap: 8px;
+  display: flex; gap: 7px; flex-wrap: wrap; justify-content: center;
+  max-width: 96vw;
 }
-.tc-chips button { width: 44px; height: 44px; font-size: 18px; border-radius: 12px; }
+.tc-chips button {
+  min-width: 52px; height: 34px; padding: 0 9px;
+  border-radius: 7px; font-size: 10px;
+}
 
 /* touch layout shuffles: horn above the pedals, HUD out of thumb reach */
 body.touch #horn { right: 108px; bottom: 108px; }
