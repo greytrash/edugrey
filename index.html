@@ -57,7 +57,7 @@
     <div class="mode" id="modeline">day · clear</div>
   </div>
 </div>
-<div id="boot"><span>loading press…</span></div>
+<div id="boot"><span>— click or press any key to open —</span></div>
 
 <script type="importmap">
 { "imports": { "three": "./vendor/three.module.js" } }
@@ -575,8 +575,19 @@ const MAX_SPEED = 60;
 /* ---------- main loop ------------------------------------------------------ */
 const clock = new THREE.Clock();
 let scroll = 0;
-document.getElementById('boot').style.opacity = 0;
-setTimeout(() => document.getElementById('boot').remove(), 700);
+let started = false;
+
+function openExperience() {
+  if (started) return;
+  started = true;
+  const boot = document.getElementById('boot');
+  boot.style.opacity = 0;
+  setTimeout(() => boot.remove(), 700);
+  clock.start();
+  requestAnimationFrame(frame);
+}
+document.addEventListener('keydown', openExperience, { once: true });
+document.addEventListener('pointerdown', openExperience, { once: true });
 
 function frame() {
   requestAnimationFrame(frame);
@@ -639,7 +650,7 @@ function frame() {
   renderer.setRenderTarget(null);
   renderer.render(postScene, postCam);
 }
-frame();
+// frame() is started by openExperience() on first user interaction
 
 /* ---------- resize --------------------------------------------------------- */
 addEventListener('resize', () => {
