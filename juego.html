@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>El Juego — EduGrey</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+        background: linear-gradient(135deg, #0a0f1e 0%, #0c1222 100%);
+        font-family: 'Courier New', 'Segoe UI', monospace;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        margin: 0;
+    }
+
+    /* Contenedor principal estilo consola */
+    .game-console {
+        max-width: 800px;
+        width: 100%;
+        background: #0a0c15;
+        border-radius: 32px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+        overflow: hidden;
+        border: 1px solid #2a2e3f;
+    }
+
+    /* Pantalla estilo CRT */
+    .screen {
+        background: #03050a;
+        padding: 20px;
+        color: #b7f9e2;
+        text-shadow: 0 0 3px #0affb0;
+        border-bottom: 3px solid #1f2a3e;
+    }
+
+    .stats-panel {
+        background: #0e111c;
+        padding: 12px 20px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        justify-content: space-between;
+        border-bottom: 1px solid #23283c;
+        font-size: 0.8rem;
+    }
+
+    .stats-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .stat-badge {
+        background: #151c2a;
+        padding: 4px 8px;
+        border-radius: 20px;
+        color: #d1d9ff;
+        font-weight: bold;
+    }
+
+    .stat-badge span {
+        color: #ffb347;
+    }
+
+    .relato-box {
+        background: #0b0e18;
+        padding: 6px 12px;
+        border-radius: 20px;
+        border-left: 4px solid #ffb347;
+    }
+
+    /* Zona de historia */
+    .story-box {
+        background: #07090f;
+        border-radius: 20px;
+        padding: 20px;
+        margin: 15px 0;
+        min-height: 280px;
+        box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
+    }
+
+    .story-text p {
+        margin: 12px 0;
+        line-height: 1.5;
+        font-size: 1rem;
+    }
+
+    .dialogue {
+        background: #0e1320;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 16px;
+        border-left: 4px solid #3c6e71;
+    }
+
+    .ending-tag {
+        background: #3b1e2c;
+        color: #ffb3b3;
+        padding: 10px;
+        border-radius: 12px;
+        text-align: center;
+    }
+
+    /* Panel de mandos (gamepad) */
+    .gamepad {
+        background: #11141f;
+        padding: 25px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .buttons-row {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .action-btn {
+        background: #1e243b;
+        border: none;
+        font-family: monospace;
+        font-size: 2rem;
+        font-weight: bold;
+        padding: 15px 25px;
+        min-width: 100px;
+        border-radius: 60px;
+        color: white;
+        cursor: pointer;
+        box-shadow: 0 5px 0 #0a0c14;
+        transition: 0.05s linear;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+
+    .action-btn:active {
+        transform: translateY(3px);
+        box-shadow: 0 2px 0 #0a0c14;
+    }
+
+    .action-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
+
+    .action-btn.special {
+        background: #2a2e4a;
+        color: #ffd966;
+        font-size: 1rem;
+    }
+
+    .action-btn.choice-btn {
+        font-size: 0.85rem;
+        min-width: 160px;
+        padding: 12px 18px;
+        border-radius: 20px;
+        letter-spacing: 0;
+        text-transform: none;
+        line-height: 1.3;
+    }
+
+    .system-bar {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        margin-top: 10px;
+    }
+
+    .sys-btn {
+        background: #191e2e;
+        border: none;
+        font-family: monospace;
+        padding: 8px 16px;
+        border-radius: 40px;
+        color: #aaa;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    .sys-btn:hover {
+        background: #252b3f;
+        color: #ddd;
+    }
+
+    .event-log {
+        background: #05070c;
+        border-radius: 16px;
+        padding: 12px;
+        font-size: 0.7rem;
+        color: #6f8f8f;
+        max-height: 100px;
+        overflow-y: auto;
+    }
+
+    h2 {
+        color: #ffcf8a;
+        font-size: 1.4rem;
+        margin-top: 0;
+    }
+
+    hr {
+        border-color: #23283c;
+    }
+
+    /* Animación de escritura */
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0; }
+    }
+
+    .cursor {
+        display: inline-block;
+        width: 8px;
+        height: 1em;
+        background: #b7f9e2;
+        animation: blink 1s infinite;
+        vertical-align: text-bottom;
+        margin-left: 2px;
+    }
+
+    /* Scanline overlay */
+    .screen::before {
+        content: '';
+        display: block;
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: repeating-linear-gradient(
+            to bottom,
+            transparent 0px,
+            transparent 3px,
+            rgba(0,0,0,0.08) 3px,
+            rgba(0,0,0,0.08) 4px
+        );
+        pointer-events: none;
+        border-radius: inherit;
+    }
+
+    .screen { position: relative; }
+
+    /* Colores de botones estilo SNES */
+    .btn-a { background: #3d1a1a; color: #ff6b6b; }
+    .btn-b { background: #1a2e1a; color: #6bff6b; }
+    .btn-x { background: #1a1a3d; color: #6b6bff; }
+    .btn-y { background: #2e2a1a; color: #ffcd6b; }
+
+    .btn-a:not(:disabled):hover { background: #5c2929; }
+    .btn-b:not(:disabled):hover { background: #2a4a2a; }
+    .btn-x:not(:disabled):hover { background: #29295c; }
+    .btn-y:not(:disabled):hover { background: #4a422a; }
+
+    #title-screen {
+        text-align: center;
+        padding: 40px 20px;
+    }
+
+    #title-screen .logo {
+        font-size: 3rem;
+        color: #ffcf8a;
+        text-shadow: 0 0 20px #ff9900, 0 0 40px #ff9900;
+        margin-bottom: 10px;
+    }
+
+    #title-screen .subtitle {
+        color: #6f8f8f;
+        font-size: 0.85rem;
+        margin-bottom: 30px;
+    }
+
+    #title-screen .start-btn {
+        background: #2a2e4a;
+        border: 2px solid #ffcf8a;
+        color: #ffcf8a;
+        font-family: monospace;
+        font-size: 1.1rem;
+        padding: 14px 40px;
+        border-radius: 40px;
+        cursor: pointer;
+        animation: blink 1.5s infinite;
+        letter-spacing: 3px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="game-console" id="console">
+
+  <!-- ==================== PANTALLA ==================== -->
+  <div class="screen" id="screen">
+
+    <!-- Pantalla de título -->
+    <div id="title-screen">
+      <div class="logo">EL JUEGO</div>
+      <div class="subtitle">Una aventura de texto · EduGrey</div>
+      <button class="start-btn" id="start-btn" onclick="startGame()">▶ INICIAR</button>
+    </div>
+
+    <!-- Pantalla de juego (oculta al inicio) -->
+    <div id="game-screen" style="display:none">
+
+      <!-- Panel de estadísticas -->
+      <div class="stats-panel">
+        <div class="stats-grid">
+          <div class="stat-badge">❤️ Vida: <span id="stat-hp">100</span></div>
+          <div class="stat-badge">⚡ Energía: <span id="stat-energy">100</span></div>
+          <div class="stat-badge">🎒 Objetos: <span id="stat-items">0</span></div>
+          <div class="stat-badge">⭐ Puntos: <span id="stat-score">0</span></div>
+        </div>
+        <div class="relato-box" id="chapter-label">Capítulo 1</div>
+      </div>
+
+      <hr />
+
+      <!-- Zona de historia -->
+      <div class="story-box">
+        <h2 id="scene-title">—</h2>
+        <div class="story-text" id="story-text"></div>
+      </div>
+
+    </div>
+  </div>
+  <!-- ==================== FIN PANTALLA ==================== -->
+
+  <!-- Panel de mandos (oculto al inicio) -->
+  <div class="gamepad" id="gamepad" style="display:none">
+    <div class="buttons-row" id="choices-row"></div>
+    <div class="system-bar">
+      <button class="sys-btn" onclick="toggleLog()">📋 LOG</button>
+      <button class="sys-btn" onclick="restartGame()">↺ REINICIAR</button>
+    </div>
+    <div class="event-log" id="event-log" style="display:none">
+      <strong>— Registro de eventos —</strong><br/>
+    </div>
+  </div>
+
+</div><!-- /.game-console -->
+
+<script>
+/* ============================================================================
+   EL JUEGO — Motor de aventura de texto
+   ============================================================================ */
+
+/* ---------- Estado del jugador -------------------------------------------- */
+const player = {
+  hp: 100,
+  energy: 100,
+  items: [],     // nombres de objetos recogidos
+  score: 0,
+  flags: {},     // flags de historia (booleans)
+};
+
+/* ---------- Registro de eventos ------------------------------------------ */
+const eventLog = [];
+
+function log(msg) {
+  eventLog.push(msg);
+  const el = document.getElementById('event-log');
+  el.innerHTML = '<strong>— Registro de eventos —</strong><br/>' +
+    eventLog.slice(-20).map(m => `› ${m}`).join('<br/>');
+  el.scrollTop = el.scrollHeight;
+}
+
+/* ---------- Utilidades de UI --------------------------------------------- */
+function updateStats() {
+  document.getElementById('stat-hp').textContent     = player.hp;
+  document.getElementById('stat-energy').textContent  = player.energy;
+  document.getElementById('stat-items').textContent   = player.items.length;
+  document.getElementById('stat-score').textContent   = player.score;
+}
+
+function setChapterLabel(text) {
+  document.getElementById('chapter-label').textContent = text;
+}
+
+function renderScene(scene) {
+  document.getElementById('scene-title').textContent = scene.title;
+
+  // Construir HTML de narración
+  let html = '';
+  for (const block of scene.story) {
+    if (block.type === 'text') {
+      html += `<p>${block.content}</p>`;
+    } else if (block.type === 'dialogue') {
+      html += `<div class="dialogue"><strong>${block.speaker}:</strong> "${block.content}"</div>`;
+    } else if (block.type === 'ending') {
+      html += `<div class="ending-tag">${block.content}</div>`;
+    }
+  }
+  document.getElementById('story-text').innerHTML = html;
+
+  // Renderizar botones de elección
+  const row = document.getElementById('choices-row');
+  row.innerHTML = '';
+
+  const btnColors = ['btn-a', 'btn-b', 'btn-x', 'btn-y'];
+  const btnLabels  = ['A', 'B', 'X', 'Y'];
+
+  if (scene.choices && scene.choices.length) {
+    scene.choices.forEach((choice, i) => {
+      const btn = document.createElement('button');
+      const color = btnColors[i % btnColors.length];
+      btn.className = `action-btn choice-btn ${color}`;
+      btn.disabled = choice.requires && !player.flags[choice.requires];
+      btn.innerHTML = `<span style="opacity:.5;font-size:.8em">${btnLabels[i]}</span> ${choice.text}`;
+      btn.onclick = () => choose(choice);
+      row.appendChild(btn);
+    });
+  } else {
+    // Sin opciones → pantalla de fin
+    const btn = document.createElement('button');
+    btn.className = 'action-btn special';
+    btn.textContent = '▶ Jugar de nuevo';
+    btn.onclick = restartGame;
+    row.appendChild(btn);
+  }
+
+  if (scene.chapter) setChapterLabel(scene.chapter);
+  updateStats();
+}
+
+function choose(choice) {
+  log(choice.text);
+
+  // Aplicar efectos de la elección
+  if (choice.effects) {
+    const e = choice.effects;
+    if (e.hp)     { player.hp     = Math.max(0, Math.min(100, player.hp + e.hp)); }
+    if (e.energy) { player.energy = Math.max(0, Math.min(100, player.energy + e.energy)); }
+    if (e.score)  { player.score += e.score; }
+    if (e.item)   { player.items.push(e.item); log(`Obtuviste: ${e.item}`); }
+    if (e.flag)   { player.flags[e.flag] = true; }
+  }
+
+  // Resolver siguiente escena
+  let nextId = choice.next;
+  if (typeof nextId === 'function') nextId = nextId();
+
+  const next = SCENES[nextId];
+  if (!next) { console.warn('Escena no encontrada:', nextId); return; }
+  renderScene(next);
+}
+
+/* ============================================================================
+   ESCENAS — La historia completa
+   ============================================================================ */
+const SCENES = {
+
+  /* ── Acto 1 · El Despertar ─────────────────────────────────────────────── */
+
+  inicio: {
+    chapter: 'Acto I · El Despertar',
+    title: 'La Habitación Oscura',
+    story: [
+      { type: 'text', content: 'Abres los ojos. El techo es de piedra fría. Un sonido metálico resuena en la distancia.' },
+      { type: 'text', content: 'Estás tumbado en el suelo de una habitación sin ventanas. Hay una <strong>linterna apagada</strong> a tu lado y una puerta de madera entreabierta al fondo.' },
+      { type: 'dialogue', speaker: 'Voz interior', content: '¿Cuánto tiempo llevo aquí?' },
+    ],
+    choices: [
+      { text: 'Coger la linterna', next: 'coger_linterna',
+        effects: { item: 'Linterna', score: 10, energy: -5 } },
+      { text: 'Ir directo a la puerta', next: 'puerta_sin_luz',
+        effects: { hp: -10, energy: -10 } },
+      { text: 'Escuchar con atención', next: 'escuchar',
+        effects: { energy: -5, score: 5 } },
+    ],
+  },
+
+  coger_linterna: {
+    chapter: 'Acto I · El Despertar',
+    title: 'Linterna en Mano',
+    story: [
+      { type: 'text', content: 'Tomas la linterna. Al encenderla, el haz ilumina las palabras grabadas en la pared: <em>"No confíes en lo que recuerdas."</em>' },
+      { type: 'text', content: 'La habitación tiene tres metros de largo. En el rincón hay un <strong>cuaderno viejo</strong>.' },
+    ],
+    choices: [
+      { text: 'Leer el cuaderno', next: 'leer_cuaderno',
+        effects: { score: 15, energy: -5 } },
+      { text: 'Avanzar hacia la puerta', next: 'pasillo',
+        effects: { energy: -5 } },
+    ],
+  },
+
+  puerta_sin_luz: {
+    chapter: 'Acto I · El Despertar',
+    title: 'Oscuridad Total',
+    story: [
+      { type: 'text', content: 'Avanzas a tientas. Tu pie golpea algo metálico y caes al suelo. Te haces daño en la rodilla.' },
+      { type: 'text', content: 'Cuando tus ojos se acostumbran a la oscuridad distingues la silueta de la puerta. Llegas a ella.' },
+    ],
+    choices: [
+      { text: 'Abrir la puerta', next: 'pasillo',
+        effects: { energy: -5 } },
+    ],
+  },
+
+  escuchar: {
+    chapter: 'Acto I · El Despertar',
+    title: 'Silencio y Pasos',
+    story: [
+      { type: 'text', content: 'Cierras los ojos. El sonido metálico es rítmico: alguien camina con botas de metal en algún lugar por encima de ti.' },
+      { type: 'dialogue', speaker: 'Voz lejana', content: '…no puede haber llegado lejos. Búscalo.' },
+      { type: 'text', content: 'El corazón te late con fuerza. Debes moverte antes de que lleguen.' },
+    ],
+    choices: [
+      { text: 'Coger la linterna y correr', next: 'coger_linterna',
+        effects: { item: 'Linterna', score: 5, energy: -10 } },
+      { text: 'Salir sin hacer ruido', next: 'pasillo',
+        effects: { energy: -5, flag: 'sabe_que_hay_guardias' } },
+    ],
+  },
+
+  leer_cuaderno: {
+    chapter: 'Acto I · El Despertar',
+    title: 'El Cuaderno de Elena',
+    story: [
+      { type: 'text', content: 'La portada dice: <strong>"Diario de Elena — No lo abras si no eres tú."</strong>' },
+      { type: 'text', content: 'Lo abres. La primera página tiene una sola línea: <em>"La salida está bajo el árbol de piedra. La llave es el número de tus miedos."</em>' },
+      { type: 'dialogue', speaker: 'Tú', content: '¿Quién es Elena? ¿Y qué significa esto?' },
+      { type: 'text', content: 'Guardas el cuaderno. Puede ser importante.' },
+    ],
+    choices: [
+      { text: 'Ir hacia la puerta', next: 'pasillo',
+        effects: { item: 'Cuaderno de Elena', score: 20, flag: 'tiene_pista_salida' } },
+    ],
+  },
+
+  /* ── Acto 2 · El Pasillo ───────────────────────────────────────────────── */
+
+  pasillo: {
+    chapter: 'Acto II · El Pasillo',
+    title: 'El Pasillo de Piedra',
+    story: [
+      { type: 'text', content: 'El pasillo es largo y húmedo. Antorchas apagadas penden de las paredes. Al fondo hay una bifurcación.' },
+      { type: 'text', content: 'A la <strong>izquierda</strong>: escaleras hacia arriba y voces distantes. A la <strong>derecha</strong>: silencio y un leve olor a tierra mojada.' },
+    ],
+    choices: [
+      { text: '⬆ Subir por la izquierda', next: 'guardia',
+        effects: { energy: -10 } },
+      { text: '➡ Ir a la derecha', next: 'jardin_subterraneo',
+        effects: { energy: -10 } },
+    ],
+  },
+
+  guardia: {
+    chapter: 'Acto II · El Pasillo',
+    title: 'El Guardia',
+    story: [
+      { type: 'text', content: 'Al doblar la esquina casi chocas con un guardia. Lleva una armadura negra y carga con una llave colgada al cuello.' },
+      { type: 'dialogue', speaker: 'Guardia', content: '¡Alto! ¿Quién anda ahí?' },
+      { type: 'text', content: 'Tienes un segundo para decidir.' },
+    ],
+    choices: [
+      { text: 'Hablar con él', next: 'hablar_guardia',
+        effects: { energy: -5 } },
+      { text: 'Huir de vuelta al pasillo', next: 'huida',
+        effects: { hp: -15, energy: -15 } },
+      { text: 'Distraerlo con el cuaderno',
+        requires: 'tiene_pista_salida',
+        next: 'robar_llave',
+        effects: { score: 30, energy: -10 } },
+    ],
+  },
+
+  hablar_guardia: {
+    chapter: 'Acto II · El Pasillo',
+    title: 'Conversación Peligrosa',
+    story: [
+      { type: 'dialogue', speaker: 'Tú', content: 'Espera, espera. Solo estoy buscando la salida. Me perdí.' },
+      { type: 'dialogue', speaker: 'Guardia', content: 'Nadie se "pierde" en este nivel. ¿Tienes el salvoconducto?' },
+      { type: 'text', content: 'No tienes ningún salvoconducto. El guardia frunce el ceño y pone la mano en su espada.' },
+    ],
+    choices: [
+      { text: 'Inventar una excusa', next: 'excusa',
+        effects: { energy: -10 } },
+      { text: 'Correr ahora mismo', next: 'huida',
+        effects: { hp: -10, energy: -20 } },
+    ],
+  },
+
+  excusa: {
+    chapter: 'Acto II · El Pasillo',
+    title: 'La Mentira',
+    story: [
+      { type: 'dialogue', speaker: 'Tú', content: 'El comandante Vess me envió. Tengo un mensaje urgente.' },
+      { type: 'dialogue', speaker: 'Guardia', content: '…El comandante Vess está de misión. No puede haberle enviado nadie.' },
+      { type: 'text', content: 'El guardia desenvaina la espada. Algo golpea la pared detrás de él: una antorcha cae y lo distrae.' },
+      { type: 'text', content: 'Aprovechas el momento y arrancas a correr.' },
+    ],
+    choices: [
+      { text: 'Seguir corriendo a la derecha', next: 'jardin_subterraneo',
+        effects: { hp: -5, energy: -15, score: 10 } },
+    ],
+  },
+
+  huida: {
+    chapter: 'Acto II · El Pasillo',
+    title: 'La Carrera',
+    story: [
+      { type: 'text', content: 'Corres tan rápido como puedes. Tus pies golpean la piedra. Escuchas gritos detrás de ti.' },
+      { type: 'text', content: 'Tomas la bifurcación de la derecha. Los pasos se van alejando.' },
+    ],
+    choices: [
+      { text: 'Continuar al jardín', next: 'jardin_subterraneo',
+        effects: { energy: -10 } },
+    ],
+  },
+
+  robar_llave: {
+    chapter: 'Acto II · El Pasillo',
+    title: 'El Truco del Cuaderno',
+    story: [
+      { type: 'text', content: 'Lanzas el cuaderno al suelo varios metros detrás del guardia. Él gira la cabeza un instante.' },
+      { type: 'text', content: 'Es suficiente. Tus dedos agarran la cadena y tiras con fuerza. La llave queda en tu mano.' },
+      { type: 'dialogue', speaker: 'Guardia', content: '¡¿Qué…?! ¡Detenedlo!' },
+      { type: 'text', content: 'Corres. Tienes la llave.' },
+    ],
+    choices: [
+      { text: 'Correr al jardín subterráneo', next: 'jardin_subterraneo',
+        effects: { item: 'Llave de bronce', score: 40, energy: -15, flag: 'tiene_llave' } },
+    ],
+  },
+
+  /* ── Acto 3 · El Jardín ────────────────────────────────────────────────── */
+
+  jardin_subterraneo: {
+    chapter: 'Acto III · El Jardín Subterráneo',
+    title: 'El Árbol de Piedra',
+    story: [
+      { type: 'text', content: 'Una caverna enorme se abre ante ti. En el centro crece un <strong>árbol de piedra gris</strong>, sus ramas de basalto alcanzan el techo.' },
+      { type: 'text', content: 'A sus pies hay una puerta de hierro con una cerradura. Hay una inscripción en la roca: <em>"Introduce el número de tus miedos."</em>' },
+      { type: 'dialogue', speaker: 'Voz desconocida', content: '…has llegado hasta aquí. Pocos lo consiguen.' },
+    ],
+    choices: [
+      { text: 'Examinar el árbol', next: 'examinar_arbol',
+        effects: { score: 10, energy: -5 } },
+      { text: 'Intentar abrir la puerta de hierro', next: () =>
+          player.flags['tiene_llave'] ? 'puerta_llave' : 'puerta_sin_llave' },
+      { text: 'Buscar el número (pista del cuaderno)',
+        requires: 'tiene_pista_salida',
+        next: 'descifrar_codigo',
+        effects: { score: 25 } },
+    ],
+  },
+
+  examinar_arbol: {
+    chapter: 'Acto III · El Jardín Subterráneo',
+    title: 'Raíces y Memorias',
+    story: [
+      { type: 'text', content: 'Pasas la mano por la corteza de piedra. Hay nombres grabados en ella: cientos de nombres.' },
+      { type: 'text', content: 'Uno de ellos es el tuyo. Debajo, una fecha: <em>hace tres años.</em>' },
+      { type: 'dialogue', speaker: 'Tú', content: '¿Qué… qué significa esto?' },
+      { type: 'text', content: 'Entre las raíces brilla un <strong>fragmento de cristal azul</strong>.' },
+    ],
+    choices: [
+      { text: 'Tomar el cristal', next: 'jardin_subterraneo',
+        effects: { item: 'Cristal azul', score: 20, flag: 'tiene_cristal' } },
+    ],
+  },
+
+  puerta_sin_llave: {
+    chapter: 'Acto III · El Jardín Subterráneo',
+    title: 'Bloqueado',
+    story: [
+      { type: 'text', content: 'La puerta de hierro no cede. La cerradura exige tanto una llave como un código.' },
+      { type: 'dialogue', speaker: 'Tú', content: 'Necesito algo más.' },
+    ],
+    choices: [
+      { text: 'Volver al árbol', next: 'jardin_subterraneo',
+        effects: { energy: -5 } },
+    ],
+  },
+
+  puerta_llave: {
+    chapter: 'Acto III · El Jardín Subterráneo',
+    title: 'La Llave Encaja',
+    story: [
+      { type: 'text', content: 'Introduces la llave de bronce. El mecanismo gira a medias. Falta el código numérico.' },
+    ],
+    choices: [
+      { text: 'Descifrar el código', next: 'descifrar_codigo',
+        effects: { energy: -5 } },
+    ],
+  },
+
+  descifrar_codigo: {
+    chapter: 'Acto III · El Jardín Subterráneo',
+    title: 'El Número de los Miedos',
+    story: [
+      { type: 'text', content: 'Recuerdas las palabras del cuaderno: <em>"La clave es el número de tus miedos."</em>' },
+      { type: 'text', content: 'Cierras los ojos. Miedo a la oscuridad. Miedo al abandono. Miedo a olvidar. Miedo a no ser suficiente.' },
+      { type: 'dialogue', speaker: 'Voz', content: 'Cuatro. Siempre fueron cuatro.' },
+      { type: 'text', content: 'Marcas el número <strong>4</strong> en el teclado de la puerta. Un clic seco. La puerta se abre.' },
+    ],
+    choices: [
+      { text: 'Cruzar la puerta', next: () =>
+          player.hp > 50 ? 'final_bueno' : 'final_agotado',
+        effects: { score: 50 } },
+    ],
+  },
+
+  /* ── Finales ────────────────────────────────────────────────────────────── */
+
+  final_bueno: {
+    chapter: '— FIN —',
+    title: 'La Superficie',
+    story: [
+      { type: 'text', content: 'Cruzas el umbral. El aire frío de la noche te golpea la cara. Estás fuera.' },
+      { type: 'text', content: 'Una luna enorme cuelga sobre un bosque negro. Escuchas agua corriendo. Estás libre.' },
+      { type: 'dialogue', speaker: 'Voz interior', content: 'Los miedos no desaparecen. Pero ahora los conozco por su nombre.' },
+      { type: 'ending', content: `🏆 FINAL VERDADERO · Puntuación: ${player.score + 50} · Objetos: ${player.items.join(', ') || '—'}` },
+    ],
+    choices: [],
+  },
+
+  final_agotado: {
+    chapter: '— FIN —',
+    title: 'Al Límite',
+    story: [
+      { type: 'text', content: 'Cruzas la puerta tambaleándote. La superficie está cerca, pero tus piernas no responden.' },
+      { type: 'text', content: 'Te desplomas en la hierba húmeda bajo un cielo gris. Lo lograste, pero el precio fue alto.' },
+      { type: 'dialogue', speaker: 'Voz interior', content: 'La próxima vez… tomaré mejores decisiones.' },
+      { type: 'ending', content: `⚠️ FINAL DE SUPERVIVENCIA · Puntuación: ${player.score + 50} · Intenta mejorar tu salud.` },
+    ],
+    choices: [],
+  },
+
+};
+
+/* ============================================================================
+   Inicialización
+   ============================================================================ */
+
+function startGame() {
+  document.getElementById('title-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display  = 'block';
+  document.getElementById('gamepad').style.display      = 'flex';
+  log('Partida iniciada');
+  renderScene(SCENES['inicio']);
+}
+
+function restartGame() {
+  player.hp     = 100;
+  player.energy = 100;
+  player.items  = [];
+  player.score  = 0;
+  player.flags  = {};
+  eventLog.length = 0;
+  document.getElementById('event-log').innerHTML = '<strong>— Registro de eventos —</strong><br/>';
+  document.getElementById('title-screen').style.display = 'block';
+  document.getElementById('game-screen').style.display  = 'none';
+  document.getElementById('gamepad').style.display      = 'none';
+}
+
+function toggleLog() {
+  const el = document.getElementById('event-log');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+</script>
+</body>
+</html>

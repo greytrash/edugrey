@@ -84,8 +84,21 @@ de la calzada. Es la regla "la carretera es real, el mundo no".
 ## Estructura
 
 ```
-index.html                 prototipo completo (sim + post)
+index.html                 prototipo completo (sim + post) — Dalinian Roads
+juego.html                 aventura de texto — El Juego
 vendor/three.module.js      Three.js r160 vendorizado (offline)
 docs/preview*.png           capturas
 docs/DESIGN.md              diseño técnico condensado desde el informe
 ```
+
+## El Juego
+
+`juego.html` es una aventura de texto interactiva con estética de consola retro.
+Abre el archivo a través del mismo servidor HTTP:
+
+```bash
+# http://127.0.0.1:8099/juego.html
+```
+
+Toma decisiones que afectan tu vida, energía e inventario y descubre uno de los
+múltiples finales.
