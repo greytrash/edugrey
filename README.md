@@ -41,7 +41,7 @@ aparece de repente.
 | `ratón` | arrastrar para mirar la cabina o por la ventanilla |
 | `N` | hora del día · `P` | pausa |
 | **mando** | stick izq. volante, gatillos gas/freno, stick der. mirar, `A`/`B` contestar/colgar, `X` claxon, `Y` cámara |
-| **móvil** | botonera táctil automática: ◀ ▶ ▲ ▼, ✋ freno de mano, fila CAM · RADIO · LUZ · LLUVIA · HORA y 📢 claxon · ☎ contestar · ✕ colgar; arrastra el dedo para mirar |
+| **móvil** | botonera táctil automática: ◀ ▶ ▲ ▼, ✋ freno de mano, fila CAM · RADIO · LUZ · LLUVIA · HORA · VOL · 📢 (claxon sostenido); **☎ / ✕ aparecen solo cuando suena el teléfono** (el ☎ late en verde); arrastra el dedo para mirar. Layout adaptado a vertical y apaisado — toda la historia es jugable con el dedo, del primer aviso a la carta final |
 
 ## La misión — Gorka
 

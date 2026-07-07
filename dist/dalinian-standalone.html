@@ -31,8 +31,48 @@
   .trow {
     position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
     display: flex; gap: 8px; pointer-events: none;
+    flex-wrap: wrap; justify-content: center;
+    width: max-content; max-width: 96vw;   /* sin esto, absolute encoge al 50 % */
   }
   .trow .tbtn { position: static; width: 54px; height: 40px; font-size: 11px; font-weight: 700; }
+  /* el teléfono solo aparece cuando hay llamada, y late mientras suena */
+  #t-ans, #t-hang { display: none; }
+  body.calling #t-ans, body.calling #t-hang { display: grid; }
+  body.ringing #t-ans { animation: ringpulse 0.9s ease-in-out infinite; border-color: #7dc98f; }
+  @keyframes ringpulse {
+    0%, 100% { background: rgba(22,17,12,.55); transform: scale(1); }
+    50% { background: rgba(80,160,100,.55); transform: scale(1.12); }
+  }
+  /* pantallas estrechas (móvil vertical): fila superior compacta */
+  @media (max-width: 640px) {
+    .trow { gap: 6px; }
+    .trow .tbtn { width: 45px; height: 36px; font-size: 9px; }
+  }
+  /* pantallas bajas (móvil apaisado): mandos inferiores más contenidos */
+  @media (max-height: 480px) {
+    #t-left  { left: 12px;  bottom: 14px; width: 64px; height: 64px; }
+    #t-right { left: 84px;  bottom: 14px; width: 64px; height: 64px; }
+    #t-gas   { right: 12px; bottom: 14px; width: 64px; height: 86px; }
+    #t-brake { right: 84px; bottom: 14px; width: 64px; height: 64px; }
+    #t-hand  { right: 12px; bottom: 108px; width: 52px; height: 42px; }
+  }
+  /* con la botonera activa, el HUD sube para no pisarla */
+  body.touch #hud { bottom: 200px; right: 14px; }
+  body.touch #help { display: none; }
+  body.touch #subs { bottom: calc(4vh + 34px); font-size: 15px; width: min(70ch, 54vw); }
+  body.touch #cue { top: 62px; }
+  @media (max-height: 480px) {
+    body.touch #hud { bottom: 158px; }
+    body.touch #title p { display: none; }
+    body.touch #cue { top: 60px; }
+  }
+  @media (max-width: 640px) {
+    body.touch #hud .mode { max-width: 60vw; font-size: 11px; }
+    body.touch #title { display: none; }
+    body.touch #subs { bottom: 152px; width: 92vw; font-size: 14px; }
+    body.touch #cue { top: 104px; max-width: 92vw; font-size: 11px; text-align: center; }
+    body.touch #hud { bottom: 236px; }
+  }
 
   #ui {
     position: fixed; inset: 0; pointer-events: none;
@@ -107,6 +147,10 @@
     border: 1px solid rgba(243, 236, 219, 0.25);
     background: rgba(22, 17, 12, 0.88);
   }
+  @media (max-width: 640px), (max-height: 480px) {
+    .intro-card { max-width: 92vw; max-height: 88vh; overflow-y: auto; padding: 18px 20px; }
+    .intro-card h1 { font-size: 18px; }
+  }
   .intro-card .eyebrow {
     font-size: 11px; letter-spacing: .32em; color: #d9553f; margin-bottom: 10px;
   }
@@ -158,6 +202,7 @@
     <div class="tbtn" id="t-lights">LUZ</div>
     <div class="tbtn" id="t-rain">LLUVIA</div>
     <div class="tbtn" id="t-hora">HORA</div>
+    <div class="tbtn" id="t-vol">VOL</div>
     <div class="tbtn" id="t-horn">📢</div>
     <div class="tbtn" id="t-ans">☎</div>
     <div class="tbtn" id="t-hang">✕</div>
@@ -179,17 +224,16 @@
     que suena cuando la carretera está más vacía. <b>Él</b> te dirá dónde parar.</p>
     <p style="opacity:.7">Te llamas Gorka. Primero, sigue el aviso de RECOGIDA
     hasta la gasolinera y aparca junto al surtidor. Después contesta al
-    teléfono (F) — o cuélgalo (G) y atente a las consecuencias. Cuando llegue
-    el aviso de ENTREGA, busca el coche gris y párate a su lado.</p>
+    teléfono (F o el botón ☎) — o cuélgalo (G / ✕) y atente a las
+    consecuencias. Cuando llegue el aviso de ENTREGA, busca el coche gris
+    y párate a su lado.</p>
     <p class="controls">
-      W/S · acelerar / frenar<br />
-      A/D · girar<br />
-      C · cámara<br />
-      R · radio (lofi · synthwave · audiolibro · crimen)<br />
-      L · luces<br />
-      V · limpiaparabrisas<br />
-      Espacio · freno de mano<br />
-      Móvil · botones en pantalla
+      W/S · acelerar / frenar &nbsp;·&nbsp; A/D · girar<br />
+      C · cámara ×3 (interior · exterior · isométrica)<br />
+      R · radio (8 emisoras) &nbsp;·&nbsp; ± · volumen<br />
+      F/G · contestar / colgar &nbsp;·&nbsp; H · claxon<br />
+      L · luces &nbsp;·&nbsp; V · lluvia &nbsp;·&nbsp; Espacio · freno de mano<br />
+      Móvil · botonera táctil (☎ aparece al sonar el teléfono)
     </p>
     <p class="small">Pulsa cualquier tecla (o toca la pantalla) para arrancar el audio y conducir.</p>
   </div>
@@ -2817,8 +2861,7 @@ const isCoarse = matchMedia('(pointer: coarse)').matches
   || 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 if (isCoarse && touchUI) {
   touchUI.classList.add('on');
-  document.getElementById('hud').style.bottom = '200px';
-  document.getElementById('help').style.display = 'none';
+  document.body.classList.add('touch');       // el layout móvil vive en CSS
 
   const hold = (id, key) => {
     const el = document.getElementById(id);
@@ -2834,7 +2877,7 @@ if (isCoarse && touchUI) {
   };
   hold('t-left', 'a'); hold('t-right', 'd');
   hold('t-gas', 'w');  hold('t-brake', 's');
-  hold('t-hand', ' ');
+  hold('t-hand', ' '); hold('t-horn', 'h');   // claxon sostenido, como en el coche
 
   const tap = (id, key) => {
     const el = document.getElementById(id);
@@ -2847,7 +2890,21 @@ if (isCoarse && touchUI) {
   };
   tap('t-cam', 'c'); tap('t-radio', 'r'); tap('t-lights', 'l');
   tap('t-rain', 'v'); tap('t-hora', 'n');
-  tap('t-horn', 'h'); tap('t-ans', 'f'); tap('t-hang', 'g');
+  tap('t-ans', 'f'); tap('t-hang', 'g');
+
+  // VOL: cicla el volumen de la radio y lo enseña en el propio botón
+  {
+    const el = document.getElementById('t-vol');
+    const steps = [1.0, 0.7, 0.4, 0.15];
+    el.addEventListener('pointerdown', e => {
+      e.preventDefault(); el.classList.add('pressed');
+      const i = (steps.findIndex(v => Math.abs(v - radioVol) < 0.01) + 1) % steps.length;
+      radioVol = steps[i];
+      if (AC && radioOut) radioOut.gain.setTargetAtTime(0.42 * radioVol, AC.currentTime, 0.1);
+      el.textContent = 'VOL ' + Math.round(radioVol * 100 / 10);
+      setTimeout(() => { el.classList.remove('pressed'); el.textContent = 'VOL'; }, 900);
+    });
+  }
 }
 
 /* ---------- car state ------------------------------------------------------ */
@@ -3201,6 +3258,8 @@ function frame() {
   }
 
   document.querySelector('#hud .spd').textContent = Math.round(speed * 3.6);
+  document.body.classList.toggle('calling', callState !== 'none');
+  document.body.classList.toggle('ringing', callState === 'ring');
 
   renderer.setRenderTarget(sceneRT);
   renderer.render(scene, camera);
@@ -3231,6 +3290,7 @@ window.__dbg = () => {
            deliveryRem: deliveryAt !== null ? Math.round(deliveryAt - scroll) : null,
            finalRem: finalAt !== null ? Math.round(finalAt - scroll) : null,
            decay, narrativeDone, endCard: document.getElementById('endcard').classList.contains('on'),
+           radioVol,
            stationRem: mission === 'toStation' ? Math.round(stationAt - scroll) : null,
            pkgVisible: pkgGrp.visible, gear, portalNear: portalNear === Infinity ? null : Math.round(portalNear),
            subOn: subsEl.classList.contains('on'),
@@ -3245,6 +3305,7 @@ window.__setDelivery = (d) => { mission = 'drive'; hideCue(); deliveryAt = scrol
 window.__setFinal = (d) => { mission = 'drive'; hideCue(); manIdx = MAN_CALLS.length - 1;
   deliveryAt = null; finalAt = scroll + d; pkgGrp.visible = true; applyDecay(); updateModeline(); };
 window.__setDecay = (n) => { manIdx = n; applyDecay(); };
+window.__ringTest = () => startRing({ who: 'AMAIA', kind: 'wife', lines: sample(WIFE_POOL, 2) });
 
 /* ---------- resize --------------------------------------------------------- */
 addEventListener('resize', () => {
