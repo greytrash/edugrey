@@ -250,7 +250,7 @@ const RADIO = {
 /* ---------- game state ---------- */
 const S={ BOOT:0, DRIVE:1, CALL:2, STOP:3, END:4 };
 let state=S.BOOT;
-let speed=0, maxSpeed=135, carX=0, steer=0, dist=0, damage=0, shake=0;
+let speed=0, maxSpeed=135, carX=0, steer=0, dist=0, damage=0, shake=0, hitCD=0;
 let wet=0.0, wiper=0, wiperActive=true, wiperT=0;
 let radio=0; // 0 apagada, 1..3
 let phase=0; // progreso narrativo
@@ -389,13 +389,15 @@ function update(dt){
     let dir=0; if(keys['a']||keys['arrowleft'])dir-=1; if(keys['d']||keys['arrowright'])dir+=1;
     steer += (dir - steer)*Math.min(1,dt*6);
     carX += steer * dt * 1.7 * (0.4+speed/maxSpeed);
-    // curva de la carretera empuja
-    carX -= curveAt(0)*dt*0.9*(speed/maxSpeed);
-    // fuera de la carretera → guardarraíl / árbol
+    // curva de la carretera empuja + leve auto-centrado (perdona a baja velocidad)
+    carX -= curveAt(0)*dt*0.5*(speed/maxSpeed);
+    carX -= carX*dt*0.15;
+    // fuera de la carretera → guardarraíl / árbol (golpe discreto, no castigo continuo)
     if(Math.abs(carX)>1.02){
       carX=Math.max(-1.12,Math.min(1.12,carX));
-      if(speed>40){ damage=Math.min(100,damage+speed*dt*0.6); shake=Math.min(1,shake+0.5); speed*=0.90; hit(); }
+      if(speed>40 && hitCD<=0){ damage=Math.min(100,damage+8); shake=Math.min(1,shake+0.5); speed*=0.82; hit(); hitCD=0.8; }
     }
+    hitCD-=dt;
     dist += speed*dt;
     // engine audio
     if(engineGain){ engineGain.gain.setTargetAtTime(state===S.CALL?0.05:0.09,AC.currentTime,0.1);
@@ -448,44 +450,51 @@ function drawSky(){
 }
 function drawRoad(){
   const horizon=H*0.42;
-  ctx.fillStyle='#0c0f0d'; ctx.fillRect(0,horizon,W,H-horizon);
+  // suelo con leve gradiente para separar del asfalto
+  const gg=ctx.createLinearGradient(0,horizon,0,H);
+  gg.addColorStop(0,'#10140f'); gg.addColorStop(1,'#070908');
+  ctx.fillStyle=gg; ctx.fillRect(0,horizon,W,H-horizon);
   const rows=Math.floor((H-horizon));
+  const trees=[];
   for(let i=0;i<rows;i+=2){
     const y=horizon+i;
     const p=(i)/(H-horizon); // 0 lejos .. 1 cerca
     const persp=p*p;
     const zAhead=(1-p)*3.2;
-    const curve = curveAt(zAhead)* (1-p)*(1-p) * W*0.9;
-    const hill = hillAt(zAhead)*22*(1-p);
+    const curve = curveAt(zAhead)* (1-p)*(1-p) * W*0.30;
     const roadW = (W*0.10 + persp*W*0.85);
-    const cx = W/2 + curve - carX*roadW*0.5;
-    // niebla: cuanto más lejos, más claro/tenue
-    const fog = Math.max(0, 1-p*1.35);
-    // asfalto húmedo
+    const cx = W/2 + curve - carX*roadW*0.38; // la cámara sigue al coche solo en parte: la carretera nunca sale del plano
+    const fog = Math.max(0, 1-p*1.6); // niebla solo en lo lejano
+    // asfalto húmedo, más claro que el suelo
     const seg = Math.floor((dist*0.06 + zAhead*40));
-    const band = (Math.floor((dist*0.14 + i*0.06))%2===0);
-    let base = band? 22:16;
-    ctx.fillStyle = 'rgb('+(base)+','+(base+4)+','+(base+3)+')';
-    ctx.fillRect(cx-roadW/2, y+hill, roadW, 2);
+    const band = seg%2===0;
+    const base = (band? 34:27) - Math.floor(fog*10);
+    ctx.fillStyle = 'rgb('+(base)+','+(base+5)+','+(base+4)+')';
+    ctx.fillRect(cx-roadW/2, y, roadW, 3);
     // reflejo mojado de faros en el centro cercano
-    if(p>0.45){ ctx.fillStyle='rgba(232,178,90,'+(0.05*(p-0.45)/0.55)+')'; ctx.fillRect(cx-roadW*0.16, y+hill, roadW*0.32, 2); }
-    // arcén
-    ctx.fillStyle='rgba(120,120,110,'+(0.10+0.10*persp)+')';
-    ctx.fillRect(cx-roadW/2-2, y+hill, 3, 2); ctx.fillRect(cx+roadW/2-1, y+hill, 3, 2);
+    if(p>0.45){ ctx.fillStyle='rgba(232,178,90,'+(0.06*(p-0.45)/0.55)+')'; ctx.fillRect(cx-roadW*0.16, y, roadW*0.32, 3); }
+    // arcén claro a ambos lados
+    ctx.fillStyle='rgba(160,160,145,'+(0.14+0.16*persp)+')';
+    ctx.fillRect(cx-roadW/2-2, y, 3, 3); ctx.fillRect(cx+roadW/2-1, y, 3, 3);
     // doble línea amarilla discontinua
-    if(((seg)%2===0) && p>0.08){ ctx.fillStyle='rgba(200,160,60,'+(0.5*persp+0.1)+')';
-      ctx.fillRect(cx-roadW*0.02-1.5, y+hill, 1.6, 2); ctx.fillRect(cx+roadW*0.02, y+hill, 1.6, 2); }
-    // árboles emergiendo de la niebla
-    if(i%6===0){ const t=treeAt(seg);
-      if(t.present && p>0.12){ const tx=cx + t.side*(roadW/2 + roadW*0.10 + roadW*0.05);
-        const th=roadW*0.5*t.h; const tw=Math.max(2,roadW*0.06);
-        ctx.fillStyle='rgba(8,14,12,'+(0.5*persp+0.2)+')';
-        ctx.fillRect(tx-tw/2, y+hill-th, tw, th);
-        ctx.beginPath(); ctx.ellipse(tx,y+hill-th, tw*2.2, th*0.5, 0,0,7); ctx.fill();
+    if((seg%2===0) && p>0.06){ ctx.fillStyle='rgba(210,170,70,'+(0.55*persp+0.12)+')';
+      ctx.fillRect(cx-roadW*0.02-1.5, y, 1.8, 3); ctx.fillRect(cx+roadW*0.02, y, 1.8, 3); }
+    // árboles: recogemos y pintamos después (lejos→cerca), con tamaño acotado
+    if(i%8===0 && p>0.10 && p<0.85){ const t=treeAt(seg);
+      if(t.present){ const tx=cx + t.side*(roadW/2 + roadW*0.14);
+        const th=Math.min(H*0.34, roadW*0.34*t.h);
+        const tw=Math.min(W*0.03, Math.max(2, roadW*0.035));
+        trees.push({tx,y,th,tw,a:0.35+0.45*persp});
       }
     }
-    // velo de niebla lejana encima
-    if(fog>0){ ctx.fillStyle='rgba(70,84,86,'+(fog*0.5)+')'; ctx.fillRect(0,y,W,2); }
+    // velo de niebla, tenue y solo lejano
+    if(fog>0){ ctx.fillStyle='rgba(70,84,86,'+(fog*0.32)+')'; ctx.fillRect(0,y,W,2); }
+  }
+  // siluetas de árboles (tronco + copa), del fondo hacia delante
+  for(const t of trees){
+    ctx.fillStyle='rgba(7,11,9,'+t.a+')';
+    ctx.fillRect(t.tx-t.tw/2, t.y-t.th, t.tw, t.th);
+    ctx.beginPath(); ctx.ellipse(t.tx, t.y-t.th, t.tw*2.4, t.th*0.42, 0, 0, 7); ctx.fill();
   }
 }
 function drawHeadlights(){
