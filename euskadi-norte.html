@@ -47,6 +47,32 @@
          transition:background .25s,color .25s}
   #start:hover{background:var(--ambar);color:#0a0c0b}
   .disc{font-size:10px;letter-spacing:.14em;opacity:.4;max-width:520px;line-height:1.6;text-transform:uppercase}
+  /* ---- controles táctiles (móvil) ---- */
+  #touch{position:fixed;inset:0;z-index:9;pointer-events:none;display:none}
+  body.touch #touch{display:block}
+  .tbtn{position:absolute;pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;
+    display:flex;align-items:center;justify-content:center;font-family:inherit;color:var(--hueso);
+    background:rgba(12,16,15,.5);border:1px solid rgba(216,210,196,.30);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+    border-radius:50%;width:74px;height:74px;font-size:26px;transition:background .1s,transform .1s}
+  .tbtn.on{background:rgba(232,178,90,.38);border-color:var(--ambar);transform:scale(.93)}
+  #t-left{left:18px;bottom:26px}
+  #t-right{left:104px;bottom:26px}
+  #t-gas{right:18px;bottom:92px;width:88px;height:88px;font-size:30px}
+  #t-brake{right:34px;bottom:24px;width:60px;height:60px;font-size:20px}
+  .tpill{position:absolute;pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;
+    background:rgba(12,16,15,.55);border:1px solid rgba(216,210,196,.30);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+    color:var(--hueso);font-size:11px;letter-spacing:.14em;text-transform:uppercase;padding:11px 15px;border-radius:24px;white-space:nowrap}
+  .tpill.on{background:rgba(232,178,90,.38);border-color:var(--ambar)}
+  #t-radio{right:16px;top:14px}
+  #t-act{right:16px;top:56px;color:var(--ambar);border-color:var(--ambar)}
+  #t-stop{right:16px;top:98px;display:none;color:var(--verde);border-color:var(--verde)}
+  #t-talk{left:50%;bottom:120px;transform:translateX(-50%);display:none;color:var(--verde);border-color:var(--verde)}
+  body.touch #t-stop.show{display:block}
+  body.touch #t-talk.show{display:block}
+  .keys-touch{display:none}
+  body.touch .keys-desktop{display:none}
+  body.touch .keys-touch{display:block;color:var(--ambar)}
+  @media (max-width:520px){ #screen p{font-size:13px} #screen .keys{font-size:11px} #hud{font-size:10px} }
   @media (prefers-reduced-motion: reduce){ #grain{display:none} }
 </style>
 </head>
@@ -61,14 +87,26 @@
 <div id="sub" class="ui"><span class="who"></span><span class="txt"></span></div>
 <div id="prompt" class="ui"></div>
 
+<div id="touch" aria-hidden="true">
+  <div class="tbtn" id="t-left">◀</div>
+  <div class="tbtn" id="t-right">▶</div>
+  <div class="tbtn" id="t-gas">▲</div>
+  <div class="tbtn" id="t-brake">▼</div>
+  <div class="tpill" id="t-radio">Radio</div>
+  <div class="tpill" id="t-act">✆ Acción</div>
+  <div class="tpill" id="t-stop">Parar</div>
+  <div class="tpill" id="t-talk">Mantén · Hablar</div>
+</div>
+
 <div id="screen">
   <div class="plate">Expediente · Comarca Norte · sin fecha</div>
   <h1>EUSKADI NORTE<span>FASE 0 — CORTE VERTICAL</span></h1>
   <p>Conduces de noche por una comarcal que la niebla se está tragando. En el asiento del copiloto hay un paquete de papel marrón que no vas a abrir. Cada tanto suena el teléfono del salpicadero. Al otro lado, alguien que llaman <em>el Enlace</em>. No sabrás para quién trabajas hasta el final.</p>
   <div class="keys">
-    <b>W/↑</b> acelerar · <b>S/↓</b> frenar · <b>A/D · ←/→</b> volante<br>
+    <span class="keys-desktop"><b>W/↑</b> acelerar · <b>S/↓</b> frenar · <b>A/D · ←/→</b> volante<br>
     <b>R</b> cambiar de dial en la radio · <b>E</b> parar en las paradas · <b>ENTER</b> descolgar / continuar<br>
-    <b>ESPACIO</b> (mantén) hablar por el micro · <b>M</b> silenciar
+    <b>ESPACIO</b> (mantén) hablar por el micro · <b>M</b> silenciar</span>
+    <span class="keys-touch">Controles en pantalla: <b>◀ ▶</b> volante · <b>▲</b> gas · <b>▼</b> freno · <b>Radio</b> · <b>Parar</b> · <b>✆</b> descolgar/continuar · mantén <b>Hablar</b></span>
   </div>
   <button id="start">Arrancar el motor</button>
   <div class="disc">Ficción. Thriller político. Música y textos originales generados en el navegador. Sin datos reales de personas.</div>
@@ -578,8 +616,45 @@ function loop(now){
   update(dt); render();
   requestAnimationFrame(loop);
 }
+/* ---------- controles táctiles ---------- */
+const TOUCH = matchMedia('(pointer:coarse)').matches || ('ontouchstart' in window) || navigator.maxTouchPoints>0;
+if(TOUCH){ document.body.classList.add('touch'); document.addEventListener('touchmove',e=>{e.preventDefault();},{passive:false}); }
+function bindHold(id,k){
+  const el=document.getElementById(id); if(!el) return;
+  const dn=e=>{ e.preventDefault(); keys[k]=true; el.classList.add('on'); };
+  const up=e=>{ e.preventDefault(); keys[k]=false; el.classList.remove('on'); };
+  el.addEventListener('pointerdown',dn); el.addEventListener('pointerup',up);
+  el.addEventListener('pointerleave',up); el.addEventListener('pointercancel',up);
+}
+function bindTap(id,fn){ const el=document.getElementById(id); if(!el) return;
+  el.addEventListener('pointerdown',e=>{ e.preventDefault(); el.classList.add('on'); fn(); });
+  el.addEventListener('pointerup',e=>{ e.preventDefault(); el.classList.remove('on'); });
+  el.addEventListener('pointerleave',()=>el.classList.remove('on'));
+}
+bindHold('t-left','a'); bindHold('t-right','d'); bindHold('t-gas','w'); bindHold('t-brake','s');
+bindTap('t-radio',cycleRadio);
+bindTap('t-stop',tryStop);
+bindTap('t-act',()=>{ if(state===S.BOOT) startGame(); else onEnter(); });
+(function(){ const el=document.getElementById('t-talk'); if(!el)return;
+  el.addEventListener('pointerdown',e=>{ e.preventDefault(); el.classList.add('on'); startTalk(); });
+  const end=e=>{ if(e)e.preventDefault(); el.classList.remove('on'); endTalk(); };
+  el.addEventListener('pointerup',end); el.addEventListener('pointerleave',end); el.addEventListener('pointercancel',end);
+})();
+let _touchSig='';
+function syncTouch(){
+  if(!TOUCH) return;
+  const sig = state+'|'+((atStop&&!stopDone)?1:0);
+  if(sig===_touchSig) return; _touchSig=sig;
+  document.getElementById('t-stop').classList.toggle('show', state===S.DRIVE && atStop && !stopDone);
+  document.getElementById('t-talk').classList.toggle('show', state===S.CALL);
+  document.getElementById('t-act').textContent =
+    state===S.BOOT?'✆ Arrancar':(state===S.CALL?'✆ Descolgar':(state===S.STOP?'✆ Continuar':'✆ Acción'));
+}
+const _loopRef = loop;
+loop = function(now){ syncTouch(); _loopRef(now); };
+
 // primer render estático de fondo tras la pantalla de inicio
-render();
+syncTouch(); render();
 </script>
 </body>
 </html>
