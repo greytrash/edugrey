@@ -241,6 +241,9 @@ function pitido(long = false) {
   scene: world.scene, getS: () => s, world,
   setS: (v: number) => { s = v; },
   setT: (v: number) => { tDay = v; },
+  setDamage: (v: number) => { damage = v; },
+  getDamage: () => damage,
+  setLane: (v: number) => { laneX = v; },
 };
 hornBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); if (state === 'driving') pitido(); });
 
@@ -321,6 +324,7 @@ let damage = 0;
 let pullDir = 0;
 let crackX = 0.5, crackY = 0.4;
 let scraping = false;
+let repairing = false;
 
 /* anomaly + mission bookkeeping */
 let gasCaptionCycle = -1;
@@ -912,6 +916,7 @@ function frame() {
           shake = Math.max(shake, 0.4 + sev);
           audio.crash(sev);
           damage = Math.min(1, damage + sev * (hit.kind === 'wall' ? 0.14 : 0.1));
+          if (sev > 0.22) world.dentCar(sev, hit.signL > 0 ? 'left' : 'right');
           if (sev > 0.35) { pullDir = hit.signL; crackX = 0.3 + Math.random() * 0.4; crackY = 0.3 + Math.random() * 0.2; }
         }
       } else {
@@ -923,6 +928,7 @@ function frame() {
         shake = Math.max(shake, 0.7 + sev);
         audio.crash(Math.max(0.4, sev));
         damage = Math.min(1, damage + sev * 0.28 + 0.04);
+        world.dentCar(Math.max(0.4, sev), 'front');
         pullDir = Math.random() < 0.5 ? -1 : 1;
         crackX = 0.35 + Math.random() * 0.3; crackY = 0.32 + Math.random() * 0.18;
       }
@@ -931,6 +937,21 @@ function frame() {
   // damaged steering pulls to one side; heavier damage, stronger pull
   if (damage > 0.15) laneV += pullDir * damage * 1.4 * dt * (Math.abs(speed) / MAX_SPEED);
   if (scrapeNow !== scraping) { scraping = scrapeNow; audio.scrape(scraping); }
+
+  /* repair: pull over at the recurring gasolinera and idle to fix the chassis */
+  const atGas = Math.abs(world.gasStationS - s) < 24 && laneX > 2.6 && Math.abs(speed) < 3;
+  if (atGas && damage > 0.001) {
+    if (!repairing) { repairing = true; showCaption('reparando el chasis en la gasolinera…', 3000); }
+    damage = Math.max(0, damage - dt * 0.16);
+    if (damage <= 0.02) {
+      damage = 0; pullDir = 0;
+      world.repairCar();
+      repairing = false;
+      showCaption('chasis reparado. depósito lleno.', 3200);
+    }
+  } else if (repairing && !atGas) {
+    repairing = false;
+  }
 
   wheelSpin += speed * dt / 0.34;
 

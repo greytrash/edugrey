@@ -365,6 +365,7 @@ interface CarRig {
   wheels: THREE.Mesh[];
   frontWheels: THREE.Object3D[];
   paint: THREE.MeshStandardMaterial;
+  shell: THREE.Mesh;
 }
 
 export class World {
@@ -792,12 +793,17 @@ export class World {
       if (front) frontWheels.push(pivot);
     }
 
-    return { root, body, wheels, frontWheels, paint };
+    return { root, body, wheels, frontWheels, paint, shell: bodyMesh };
   }
+
+  private playerShell!: THREE.Mesh;
+  private shellOrig!: Float32Array;
 
   private buildCar() {
     this.carRig = this.buildCarBody('#e2dfd6', true);
     const g = this.carRig.root;
+    this.playerShell = this.carRig.shell;
+    this.shellOrig = (this.playerShell.geometry.getAttribute('position').array as Float32Array).slice();
 
     const lampMat = new THREE.MeshStandardMaterial({
       color: '#fff3cf', emissive: '#ffedb8', emissiveIntensity: 1.6, roughness: 0.2, metalness: 0.4,
@@ -901,6 +907,44 @@ export class World {
       this.scene.add(g);
       this.oncoming.push({ g, rig, s: 600 + i * 900, v: 18 + Math.random() * 8, lane: -1.75 });
     }
+  }
+
+  /* crumple the player's bodywork at the point of impact. front = -z
+     (headlights), left = -x, right = +x. Dents accumulate; capped by amt. */
+  private _dv = new THREE.Vector3();
+  private _dc = new THREE.Vector3();
+  dentCar(sev: number, mode: 'front' | 'left' | 'right') {
+    const geo = this.playerShell.geometry;
+    const pos = geo.getAttribute('position') as THREE.BufferAttribute;
+    const c = this._dc;
+    const dir = this._dv;
+    if (mode === 'front') { c.set(0, 0.42, -2.0); dir.set(0, -0.15, 1); }
+    else if (mode === 'left') { c.set(-0.85, 0.5, 0); dir.set(1, -0.1, 0); }
+    else { c.set(0.85, 0.5, 0); dir.set(-1, -0.1, 0); }
+    dir.normalize();
+    const R = 1.5, amt = Math.min(0.42, sev * 0.5);
+    const v = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i);
+      const d = v.distanceTo(c);
+      if (d < R) {
+        const f = (1 - d / R) * amt;
+        v.addScaledVector(dir, f);
+        v.x += (Math.random() - 0.5) * f * 0.35;
+        v.y += (Math.random() - 0.5) * f * 0.22;
+        pos.setXYZ(i, v.x, v.y, v.z);
+      }
+    }
+    pos.needsUpdate = true;
+    geo.computeVertexNormals();
+  }
+
+  /* beat the panels back out — called when the chassis is fully repaired */
+  repairCar() {
+    const pos = this.playerShell.geometry.getAttribute('position') as THREE.BufferAttribute;
+    (pos.array as Float32Array).set(this.shellOrig);
+    pos.needsUpdate = true;
+    this.playerShell.geometry.computeVertexNormals();
   }
 
   /* road-relative collision test against tagged props and oncoming cars.
