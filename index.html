@@ -1983,6 +1983,42 @@ let meetProp = null;
 let phoneTalkUntil = 0, phoneNextT = 0;
 let phoneFormants = [300, 2400];
 
+/* --- voz real del navegador (Web Speech API) --------------------------------
+   Si el dispositivo tiene voces en español (Android/iOS/desktop las traen),
+   las llamadas se HABLAN de verdad: Amaia aguda y con prisa, él grave y
+   lento. Si no hay voces, cae al murmullo filtrado de siempre. */
+let ttsVoices = [], ttsON = false, ttsSpeaking = false;
+function ttsLoad() {
+  try {
+    ttsVoices = speechSynthesis.getVoices().filter(v => /^es\b|^es[-_]/i.test(v.lang));
+    ttsON = ttsVoices.length > 0;
+  } catch { ttsON = false; }
+}
+if ('speechSynthesis' in window) { ttsLoad(); speechSynthesis.onvoiceschanged = ttsLoad; }
+function ttsPick(kind) {
+  const fem = /m[oó]nica|paulina|helena|laura|elvira|marisol|sabina|conchita|lucia|female|femenin|mujer/i;
+  const mal = /jorge|diego|enrique|carlos|alvaro|male|masculin|hombre/i;
+  if (kind === 'wife') return ttsVoices.find(v => fem.test(v.name)) || ttsVoices[0];
+  return ttsVoices.find(v => mal.test(v.name)) || ttsVoices[ttsVoices.length - 1];
+}
+function speak(line, kind) {
+  if (!ttsON) return false;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(line);
+    u.voice = ttsPick(kind);
+    u.lang = (u.voice && u.voice.lang) || 'es-ES';
+    if (kind === 'wife') { u.pitch = 1.15; u.rate = 1.06; }   // nerviosa
+    else { u.pitch = 0.6; u.rate = 0.84; }                    // él: grave, sin prisa
+    ttsSpeaking = true;
+    u.onend = () => { ttsSpeaking = false; };
+    u.onerror = () => { ttsSpeaking = false; };
+    speechSynthesis.speak(u);
+    return true;
+  } catch { return false; }
+}
+function shutUp() { try { speechSynthesis.cancel(); } catch {} ttsSpeaking = false; }
+
 function buildMeetPoint() {                     // coche gris parado, figura al lado
   const grp = new THREE.Object3D();
   const car = buildCarMesh(0x84878a, false);
@@ -2064,7 +2100,7 @@ function answerCall() {
 }
 function hangCall() {
   if (callState === 'none') return;
-  hideCue(); hideSub();
+  hideCue(); hideSub(); shutUp();
   const c = caller;
   callState = 'none'; caller = null; phoneTalkUntil = 0;
   if (AC && radioOut) radioOut.gain.setTargetAtTime(0.42 * radioVol, AC.currentTime, 0.6);
@@ -2091,7 +2127,7 @@ function queueMan(delay) {
   pendingCalls.push({ at: gameT + delay, make: () => ({ who: 'DESCONOCIDO', kind: 'man', lines: MAN_CALLS[manIdx].slice() }) });
 }
 function endTalk() {
-  hideSub();
+  hideSub(); shutUp();
   const c = caller;
   callState = 'none'; caller = null; phoneTalkUntil = 0;
   if (AC && radioOut) radioOut.gain.setTargetAtTime(0.42 * radioVol, AC.currentTime, 0.6);
@@ -2139,6 +2175,7 @@ function startEnding() {
   updateModeline();
 }
 function finishEnding() {
+  shutUp();
   document.getElementById('endcard').classList.remove('on');
   narrativeDone = true; finalAt = null; meetProp = null;
   mission = 'drive'; hideSub();
@@ -2203,6 +2240,7 @@ function updateNarrative(dt) {
       if (cin.t >= ENDING[i][0]) {
         cinStep = i;
         showSub(ENDING[i][1], ENDING[i][2]);
+        if (ENDING[i][1]) speak(ENDING[i][2], ENDING[i][1] === 'AMAIA' ? 'wife' : 'man');
         if (i === 1) ringPhone();
         if (i === 3) { doorThunk(); pkgGrp.visible = false; }
         if (i === 7) doorThunk();
@@ -2234,11 +2272,13 @@ function updateNarrative(dt) {
     }
   } else if (callState === 'talk') {
     callT -= dt;
-    if (AC) phoneTalkUntil = Math.max(phoneTalkUntil, AC.currentTime + 0.3);
-    if (callT <= 0) {
+    if (AC && !ttsON) phoneTalkUntil = Math.max(phoneTalkUntil, AC.currentTime + 0.3);
+    // con voz real, espera a que termine de hablar (con tope por si el navegador no avisa)
+    if (callT <= 0 && (!ttsSpeaking || callT <= -7)) {
       callLine++;
       if (callLine < caller.lines.length) {
         showSub(caller.who === 'AMAIA' ? 'AMAIA' : 'EL HOMBRE', caller.lines[callLine]);
+        speak(caller.lines[callLine], caller.kind);
         callT = 2.2 + caller.lines[callLine].split(' ').length * 0.42;
       } else {
         endTalk();
@@ -3333,7 +3373,7 @@ window.__dbg = () => {
            deliveryRem: deliveryAt !== null ? Math.round(deliveryAt - scroll) : null,
            finalRem: finalAt !== null ? Math.round(finalAt - scroll) : null,
            decay, narrativeDone, endCard: document.getElementById('endcard').classList.contains('on'),
-           radioVol,
+           radioVol, ttsON,
            stationRem: mission === 'toStation' ? Math.round(stationAt - scroll) : null,
            pkgVisible: pkgGrp.visible, gear, portalNear: portalNear === Infinity ? null : Math.round(portalNear),
            subOn: subsEl.classList.contains('on'),
