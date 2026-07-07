@@ -276,11 +276,38 @@ const PALETTE = {
 };
 
 /* ---------- renderer / scene / rig / camera -------------------------------- */
-const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+function showFatal(msg) {
+  const b = document.getElementById('boot');
+  if (!b) return;
+  b.style.opacity = 1;
+  b.querySelector('span').textContent = msg;
+}
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+} catch (e) {
+  showFatal('este navegador no puede crear un contexto WebGL — prueba Chrome o Firefox actualizados');
+  throw e;
+}
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
+
+/* Resiliencia móvil: el pase de post-proceso exige WebGL2 (GLSL3 + textura de
+   profundidad). En webviews con WebGL1 o drivers rotos compila a negro: en ese
+   caso pintamos la escena directa — sin contornos ni grano, pero visible. */
+let postOK = renderer.capabilities.isWebGL2 && !/[?&]direct/.test(location.search);
+renderer.debug.onShaderError = () => { postOK = false; };
+if (!postOK) console.warn('WebGL1: post-proceso desactivado, render directo');
+
+// si algo revienta en el arranque, que se lea en pantalla y no quede en negro
+const bootT0 = performance.now();
+addEventListener('error', e => {
+  if (performance.now() - bootT0 < 12000) {
+    showFatal('error al arrancar: ' + (e.message || 'desconocido'));
+  }
+});
 
 const scene  = new THREE.Scene();
 const FOG_NEAR = 550, FOG_FAR = 1750;   // niebla persistente del norte
@@ -2368,6 +2395,7 @@ const postMat = new THREE.ShaderMaterial({
   `,
   fragmentShader: /* glsl */`
     precision highp float;
+    precision highp sampler2D;   // sin esto, algunos móviles cuantizan la profundidad
     in vec2 vUv;
     out vec4 fragColor;
     uniform sampler2D tDiffuse;
@@ -3256,10 +3284,30 @@ function frame() {
   document.body.classList.toggle('calling', callState !== 'none');
   document.body.classList.toggle('ringing', callState === 'ring');
 
-  renderer.setRenderTarget(sceneRT);
-  renderer.render(scene, camera);
-  renderer.setRenderTarget(null);
-  renderer.render(postScene, postCam);
+  if (postOK) {
+    renderer.setRenderTarget(sceneRT);
+    renderer.render(scene, camera);
+    renderer.setRenderTarget(null);
+    renderer.render(postScene, postCam);
+    // vigilante: si el pase final sale negro (driver móvil roto), render directo
+    if (frameN === 150 || frameN === 400) {
+      try {
+        const probe = new THREE.WebGLRenderTarget(4, 4);
+        renderer.setRenderTarget(probe);
+        renderer.render(postScene, postCam);
+        const px = new Uint8Array(4 * 4 * 4);
+        renderer.readRenderTargetPixels(probe, 0, 0, 4, 4, px);
+        renderer.setRenderTarget(null);
+        probe.dispose();
+        let sum = 0;
+        for (let i = 0; i < px.length; i += 4) sum += px[i] + px[i + 1] + px[i + 2];
+        if (sum === 0) { postOK = false; console.warn('post en negro: cambio a render directo'); }
+      } catch (e) { postOK = false; renderer.setRenderTarget(null); }
+    }
+  } else {
+    renderer.setRenderTarget(null);
+    renderer.render(scene, camera);
+  }
 }
 frame();
 
@@ -3301,6 +3349,16 @@ window.__setFinal = (d) => { mission = 'drive'; hideCue(); manIdx = MAN_CALLS.le
   deliveryAt = null; finalAt = scroll + d; pkgGrp.visible = true; applyDecay(); updateModeline(); };
 window.__setDecay = (n) => { manIdx = n; applyDecay(); };
 window.__ringTest = () => startRing({ who: 'AMAIA', kind: 'wife', lines: sample(WIFE_POOL, 2) });
+window.__probe = () => {   // suma de píxeles del cuadro final (test de pantalla-negra)
+  const probe = new THREE.WebGLRenderTarget(8, 8);
+  renderer.setRenderTarget(probe);
+  if (postOK) renderer.render(postScene, postCam); else renderer.render(scene, camera);
+  const px = new Uint8Array(8 * 8 * 4);
+  renderer.readRenderTargetPixels(probe, 0, 0, 8, 8, px);
+  renderer.setRenderTarget(null); probe.dispose();
+  let s = 0; for (let i = 0; i < px.length; i += 4) s += px[i] + px[i + 1] + px[i + 2];
+  return { sum: s, postOK };
+};
 
 /* ---------- resize --------------------------------------------------------- */
 addEventListener('resize', () => {
