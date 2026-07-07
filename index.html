@@ -114,6 +114,18 @@
   .intro-card p { font-size: 12px; line-height: 1.6; opacity: .85; }
   .intro-card .controls { margin-top: 14px; line-height: 1.9; }
   .intro-card .small { margin-top: 16px; opacity: .5; font-size: 11px; }
+
+  #endcard {
+    position: fixed; inset: 0; display: grid; place-items: center;
+    background: rgba(10, 8, 6, 0.88); z-index: 4; opacity: 0;
+    transition: opacity 2.2s ease; pointer-events: none;
+    font-family: "Courier New", ui-monospace, monospace; text-align: center;
+    color: #f3ecdb;
+  }
+  #endcard.on { opacity: 1; }
+  #endcard h2 { font-size: 26px; letter-spacing: .14em; margin-bottom: 14px; }
+  #endcard p { font-size: 12px; letter-spacing: .3em; opacity: .6; text-transform: uppercase; }
+  #endcard .s { margin-top: 18px; letter-spacing: .1em; opacity: .45; text-transform: none; }
 </style>
 </head>
 <body>
@@ -134,6 +146,11 @@
 </div>
 <div class="cine" id="cineTop"></div>
 <div class="cine" id="cineBot"></div>
+<div id="endcard"><div>
+  <h2>LA CARRETERA NO TERMINA.</h2>
+  <p>Operación Euskadi Norte</p>
+  <p class="s">amanece · carretera libre</p>
+</div></div>
 <div id="touch">
   <div class="trow">
     <div class="tbtn" id="t-cam">CAM</div>
@@ -1801,12 +1818,18 @@ let passenger = null;          // índice de personaje o null
 let passLineIdx = 0, passLineT = 0, passTravel = 0, passWantsOff = false, passOffT = 0;
 const subsEl = document.getElementById('subs');
 const cueEl = document.getElementById('cue');
+let subToken = 0;
 function showSub(who, line) {
+  subToken++;                                      // invalida cualquier hide pendiente
   subsEl.querySelector('.who').textContent = who;
   subsEl.querySelector('.line').textContent = '“' + line + '”';
   subsEl.classList.add('on');
 }
-function hideSub() { subsEl.classList.remove('on'); }
+function hideSub() { subToken++; subsEl.classList.remove('on'); }
+function subTimeout(ms) {                          // oculta solo si nadie ha vuelto a hablar
+  const t = subToken;
+  setTimeout(() => { if (subToken === t) hideSub(); }, ms);
+}
 function showCue(html) { cueEl.innerHTML = html; cueEl.classList.add('on'); }
 function hideCue() { cueEl.classList.remove('on'); }
 
@@ -1823,7 +1846,7 @@ function dropPassenger() {
   showSub(CHARACTERS[passenger].name, 'Aquí me quedo. Ondo ibili.');
   passengerRig.visible = false;
   passenger = null; passWantsOff = false;
-  setTimeout(hideSub, 3200);
+  subTimeout(3200);
   updateModeline();
 }
 
@@ -1870,9 +1893,13 @@ function sample(arr, n) {
   return a.slice(0, n);
 }
 
-let mission = 'toStation';       // toStation | cinematic | drive
+let mission = 'toStation';       // toStation | cinematic | drive | ending
 let stationAt = 680;             // la gasolinera de la recogida
 let cin = null, cinStep = -1;
+let finalAt = null;              // el punto donde la carretera termina
+let decay = 0;                   // el mundo se oscurece con cada encargo
+let crashWarned = false;         // él solo avisa una vez
+let endCardShown = false;
 let callState = 'none';          // none | ring | talk
 let caller = null;               // { who, kind, lines }
 let callLine = 0, callT = 0, ringT = 0, ringBeep = 0;
@@ -1893,7 +1920,25 @@ function buildMeetPoint() {                     // coche gris parado, figura al 
   const fig = buildPersona();
   fig.position.set(2.1, 0, -1.2); fig.rotation.y = -1.4;
   grp.add(fig);
+  // faros que dan ráfagas cuando te acercas
+  const hlMat = new THREE.MeshBasicMaterial({ color: 0x2a2a22 });
+  for (const sx of [-0.62, 0.62]) {
+    const hl = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.13, 0.05), hlMat);
+    hl.position.set(sx, 0.58, -2.02); car.add(hl);
+  }
+  grp.userData.hlMat = hlMat;
   grp.userData.tail = 6;
+  return grp;
+}
+function buildFinalPoint() {                    // donde la carretera termina
+  const grp = new THREE.Object3D();
+  const portal = buildRockPortal();
+  grp.add(portal);
+  const fig = buildPersona();
+  fig.position.set(3.6, 0, 9); fig.rotation.y = Math.PI;
+  grp.add(fig);
+  grp.userData.portal = true;                   // la radio muere al llegar
+  grp.userData.tail = 30;
   return grp;
 }
 function ringPhone() {
@@ -1957,10 +2002,10 @@ function hangCall() {
       wifeMissed = true;
       pendingCalls.push({ at: gameT + 24, make: () => ({ who: 'AMAIA', kind: 'wife', lines: WIFE_RETRY.slice() }) });
     } else {
-      showSub('', '(Amaia no vuelve a llamar esta noche.)'); setTimeout(hideSub, 3200);
+      showSub('', '(Amaia no vuelve a llamar esta noche.)'); subTimeout(3200);
       queueMan(18);
     }
-  } else {
+  } else if (c.kind === 'man') {
     // al hombre no se le cuelga
     manHung = true;
     pendingCalls.push({ at: gameT + 14, make: () => {
@@ -1968,6 +2013,7 @@ function hangCall() {
       return { who: 'DESCONOCIDO', kind: 'man', lines };
     }});
   }
+  // kind 'warn': si le cuelgas, no insiste — ya lo has oído
 }
 function queueMan(delay) {
   if (manIdx >= MAN_CALLS.length) return;
@@ -1980,16 +2026,17 @@ function endTalk() {
   if (AC && radioOut) radioOut.gain.setTargetAtTime(0.42 * radioVol, AC.currentTime, 0.6);
   if (c.kind === 'wife') {
     queueMan(20 + Math.random() * 8);
-  } else {
+  } else if (c.kind === 'man') {
     if (manIdx === MAN_CALLS.length - 1) {
-      narrativeDone = true;
-      setTimeout(() => { showSub('', 'La carretera no termina.'); setTimeout(hideSub, 5000); }, 2500);
+      finalAt = scroll + 850;                  // nos vemos donde la carretera termina
+      meetProp = null;
       updateModeline();
     } else {
       deliveryAt = scroll + 650 + Math.random() * 450;
       meetProp = null;
     }
   }
+  // kind 'warn': él ya ha dicho lo que quería decir
 }
 
 /* --- guion de la Fase 1: recogida, Amaia, el hombre ----------------------- */
@@ -2000,6 +2047,38 @@ const CINEMA = [
   [11.4, '(Lo coge. Pesa más de lo que parece.)'],
   [14.8, '(Vuelve. Cierra. Arranca.)'],
 ];
+
+/* --- guion de la Fase 2: donde la carretera termina ------------------------ */
+const ENDING = [
+  [0.0,  '', '(No hay coche gris. Solo las piedras, la niebla, y el motor al ralentí.)'],
+  [4.6,  '', '(El teléfono suena. En la pantalla, por primera vez, no pone nada.)'],
+  [8.6,  'EL HOMBRE', 'Baja. Déjalo junto a las piedras.'],
+  [12.4, '', '(Gorka baja. El paquete pesa menos que nunca. O él pesa más.)'],
+  [16.4, 'EL HOMBRE', 'Vete a casa. Y no vuelvas a coger esta carretera.'],
+  [20.2, '', '(Por primera vez, la voz suena cansada. Casi humana.)'],
+  [23.8, 'AMAIA', 'Gorka. Vuelve. No preguntes nada y vuelve.'],
+  [27.4, '', '(Arranca. No mira atrás. Amanece.)'],
+];
+function startEnding() {
+  hideCue();
+  mission = 'ending';
+  cin = { t: 0, prevCam: camMode }; cinStep = -1;
+  cab.visible = false; taxiExt.visible = true;
+  if (AC && radioOut) radioOut.gain.setTargetAtTime(0.0, AC.currentTime, 1.4);  // la radio muere aquí
+  updateModeline();
+}
+function finishEnding() {
+  document.getElementById('endcard').classList.remove('on');
+  narrativeDone = true; finalAt = null; meetProp = null;
+  mission = 'drive'; hideSub();
+  camMode = cin.prevCam ?? 0; applyCam();
+  cin = null;
+  // amanece: el mundo se limpia
+  manIdx = MAN_CALLS.length; decay = 0; applyDecay();
+  todIndex = 0; applyTOD();
+  if (AC && radioOut) radioOut.gain.setTargetAtTime(0.42 * radioVol, AC.currentTime, 2.0);
+  updateModeline();
+}
 function updateNarrative(dt) {
   gameT += dt;
 
@@ -2017,7 +2096,7 @@ function updateNarrative(dt) {
       updateModeline();
     } else if (rem < -140) {
       showSub('', '(Se ha pasado el desvío. Hay otra gasolinera más adelante.)');
-      setTimeout(hideSub, 3000);
+      subTimeout(3000);
       stationAt = scroll + 520;
       const g2 = buildGasolinera(); g2.userData.s = stationAt; g2.userData.off = 15.5;
       scene.add(g2); props.push(g2);
@@ -2046,6 +2125,26 @@ function updateNarrative(dt) {
     return;
   }
 
+  /* cinemática final */
+  if (mission === 'ending') {
+    cin.t += dt;
+    for (let i = cinStep + 1; i < ENDING.length; i++) {
+      if (cin.t >= ENDING[i][0]) {
+        cinStep = i;
+        showSub(ENDING[i][1], ENDING[i][2]);
+        if (i === 1) ringPhone();
+        if (i === 3) { doorThunk(); pkgGrp.visible = false; }
+        if (i === 7) doorThunk();
+      }
+    }
+    if (cin.t > 30 && !endCardShown) {
+      endCardShown = true; hideSub();
+      document.getElementById('endcard').classList.add('on');
+    }
+    if (cin.t > 37.5) finishEnding();
+    return;
+  }
+
   /* en ruta: llamadas pendientes */
   if (callState === 'none') {
     for (let i = 0; i < pendingCalls.length; i++) {
@@ -2059,7 +2158,7 @@ function updateNarrative(dt) {
     ringT -= dt; ringBeep -= dt;
     if (ringBeep <= 0) { ringPhone(); ringBeep = 2.1; }
     if (ringT <= 0) {
-      showSub('', '(No lo has cogido.)'); setTimeout(hideSub, 2200);
+      showSub('', '(No lo has cogido.)'); subTimeout(2200);
       hangCall();
     }
   } else if (callState === 'talk') {
@@ -2087,20 +2186,45 @@ function updateNarrative(dt) {
     if (rem > -40) {
       showCue(`ENTREGA · <b>${Math.max(0, rem / 1000).toFixed(1)} km</b> — coche gris, para a su lado`);
     }
+    if (meetProp && meetProp.userData.hlMat) {          // te ha visto: ráfagas
+      const on = rem < 230 && rem > 35 && Math.sin(gameT * 8) > 0.45;
+      meetProp.userData.hlMat.color.setHex(on ? 0xfff0b0 : 0x2a2a22);
+    }
     if (Math.abs(rem) < 45 && speed < 3.5) {
       hideCue();
       pkgGrp.visible = false;
       deliveryAt = null;
       showSub('', 'Entregado. El hombre cuelga sin decir nada.');
-      setTimeout(hideSub, 3400);
+      subTimeout(3400);
       manIdx++;
+      applyDecay();                                     // el mundo se oscurece un poco más
       queueMan(24 + Math.random() * 14);
       setTimeout(() => { if (!narrativeDone) pkgGrp.visible = true; }, 18000);   // otro paquete aparece
       updateModeline();
     } else if (rem < -160) {
       showSub('EL HOMBRE', 'Lo has pasado. No des la vuelta. Habrá otro punto.');
-      setTimeout(hideSub, 3000);
+      subTimeout(3000);
       deliveryAt = scroll + 700 + Math.random() * 300;
+      meetProp = null;
+    }
+  }
+
+  /* el último punto: donde la carretera termina */
+  if (finalAt !== null && callState === 'none' && mission === 'drive') {
+    const rem = finalAt - scroll;
+    if (!meetProp && rem < 420) {
+      meetProp = buildFinalPoint();
+      meetProp.userData.s = finalAt; meetProp.userData.off = 0;
+      scene.add(meetProp); props.push(meetProp);
+    }
+    if (rem > -40) {
+      showCue(`FINAL · <b>${Math.max(0, rem / 1000).toFixed(1)} km</b> — donde la carretera termina`);
+    }
+    if (rem < 60 && rem > -60 && speed < 3.5) {
+      startEnding();
+    } else if (rem < -160) {
+      // no puedes pasarlo de largo para siempre
+      finalAt = scroll + 500;
       meetProp = null;
     }
   }
@@ -2275,8 +2399,9 @@ const TOD = [
 let todIndex = 1, rainOn = true, paused = false;   // arranque: día lluvioso, luz difusa
 function updateModeline() {
   const st = mission === 'toStation' ? 'recogida'
-    : mission === 'cinematic' ? '—'
-    : narrativeDone ? 'sin encargos'
+    : mission === 'cinematic' || mission === 'ending' ? '—'
+    : narrativeDone ? 'carretera libre'
+    : finalAt !== null ? 'final'
     : deliveryAt !== null ? 'entrega'
     : manIdx > 0 || callState !== 'none' ? `encargo ${Math.min(manIdx + 1, MAN_CALLS.length)}/${MAN_CALLS.length}`
     : 'en ruta';
@@ -2294,6 +2419,18 @@ function applyTOD() {
   updateModeline();
 }
 applyTOD();
+
+/* la noche cae y la niebla cierra con cada encargo del hombre */
+function applyDecay() {
+  decay = narrativeDone ? 0 : Math.min(1, manIdx / 5);
+  if (!narrativeDone) {
+    const target = manIdx >= 4 ? 3 : manIdx >= 2 ? 2 : todIndex;
+    if (target > todIndex) { todIndex = target; applyTOD(); }
+  }
+  const fn = FOG_NEAR - decay * 260, ff = FOG_FAR - decay * 680;
+  scene.fog.near = fn; scene.fog.far = ff;
+  postUniforms.fogNear.value = fn; postUniforms.fogFar.value = ff;
+}
 
 /* ============================================================================
    AUDIO — engine hum + five procedural radio stations through an AM chain.
@@ -2747,7 +2884,7 @@ function frame() {
     if (Math.abs(gp.axes[3] || 0) > 0.15) lookPitchT = THREE.MathUtils.clamp(lookPitchT + gp.axes[3] * dt * 1.8, -0.55, 1.0);
   }
 
-  const locked = mission === 'cinematic';
+  const locked = mission === 'cinematic' || mission === 'ending';
   const up = !locked && (keys['w'] || keys['arrowup'] || gpThr > 0.06);
   const down = !locked && (keys['s'] || keys['arrowdown'] || gpBrk > 0.06);
   if (!paused) {
@@ -2815,11 +2952,11 @@ function frame() {
       }
 
       // paradas de contemplación: detenerse junto a un lugar extraño
-      if (p.userData.poi && !p.userData.poiSeen) {
+      if (p.userData.poi && !p.userData.poiSeen && mission === 'drive' && callState === 'none') {
         if (Math.abs(d) < 45 && speed < 2.5) {
           p.userData.poiSeen = true;
           showSub('', p.userData.poi);
-          setTimeout(hideSub, 5200);
+          subTimeout(5200);
         }
       }
 
@@ -2861,6 +2998,12 @@ function frame() {
           postUniforms.impact.value = Math.min(1, 0.4 + closing / 60);
           crashCooldown = 0.8;
           crashes++;
+          // él lo nota todo: una sola advertencia si golpeas llevando el paquete
+          if (!crashWarned && pkgGrp.visible && mission === 'drive' && !narrativeDone) {
+            crashWarned = true;
+            pendingCalls.push({ at: gameT + 6, make: () => ({ who: 'DESCONOCIDO', kind: 'warn',
+              lines: ['Cuidado con eso, Gorka.', 'Sé cómo conduces. Lo noto desde aquí.'] }) });
+          }
         }
       }
     }
@@ -2941,10 +3084,12 @@ function frame() {
   lookYaw   = THREE.MathUtils.lerp(lookYaw, lookYawT, 0.18);
   lookPitch = THREE.MathUtils.lerp(lookPitch, lookPitchT, 0.18);
   const breathe = postUniforms.time.value;   // respiración sutil de cámara (road movie)
-  if (mission === 'cinematic' && cin) {
-    // órbita lenta alrededor del coche aparcado
-    const a = 1.15 + cin.t * 0.085;
-    camera.position.set(Math.sin(a) * 6.8, 1.5 + Math.sin(cin.t * 0.3) * 0.2, Math.cos(a) * 6.8 - 2.5);
+  if ((mission === 'cinematic' || mission === 'ending') && cin) {
+    // órbita lenta alrededor del coche aparcado (más amplia y grave en el final)
+    const fin = mission === 'ending';
+    const a = fin ? 2.3 + cin.t * 0.042 : 1.15 + cin.t * 0.085;
+    const r = fin ? 9.2 + cin.t * 0.09 : 6.8;
+    camera.position.set(Math.sin(a) * r, (fin ? 2.1 + cin.t * 0.05 : 1.5) + Math.sin(cin.t * 0.3) * 0.2, Math.cos(a) * r - 2.5);
     const dir = new THREE.Vector3(0, -0.7, -3.5).sub(camera.position);
     camera.rotation.y = Math.atan2(-dir.x, -dir.z);
     camera.rotation.x = Math.atan2(dir.y, Math.hypot(dir.x, dir.z));
@@ -3021,7 +3166,7 @@ function frame() {
       // trueno: muy de vez en cuando, solo con lluvia
       if (rainOn) {
         thunderT -= dt;
-        if (thunderT <= 0) { thunderClap(); thunderT = 40 + Math.random() * 55; }
+        if (thunderT <= 0) { thunderClap(); thunderT = 40 + Math.random() * 55 - decay * 28; }
       }
     }
 
@@ -3029,21 +3174,23 @@ function frame() {
     if (stationIdx < 8 && !paused) {
       const covered = portalNear < 26;
       staticTimer -= dt;
+      // con el mundo en decadencia, solo EUSKADI FANTASMA entra limpia
+      const rot = stationIdx === 4 ? 0 : decay;
       if (covered || staticTimer <= 0) {
-        if (staticTimer <= 0) { staticTimer = 25 + Math.random() * 30; staticFor = 2.4; }
+        if (staticTimer <= 0) { staticTimer = 25 + Math.random() * 30 - rot * 15; staticFor = 2.4 + rot * 2.2; }
         hissGain.gain.setTargetAtTime(0.13, now, 0.4);
         radioBus.gain.setTargetAtTime(0.20, now, 0.4);
       } else if (staticFor > 0) {
         staticFor -= dt;
         if (staticFor <= 0) {
           const st = RADIO_PROG[stationIdx];
-          hissGain.gain.setTargetAtTime(st.hiss, now, 0.6);
-          radioBus.gain.setTargetAtTime(1.0, now, 0.6);
+          hissGain.gain.setTargetAtTime(st.hiss + rot * 0.09, now, 0.6);
+          radioBus.gain.setTargetAtTime(1.0 - rot * 0.35, now, 0.6);
         }
-      } else if (!covered && staticFor <= 0 && radioBus.gain.value < 0.6) {
+      } else if (!covered && staticFor <= 0 && radioBus.gain.value < 0.6 - rot * 0.35) {
         const st = RADIO_PROG[stationIdx];
-        hissGain.gain.setTargetAtTime(st.hiss, now, 0.6);
-        radioBus.gain.setTargetAtTime(1.0, now, 0.6);
+        hissGain.gain.setTargetAtTime(st.hiss + rot * 0.09, now, 0.6);
+        radioBus.gain.setTargetAtTime(1.0 - rot * 0.35, now, 0.6);
       }
     }
   }
@@ -3077,6 +3224,8 @@ window.__dbg = () => {
            lookYaw, lookPitch, audio: !!AC, nearest,
            mission, callState, caller: caller ? caller.who : null, manIdx,
            deliveryRem: deliveryAt !== null ? Math.round(deliveryAt - scroll) : null,
+           finalRem: finalAt !== null ? Math.round(finalAt - scroll) : null,
+           decay, narrativeDone, endCard: document.getElementById('endcard').classList.contains('on'),
            stationRem: mission === 'toStation' ? Math.round(stationAt - scroll) : null,
            pkgVisible: pkgGrp.visible, gear, portalNear: portalNear === Infinity ? null : Math.round(portalNear),
            subOn: subsEl.classList.contains('on'),
@@ -3088,6 +3237,9 @@ window.__jump = (s) => { scroll = s; };
 window.__answer = () => answerCall();
 window.__ringNow = () => { if (pendingCalls.length) pendingCalls[0].at = gameT; };
 window.__setDelivery = (d) => { mission = 'drive'; hideCue(); deliveryAt = scroll + d; updateModeline(); };
+window.__setFinal = (d) => { mission = 'drive'; hideCue(); manIdx = MAN_CALLS.length - 1;
+  deliveryAt = null; finalAt = scroll + d; pkgGrp.visible = true; applyDecay(); updateModeline(); };
+window.__setDecay = (n) => { manIdx = n; applyDecay(); };
 
 /* ---------- resize --------------------------------------------------------- */
 addEventListener('resize', () => {

@@ -56,8 +56,18 @@ aparece de repente.
    anterior, contados por insinuación, sin detalle operativo. Cuélgale y
    volverá a llamar: *«No vuelvas a hacer eso.»* La radio se agacha cuando
    suena el teléfono, y el aviso de **ENTREGA** te guía hasta un coche gris
-   parado en el arcén. Frena a su lado y el paquete desaparece del
-   asiento… hasta la siguiente llamada. La verdad, en el último encargo.
+   parado en el arcén — que **da ráfagas** cuando te ve llegar. Frena a su
+   lado y el paquete desaparece del asiento… hasta la siguiente llamada.
+4. **El mundo se oscurece.** Con cada entrega **cae la tarde y luego la
+   noche**, la niebla cierra, los truenos arrecian y las emisoras se ahogan
+   en estática — todas menos **EUSKADI FANTASMA**, que cada vez entra más
+   limpia. Si golpeas algo llevando el paquete, él lo sabe: *«Sé cómo
+   conduces. Lo noto desde aquí.»* (solo avisa una vez).
+5. **El final.** Tras la sexta llamada — *«El paquete siempre fuiste tú»* —
+   el aviso cambia a **FINAL: donde la carretera termina**. En la trinchera
+   de roca no hay coche gris. Cinemática orbital, la radio muere, una última
+   llamada sin nombre en la pantalla, la voz de Amaia… y la carta de título:
+   **LA CARRETERA NO TERMINA.** Después, amanece: **modo carretera libre**.
 
 Además, **paradas de contemplación**: detente junto al dolmen, el cementerio
 o la trinchera de roca y la carretera te dirá algo.
@@ -134,5 +144,5 @@ docs/DESIGN.md                diseño técnico del informe original
   subtítulos con ritmo, formantes de auricular, cola de llamadas — lista
   para enchufar audio real.
 - Música/locución real por emisora (ahora es síntesis procedural en vivo).
-- Fail state real en colisiones (daño, reintento de entrega).
-- El interior del último encargo: qué hay dentro del paquete.
+- Fail state real en colisiones (daño con consecuencias mecánicas).
+- Qué hay dentro del paquete. (El juego ya responde: tú.)
