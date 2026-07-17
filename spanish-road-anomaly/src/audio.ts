@@ -11,7 +11,7 @@ import type { Mission } from './route';
 export interface Station {
   freq: string;
   name: string;
-  type: 'talk' | 'sokoa' | 'waltz' | 'copla' | 'news' | 'herri';
+  type: 'talk' | 'sokoa' | 'waltz' | 'copla' | 'news' | 'herri' | 'crime' | 'book';
   lang: string;
 }
 
@@ -19,9 +19,28 @@ const STATIONS: Station[] = [
   { freq: '88.1',  name: 'Euskal Irratia', type: 'talk',  lang: 'es-ES' },
   { freq: '91.8',  name: 'Radio Sokoa',    type: 'sokoa', lang: 'es-ES' },
   { freq: '94.3',  name: 'Radio Baiona',   type: 'waltz', lang: 'fr-FR' },
+  { freq: '95.7',  name: 'Crónica Negra',  type: 'crime', lang: 'es-ES' },
   { freq: '98.2',  name: 'Cadena Sur',     type: 'copla', lang: 'es-ES' },
   { freq: '100.9', name: 'Boletín',        type: 'news',  lang: 'es-ES' },
   { freq: '103.7', name: 'Herri Musika',   type: 'herri', lang: 'es-ES' },
+  { freq: '107.2', name: 'Medianoche',     type: 'book',  lang: 'es-ES' },
+];
+
+/* Crónica Negra: cold, invented northern sucesos — nothing real, all dread */
+const CRIME_SEGMENTS = [
+  'Año setenta y nueve. Un coche aparece quemado en una pista forestal, sin matrícula y sin dueño. Nadie del valle preguntó. Nadie del valle pregunta nunca.',
+  'El cuerpo apareció a doscientos metros de la muga, mirando hacia Francia. El sumario dice accidente. El forense no quiso firmar.',
+  'Tres desaparecidos en cinco inviernos, todos en la misma curva. La Diputación puso un quitamiedos. Los del bar pusieron una vela.',
+  'La casa llevaba veinte años cerrada, pero los vecinos juran que esa noche había luz en la cocina. La Guardia Civil no encontró la cocina.',
+  'Un pastor encontró la furgoneta en el hayedo, con el motor caliente y la radio encendida. Del conductor, hasta hoy, ni rastro.',
+];
+
+/* Medianoche: public-domain lines read slow against the wipers */
+const BOOK_SEGMENTS = [
+  'Volverán las oscuras golondrinas en tu balcón sus nidos a colgar, y otra vez con el ala a sus cristales, jugando llamarán.',
+  'En un lugar de la Mancha, de cuyo nombre no quiero acordarme, no ha mucho tiempo que vivía un hidalgo de los de lanza en astillero, adarga antigua, rocín flaco y galgo corredor.',
+  'Caminante, no hay camino: se hace camino al andar. Al andar se hace el camino, y al volver la vista atrás, se ve la senda que nunca se ha de volver a pisar.',
+  'Yo voy soñando caminos de la tarde. Las colinas doradas, los verdes pinos, las polvorientas encinas. ¿Adónde el camino irá?',
 ];
 
 const JINGLES: Record<string, number[]> = {
@@ -69,6 +88,7 @@ export class GameAudio {
   private whineGain!: GainNode;
 
   private rainGain!: GainNode;
+  private rainFilterNode?: BiquadFilterNode;
   private hissGain!: GainNode;
   private rumbleGain!: GainNode;
   private skidGain!: GainNode;
@@ -168,6 +188,7 @@ export class GameAudio {
     rainFilter.type = 'bandpass';
     rainFilter.frequency.value = 1400;
     rainFilter.Q.value = 0.4;
+    this.rainFilterNode = rainFilter;
     this.rainGain = ctx.createGain();
     this.rainGain.gain.value = 0.05;
     loop.connect(rainFilter).connect(this.rainGain).connect(this.master);
@@ -236,6 +257,10 @@ export class GameAudio {
     // prefer non-default enhanced voices when present
     return exact.find(v => /neural|natural|premium|enhanced|mónica|monica|elvira|jorge|paulina/i.test(v.name))
       ?? exact[0];
+  }
+
+  get ttsReady(): boolean {
+    return this.speechSupported && speechSynthesis.getVoices().length > 0;
   }
 
   speak(text: string, lang: string, rate = 0.95, pitch = 0.9, onend?: () => void) {
@@ -343,23 +368,32 @@ export class GameAudio {
   }
 
   /* --------------------------------------------------------------- update */
+  private segTimer = 4;
+  private segIdx = 0;
+
   update(dt: number, p: {
     speed: number; maxSpeed: number; throttle: boolean;
     offroad: boolean; handbrake: boolean; rain: number;
+    interior?: boolean; grade?: number;
   }) {
     if (!this.started) return;
     const t = this.ctx.currentTime;
     const k = Math.abs(p.speed) / p.maxSpeed;
 
-    this.engOsc.frequency.setTargetAtTime(52 + k * 96, t, 0.08);
+    /* the engine strains on the climbs: louder, a touch lower */
+    const strain = p.throttle ? Math.max(0, (p.grade ?? 0)) * 6 : 0;
+    this.engOsc.frequency.setTargetAtTime(52 + k * 96 - strain * 14, t, 0.08);
     this.engSub.frequency.setTargetAtTime(26 + k * 48, t, 0.08);
-    this.engGain.gain.setTargetAtTime(0.035 + k * 0.05 + (p.throttle ? 0.035 : 0), t, 0.1);
+    this.engGain.gain.setTargetAtTime(0.035 + k * 0.05 + (p.throttle ? 0.035 : 0) + strain * 0.05, t, 0.1);
     const reversing = p.speed < -0.5;
     this.whineOsc.frequency.setTargetAtTime(320 + k * 260, t, 0.08);
     this.whineGain.gain.setTargetAtTime(reversing ? 0.012 + k * 0.02 : 0, t, 0.1);
 
-    this.rainGain.gain.setTargetAtTime(0.015 + p.rain * 0.065, t, 0.4);
-    this.hissGain.gain.setTargetAtTime(k * (0.015 + p.rain * 0.045), t, 0.2);
+    /* inside the cabin the rain drums low on the roof; outside it hisses */
+    const rf = this.rainFilterNode;
+    if (rf) rf.frequency.setTargetAtTime(p.interior ? 340 : 1400, t, 0.3);
+    this.rainGain.gain.setTargetAtTime((0.015 + p.rain * 0.065) * (p.interior ? 1.8 : 1), t, 0.4);
+    this.hissGain.gain.setTargetAtTime(k * (0.015 + p.rain * 0.045) * (p.interior ? 0.5 : 1), t, 0.2);
     this.rumbleGain.gain.setTargetAtTime(p.offroad ? 0.10 + k * 0.12 : 0, t, 0.05);
     this.skidGain.gain.setTargetAtTime(p.handbrake && k > 0.15 ? 0.06 : 0, t, 0.05);
 
@@ -390,6 +424,22 @@ export class GameAudio {
     this.staticGain.gain.setTargetAtTime(wantStatic, t, 0.15);
     this.staticFilter.frequency.setTargetAtTime(600 + Math.random() * 900 + inr * 600, t, 0.4);
     this.programGain.gain.setTargetAtTime(0.85 * (1 - inr * 0.85) * duck, t, 0.2);
+
+    /* spoken-word dials: cold true crime and the midnight audiobook */
+    if (st.type === 'crime' || st.type === 'book') {
+      if (!this.speaking) {
+        this.segTimer -= dt;
+        if (this.segTimer <= 0) {
+          const pool = st.type === 'crime' ? CRIME_SEGMENTS : BOOK_SEGMENTS;
+          const text = pool[this.segIdx % pool.length];
+          this.segIdx++;
+          this.segTimer = 8 + Math.random() * 12;   // dead air between segments
+          if (st.type === 'crime') this.speak(text, 'es-ES', 0.9, 0.72);
+          else this.speak(text, 'es-ES', 0.84, 0.95);
+        }
+      }
+      return;
+    }
 
     /* news runs on the clock, not on songs */
     if (st.type === 'news') {
@@ -728,6 +778,42 @@ export class GameAudio {
     g.gain.linearRampToValueAtTime(0.0001, t + 0.3);
     src.connect(f).connect(g).connect(this.master);
     src.start(t, Math.random(), 0.32);
+  }
+
+  /* car-phone ring: a warbling two-tone bell, looped while it rings.
+     bell -> trem (LFO-gated ~8 Hz) -> master gate (on/off) -> out */
+  private ringMaster?: GainNode;
+  ring(on: boolean) {
+    if (!this.started) return;
+    const t = this.ctx.currentTime;
+    if (on && !this.ringMaster) {
+      const master = this.ctx.createGain();
+      master.gain.value = 0.0001;
+      master.connect(this.master);
+      const trem = this.ctx.createGain();
+      trem.gain.value = 0.5;
+      trem.connect(master);
+      const lfo = this.ctx.createOscillator();
+      lfo.type = 'square';
+      lfo.frequency.value = 8;
+      const lg = this.ctx.createGain();
+      lg.gain.value = 0.5;
+      lfo.connect(lg).connect(trem.gain);   // trem gain swings 0..1
+      lfo.start();
+      for (const f of [1000, 1260]) {
+        const o = this.ctx.createOscillator();
+        o.type = 'square';
+        o.frequency.value = f;
+        const og = this.ctx.createGain();
+        og.gain.value = 0.06;
+        o.connect(og).connect(trem);
+        o.start();
+      }
+      this.ringMaster = master;
+    }
+    if (this.ringMaster) {
+      this.ringMaster.gain.setTargetAtTime(on ? 0.4 : 0.0001, t, 0.02);
+    }
   }
 
   /* metal impact: low thud + a burst of noise + a couple of dissonant

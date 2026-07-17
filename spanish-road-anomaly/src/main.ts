@@ -5,6 +5,7 @@ import { GameAudio } from './audio';
 import { sampleDay } from './daycycle';
 import { MiniMap } from './map';
 import { Weather } from './weather';
+import { Handler } from './handler';
 import { CYCLE_LEN, VILLAGES, DEST, MISSIONS } from './route';
 
 /* ---------------------------------------------------------------- anomaly */
@@ -108,6 +109,28 @@ for (const id of ['grain', 'vignette']) {
   d.id = id;
   document.body.appendChild(d);
 }
+/* dashboard phone: subtitle bar + reply buttons, shared by voice and keys */
+const phone = document.createElement('div');
+phone.id = 'phone';
+phone.innerHTML = '<div id="phone-line"></div><div id="phone-replies"></div>';
+document.body.appendChild(phone);
+
+/* the Handler speaks low, slow and tired; without TTS the line is read time */
+const handler = new Handler(
+  (text, onend) => {
+    // reading-time fallback races the TTS so a stuck utterance never hangs the call
+    let done = false;
+    const finish = () => { if (!done) { done = true; onend(); } };
+    if (audio.ttsReady) {
+      audio.speak(text, 'es-ES', 0.86, 0.55, finish);
+      setTimeout(finish, 3200 + text.length * 95);
+    } else {
+      setTimeout(finish, 1600 + text.length * 45);
+    }
+  },
+  (on) => audio.ring(on),
+);
+
 /* horn button: works with touch and mouse */
 const hornBtn = document.createElement('button');
 hornBtn.id = 'horn';
@@ -278,6 +301,8 @@ function doAction(k: string) {
   if (k === 'm') map.toggle();
   if (k === 'h') pitido();
   if (k === 'r') { audio.cycleRadio(); $('radio-row').textContent = radioRowText(); }
+  if (k === 't') handler.answer();
+  if (k === '1' || k === '2' || k === '3') handler.choose(parseInt(k) - 1);
 }
 
 addEventListener('keydown', (e) => {
@@ -292,11 +317,48 @@ addEventListener('keydown', (e) => {
   if (k === '8') s += 1500;
   if (k === '0') tDay = (tDay + 0.06) % 1;
   if (k === '7') showCaption('tiempo: ' + weather.force(), 2000);
+  if (k === '6') handler.debugRingNow();
 });
 addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
 /* tapping the menu card starts the drive (mouse and touch alike) */
 intro.addEventListener('pointerdown', () => { if (state === 'menu') toDriving(); });
+
+/* tapping the phone bar answers a ringing call */
+phone.addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  if (handler.phase === 'ringing') handler.answer();
+});
+
+/* keep the phone overlay in sync with the Handler's state */
+let phoneSig = '';
+function syncPhoneUI() {
+  const lineEl = $('phone-line');
+  const repEl = $('phone-replies');
+  const sig = handler.phase + '|' + handler.line + '|' + handler.replies.map(r => r.text).join(';') + '|' + (handler.micActive ? 'm' : '');
+  if (sig === phoneSig) return;
+  phoneSig = sig;
+  phone.className = handler.phase === 'idle' || handler.phase === 'ended' ? '' : 'on ' + handler.phase;
+  if (handler.phase === 'ringing') {
+    lineEl.textContent = isTouch ? 'el teléfono del salpicadero suena — toca para contestar' : 'el teléfono del salpicadero suena — T para contestar';
+    repEl.innerHTML = '';
+  } else if (handler.phase === 'speaking') {
+    lineEl.textContent = '»  ' + handler.line;
+    repEl.innerHTML = '';
+  } else if (handler.phase === 'awaiting') {
+    lineEl.textContent = '»  ' + handler.line + (handler.micActive ? '   [mic]' : '');
+    repEl.innerHTML = '';
+    handler.replies.forEach((r, i) => {
+      const b = document.createElement('button');
+      b.textContent = `${i + 1}. ${r.text}`;
+      b.addEventListener('pointerdown', (e) => { e.stopPropagation(); handler.choose(i); });
+      repEl.appendChild(b);
+    });
+  } else {
+    lineEl.textContent = '';
+    repEl.innerHTML = '';
+  }
+}
 
 /* -------------------------------------------------------------- car state */
 const MAX_SPEED = 33;
@@ -398,6 +460,11 @@ function updateMissions(dt: number) {
 /* --------------------------------------------------------------- wipers 2D */
 let wiperPhase = 0;
 let wiperDir = 1;
+
+/* little pendulums: ignition keys and the pine air freshener swing with
+   the car's lateral motion and the bumps */
+let keyA = 0, keyV = 0;
+let freshA = 0, freshV = 0;
 
 function bladeAngle(phase: number, from: number, to: number) {
   const e = 0.5 - 0.5 * Math.cos(phase * Math.PI);
@@ -571,6 +638,61 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number, 
     octx.stroke();
   });
 
+  /* vinyl stitching seam under the tube */
+  octx.strokeStyle = 'rgba(150,135,110,0.22)';
+  octx.lineWidth = 1.2;
+  octx.setLineDash([5, 6]);
+  octx.beginPath();
+  octx.moveTo(w * 0.05, tubeY + 26);
+  octx.quadraticCurveTo(w * 0.5, tubeY + 12, w * 0.95, tubeY + 22);
+  octx.stroke();
+  octx.setLineDash([]);
+
+  /* air vents, centre of the dash */
+  for (const vx of [0.475, 0.60]) {
+    const ax = w * vx, ay = dashTop + 34, aw = w * 0.055, ah = h * 0.026;
+    octx.fillStyle = '#060707';
+    octx.fillRect(ax, ay, aw, ah);
+    octx.strokeStyle = 'rgba(80,82,80,0.6)';
+    octx.lineWidth = 1;
+    octx.strokeRect(ax, ay, aw, ah);
+    octx.strokeStyle = 'rgba(50,52,50,0.9)';
+    for (let sl = 1; sl <= 3; sl++) {
+      octx.beginPath();
+      octx.moveTo(ax + 2, ay + (ah * sl) / 4);
+      octx.lineTo(ax + aw - 2, ay + (ah * sl) / 4);
+      octx.stroke();
+    }
+  }
+
+  /* ignition barrel + keys swinging on their ring */
+  {
+    keyV += (-14 * Math.sin(keyA) - 2.2 * keyV - steer * 6 * (Math.abs(speed) / MAX_SPEED)) * dt;
+    keyA += keyV * dt;
+    const ix = w * 0.455, iy = h * 0.845;
+    octx.fillStyle = '#1b1d1f';
+    octx.beginPath(); octx.arc(ix, iy, h * 0.011, 0, 7); octx.fill();
+    octx.strokeStyle = 'rgba(160,165,170,0.7)';
+    octx.lineWidth = 1.4;
+    octx.beginPath(); octx.arc(ix, iy, h * 0.011, 0, 7); octx.stroke();
+    const ka = Math.PI / 2 + keyA;                    // hanging down, swinging
+    const kx = ix + Math.cos(ka) * h * 0.035, ky = iy + Math.sin(ka) * h * 0.035;
+    octx.strokeStyle = 'rgba(150,150,150,0.8)';
+    octx.lineWidth = 1.2;
+    octx.beginPath(); octx.moveTo(ix, iy); octx.lineTo(kx, ky); octx.stroke();
+    octx.beginPath(); octx.arc(kx, ky, h * 0.007, 0, 7); octx.stroke();
+    // two keys fanning from the ring
+    for (const spread of [-0.35, 0.2]) {
+      const k2 = ka + spread + keyA * 0.4;
+      octx.strokeStyle = '#8c9094';
+      octx.lineWidth = 2.4;
+      octx.beginPath();
+      octx.moveTo(kx, ky);
+      octx.lineTo(kx + Math.cos(k2) * h * 0.026, ky + Math.sin(k2) * h * 0.026);
+      octx.stroke();
+    }
+  }
+
   /* left CRT: fuel / temp cell bars */
   {
     const lx = w * 0.055, ly = h * 0.77, lw = w * 0.14, lh = h * 0.17;
@@ -672,22 +794,119 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number, 
   octx.beginPath();
   octx.arc(0, 0, h * 0.05, 0, Math.PI * 2);
   octx.fill();
-  for (const ha of [-2.35, -0.75]) {
+  /* leather stitching along the rim */
+  octx.strokeStyle = 'rgba(120,96,60,0.35)';
+  octx.lineWidth = 1;
+  octx.setLineDash([3, 5]);
+  octx.beginPath();
+  octx.arc(0, 0, wr + h * 0.012, 0, Math.PI * 2);
+  octx.stroke();
+  octx.setLineDash([]);
+
+  /* hands: forearm cuff, palm behind the rim, four fingers wrapping over,
+     thumb hooked inside — skin with knuckle shading and a hint of nail */
+  const drawHand = (ha: number) => {
     const hx = Math.cos(ha) * wr, hy = Math.sin(ha) * wr;
-    octx.fillStyle = '#1c1a16';
+    const tang = ha + Math.PI / 2;                        // tangent along rim
+    // forearm / jacket sleeve coming up from below
+    octx.strokeStyle = '#221f1a';
+    octx.lineWidth = h * 0.052;
+    octx.lineCap = 'round';
     octx.beginPath();
-    octx.ellipse(hx * 1.2, hy * 1.2, h * 0.036, h * 0.027, ha, 0, 7);
-    octx.fill();
-    octx.fillStyle = '#9c7350';
+    octx.moveTo(hx * 1.55, hy * 1.55 + h * 0.10);
+    octx.lineTo(hx * 1.12, hy * 1.12);
+    octx.stroke();
+    // cuff edge
+    octx.strokeStyle = '#2e2a22';
+    octx.lineWidth = h * 0.056;
     octx.beginPath();
-    octx.ellipse(hx, hy, h * 0.031, h * 0.022, ha, 0, 7);
-    octx.fill();
-    octx.fillStyle = 'rgba(50,32,20,0.4)';
+    octx.moveTo(hx * 1.28, hy * 1.28);
+    octx.lineTo(hx * 1.18, hy * 1.18);
+    octx.stroke();
+    // palm mass (slightly outside the rim)
+    octx.fillStyle = '#a1765190';
+    octx.fillStyle = '#a17651';
     octx.beginPath();
-    octx.ellipse(hx + Math.cos(ha) * h * 0.012, hy + Math.sin(ha) * h * 0.012, h * 0.016, h * 0.010, ha, 0, 7);
+    octx.ellipse(hx * 1.06, hy * 1.06, h * 0.032, h * 0.026, ha, 0, 7);
     octx.fill();
-  }
+    // shading toward the wrist
+    octx.fillStyle = 'rgba(70,44,26,0.35)';
+    octx.beginPath();
+    octx.ellipse(hx * 1.10, hy * 1.10, h * 0.024, h * 0.016, ha, 0, 7);
+    octx.fill();
+    // four fingers wrapping over the rim
+    for (let k = 0; k < 4; k++) {
+      const fa = ha + (k - 1.5) * 0.115;
+      const fx = Math.cos(fa) * wr, fy = Math.sin(fa) * wr;
+      // finger: short radial capsule crossing the rim inward
+      octx.strokeStyle = k === 0 ? '#9a7050' : '#a17651';
+      octx.lineWidth = h * (0.0135 - k * 0.0004);
+      octx.lineCap = 'round';
+      octx.beginPath();
+      octx.moveTo(fx * 1.045, fy * 1.045);
+      octx.lineTo(fx * 0.925, fy * 0.925);
+      octx.stroke();
+      // knuckle highlight
+      octx.fillStyle = 'rgba(212,168,128,0.5)';
+      octx.beginPath();
+      octx.arc(fx * 1.03, fy * 1.03, h * 0.0045, 0, 7);
+      octx.fill();
+      // crease between segments
+      octx.strokeStyle = 'rgba(70,44,26,0.5)';
+      octx.lineWidth = 1;
+      octx.beginPath();
+      octx.moveTo(fx * 0.985 - Math.cos(tang) * h * 0.006, fy * 0.985 - Math.sin(tang) * h * 0.006);
+      octx.lineTo(fx * 0.985 + Math.cos(tang) * h * 0.006, fy * 0.985 + Math.sin(tang) * h * 0.006);
+      octx.stroke();
+    }
+    // thumb hooked on the inside of the rim, pointing along it
+    const tx0 = Math.cos(ha) * wr * 0.90, ty0 = Math.sin(ha) * wr * 0.90;
+    octx.strokeStyle = '#a17651';
+    octx.lineWidth = h * 0.0145;
+    octx.beginPath();
+    octx.moveTo(tx0, ty0);
+    octx.lineTo(tx0 + Math.cos(tang) * h * 0.030, ty0 + Math.sin(tang) * h * 0.030);
+    octx.stroke();
+  };
+  drawHand(-2.35);
+  drawHand(-0.75);
   octx.restore();
+
+  /* gear lever with rubber boot, between the seats */
+  {
+    const gx = w * 0.505, gy = h;
+    const lean = -steer * 0.05 + Math.sin(now * 0.9) * 0.01;
+    const tipX = gx + Math.sin(lean) * h * 0.16 - h * 0.02;
+    const tipY = gy - Math.cos(lean) * h * 0.16;
+    octx.fillStyle = '#0a0908';
+    octx.beginPath();
+    octx.moveTo(gx - w * 0.028, gy);
+    octx.lineTo(gx - w * 0.006, gy - h * 0.05);
+    octx.lineTo(gx + w * 0.010, gy - h * 0.05);
+    octx.lineTo(gx + w * 0.032, gy);
+    octx.closePath();
+    octx.fill();
+    octx.strokeStyle = 'rgba(120,110,95,0.25)';    // boot folds
+    octx.lineWidth = 1;
+    for (let f = 1; f <= 2; f++) {
+      octx.beginPath();
+      octx.moveTo(gx - w * 0.020 + f * 3, gy - f * h * 0.016);
+      octx.lineTo(gx + w * 0.024 - f * 3, gy - f * h * 0.016);
+      octx.stroke();
+    }
+    octx.strokeStyle = '#26282a';
+    octx.lineWidth = h * 0.012;
+    octx.lineCap = 'round';
+    octx.beginPath();
+    octx.moveTo(gx, gy - h * 0.045);
+    octx.lineTo(tipX, tipY);
+    octx.stroke();
+    const kg = octx.createRadialGradient(tipX - 3, tipY - 3, 1, tipX, tipY, h * 0.016);
+    kg.addColorStop(0, '#3c3e40');
+    kg.addColorStop(1, '#101112');
+    octx.fillStyle = kg;
+    octx.beginPath(); octx.arc(tipX, tipY, h * 0.016, 0, 7); octx.fill();
+  }
 
   /* the package on the passenger seat — brown paper, string, never opened */
   {
@@ -781,6 +1000,31 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number, 
   octx.strokeStyle = '#15130f';
   octx.lineWidth = 4;
   octx.strokeRect(mx, my, mw, mh);
+
+  /* pine air freshener hanging from the mirror, swinging with the drive */
+  {
+    freshV += (-11 * Math.sin(freshA) - 2.0 * freshV - steer * 5 * (Math.abs(speed) / MAX_SPEED) + bodyVy * 2) * dt;
+    freshA += freshV * dt;
+    const px0 = mx + mw / 2, py0 = my + mh + 2;
+    const fa = Math.PI / 2 + freshA;
+    const fx = px0 + Math.cos(fa) * h * 0.055, fy = py0 + Math.sin(fa) * h * 0.055;
+    octx.strokeStyle = 'rgba(200,200,200,0.5)';
+    octx.lineWidth = 1;
+    octx.beginPath(); octx.moveTo(px0, py0); octx.lineTo(fx, fy); octx.stroke();
+    octx.save();
+    octx.translate(fx, fy);
+    octx.rotate(freshA * 0.8);
+    octx.fillStyle = '#1d4a26';
+    octx.beginPath();
+    octx.moveTo(0, -h * 0.020);
+    octx.lineTo(-h * 0.013, h * 0.016);
+    octx.lineTo(h * 0.013, h * 0.016);
+    octx.closePath();
+    octx.fill();
+    octx.fillStyle = 'rgba(255,255,255,0.12)';      // faded print
+    octx.fillRect(-h * 0.006, -h * 0.004, h * 0.012, h * 0.008);
+    octx.restore();
+  }
   if (cycle >= 3 && hash(Math.floor(s / 40)) > 0.6) {
     const k = hash(Math.floor(s / 40) + 7);
     for (const dx of [-1, 1]) {
@@ -991,6 +1235,8 @@ function frame() {
   }
 
   if (driving) updateMissions(dt);
+  handler.update(dt, driving);
+  syncPhoneUI();
   shake = Math.max(0, shake - dt * 1.6);
 
   /* --- world --- */
@@ -1066,6 +1312,7 @@ function frame() {
   audio.update(dt, {
     speed, maxSpeed: MAX_SPEED, throttle: !!up,
     offroad, handbrake, rain: inTun ? 0.05 : rainI,
+    interior: inCabin, grade: world.grade(s),
   });
 
   renderer.render(world.scene, camera);
