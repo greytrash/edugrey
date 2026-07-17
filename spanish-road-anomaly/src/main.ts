@@ -64,7 +64,10 @@ function villageEntry(routeIdx: number): { name: string; alt: string } {
 
 /* ------------------------------------------------------------------ setup */
 const app = document.getElementById('app')!;
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({
+  antialias: true, powerPreference: 'high-performance',
+  preserveDrawingBuffer: true,     // lens droplets sample the rendered frame
+});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -388,6 +391,20 @@ let crackX = 0.5, crackY = 0.4;
 let scraping = false;
 let repairing = false;
 
+/* per-frame accelerations, shared with the cockpit props (package, keys) */
+let gLat = 0, gLong = 0;
+
+/* free look with the mouse (desktop): cursor position maps to a gaze offset */
+let lookX = 0, lookY = 0, lookTX = 0, lookTY = 0;
+addEventListener('mousemove', (e) => {
+  if (!matchMedia('(pointer: fine)').matches) return;
+  lookTX = (e.clientX / innerWidth) * 2 - 1;
+  lookTY = (e.clientY / innerHeight) * 2 - 1;
+});
+
+/* the package is loose on the seat: it slides, tips and thumps */
+let pkgX = 0, pkgVx = 0, pkgRot = -0.06, pkgThumpT = 0;
+
 /* anomaly + mission bookkeeping */
 let gasCaptionCycle = -1;
 let borderCaptionShown = false;
@@ -457,6 +474,73 @@ function updateMissions(dt: number) {
   }
 }
 
+/* ------------------------------------------------------- lens droplets ---
+   GoPro-style: drops sit on the lens, refract the rendered frame (sampled
+   from the WebGL canvas), catch a highlight, then slide and dry off. */
+interface LensDrop { x: number; y: number; r: number; life: number; vy: number }
+const lensDrops: LensDrop[] = [];
+
+function drawLensDrops(dt: number, rainI: number, isInterior: boolean) {
+  const w = innerWidth, h = innerHeight;
+  const rate = rainI * (isInterior ? 0.8 : 3.2);
+  if (lensDrops.length < 16 && Math.random() < rate * dt) {
+    lensDrops.push({
+      x: Math.random() * w,
+      y: Math.random() * h * 0.85,
+      r: 5 + Math.random() * 15,
+      life: 1,
+      vy: 0,
+    });
+  }
+  const src = renderer.domElement;
+  const sw = src.width / w, sh = src.height / h;   // css px → backing px
+  for (let i = lensDrops.length - 1; i >= 0; i--) {
+    const d = lensDrops[i];
+    d.life -= dt * 0.10;
+    if (d.r > 10) { d.vy += 14 * dt; d.y += d.vy * dt; }        // big drops run
+    else { d.y += 2 * dt; }
+    if (d.life <= 0 || d.y > h + 20) { lensDrops.splice(i, 1); continue; }
+    const a = Math.min(1, d.life * 2.2);
+    octx.save();
+    octx.beginPath();
+    octx.arc(d.x, d.y, d.r, 0, 7);
+    octx.clip();
+    // refraction: the world inside the drop, magnified and pushed down
+    try {
+      const mag = 2.1, R = d.r;
+      octx.globalAlpha = 0.9 * a;
+      octx.drawImage(
+        src,
+        (d.x - R * mag) * sw, (d.y - R * mag * 0.7) * sh, R * 2 * mag * sw, R * 2 * mag * sh,
+        d.x - R, d.y - R, R * 2, R * 2,
+      );
+    } catch { /* canvas not samplable: skip refraction, keep the glass */ }
+    // glass shading: darker meniscus edge, bright top-left catchlight
+    octx.globalAlpha = a;
+    const rim = octx.createRadialGradient(d.x, d.y, d.r * 0.55, d.x, d.y, d.r);
+    rim.addColorStop(0, 'rgba(255,255,255,0)');
+    rim.addColorStop(0.85, 'rgba(30,35,42,0.25)');
+    rim.addColorStop(1, 'rgba(15,18,24,0.5)');
+    octx.fillStyle = rim;
+    octx.fillRect(d.x - d.r, d.y - d.r, d.r * 2, d.r * 2);
+    octx.fillStyle = 'rgba(255,255,255,0.5)';
+    octx.beginPath();
+    octx.ellipse(d.x - d.r * 0.38, d.y - d.r * 0.42, d.r * 0.18, d.r * 0.10, -0.6, 0, 7);
+    octx.fill();
+    octx.restore();
+    // wet streak trailed above a running drop
+    if (d.r > 10 && d.vy > 2) {
+      octx.strokeStyle = `rgba(190,200,215,${0.10 * a})`;
+      octx.lineWidth = d.r * 0.5;
+      octx.lineCap = 'round';
+      octx.beginPath();
+      octx.moveTo(d.x, d.y - d.r * 3.2);
+      octx.lineTo(d.x, d.y - d.r);
+      octx.stroke();
+    }
+  }
+}
+
 /* --------------------------------------------------------------- wipers 2D */
 let wiperPhase = 0;
 let wiperDir = 1;
@@ -465,6 +549,18 @@ let wiperDir = 1;
    the car's lateral motion and the bumps */
 let keyA = 0, keyV = 0;
 let freshA = 0, freshV = 0;
+
+/* vinyl grain for the dash, generated once */
+const vinylPattern = (() => {
+  const c = document.createElement('canvas');
+  c.width = 96; c.height = 96;
+  const x = c.getContext('2d')!;
+  for (let i = 0; i < 900; i++) {
+    x.fillStyle = `rgba(${180 + Math.random() * 60},${170 + Math.random() * 60},${150 + Math.random() * 60},${0.03 + Math.random() * 0.05})`;
+    x.fillRect(Math.random() * 96, Math.random() * 96, 1.4, 1);
+  }
+  return c;
+})();
 
 function bladeAngle(phase: number, from: number, to: number) {
   const e = 0.5 - 0.5 * Math.cos(phase * Math.PI);
@@ -557,6 +653,38 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number, 
   octx.fillStyle = hl;
   octx.fillRect(0, 0, w, h * 0.09);
 
+  /* sun visors, dropped just below the headliner */
+  octx.fillStyle = '#141210';
+  for (const [vx0, vx1, tilt] of [[w * 0.11, w * 0.36, 0.012], [w * 0.63, w * 0.88, -0.010]] as const) {
+    octx.beginPath();
+    octx.moveTo(vx0, h * 0.075);
+    octx.lineTo(vx1, h * 0.075 + (vx1 - vx0) * tilt);
+    octx.lineTo(vx1 - 8, h * 0.135 + (vx1 - vx0) * tilt);
+    octx.lineTo(vx0 + 8, h * 0.135);
+    octx.closePath();
+    octx.fill();
+  }
+  octx.strokeStyle = 'rgba(90,84,70,0.4)';
+  octx.lineWidth = 1;
+  octx.strokeRect(w * 0.215, h * 0.095, w * 0.03, h * 0.012);   // visor mirror clasp
+
+  /* glass: corner grime and a diagonal sheen band */
+  for (const [gx, gy] of [[w * 0.10, h * 0.66], [w * 0.90, h * 0.64]]) {
+    const sm = octx.createRadialGradient(gx, gy, 4, gx, gy, w * 0.07);
+    sm.addColorStop(0, 'rgba(60,58,48,0.16)');
+    sm.addColorStop(1, 'rgba(60,58,48,0)');
+    octx.fillStyle = sm;
+    octx.fillRect(gx - w * 0.07, gy - w * 0.07, w * 0.14, w * 0.14);
+  }
+  {
+    const sheen = octx.createLinearGradient(w * 0.2, 0, w * 0.6, h * 0.5);
+    sheen.addColorStop(0, 'rgba(255,255,255,0)');
+    sheen.addColorStop(0.5, `rgba(255,255,255,${0.025 + 0.02 * (1 - darkness)})`);
+    sheen.addColorStop(1, 'rgba(255,255,255,0)');
+    octx.fillStyle = sheen;
+    octx.fillRect(0, 0, w, h * 0.7);
+  }
+
   for (const side of [0, 1]) {
     const mx2 = side ? w * 0.905 : w * 0.017, mw2 = w * 0.078, my2 = h * 0.545, mh2 = h * 0.075;
     octx.fillStyle = '#0a0908';
@@ -638,7 +766,25 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number, 
     octx.stroke();
   });
 
-  /* vinyl stitching seam under the tube */
+  /* vinyl grain over the whole dash, then the stitched seam */
+  {
+    const pat = octx.createPattern(vinylPattern, 'repeat');
+    if (pat) {
+      octx.save();
+      octx.globalAlpha = 0.35;
+      octx.globalCompositeOperation = 'overlay';
+      octx.fillStyle = pat;
+      octx.beginPath();
+      octx.moveTo(0, h);
+      octx.lineTo(0, dashTop + 56);
+      octx.quadraticCurveTo(w * 0.25, dashTop + 2, w * 0.5, dashTop + 14);
+      octx.quadraticCurveTo(w * 0.75, dashTop + 26, w, dashTop + 10);
+      octx.lineTo(w, h);
+      octx.closePath();
+      octx.fill();
+      octx.restore();
+    }
+  }
   octx.strokeStyle = 'rgba(150,135,110,0.22)';
   octx.lineWidth = 1.2;
   octx.setLineDash([5, 6]);
@@ -647,6 +793,15 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number, 
   octx.quadraticCurveTo(w * 0.5, tubeY + 12, w * 0.95, tubeY + 22);
   octx.stroke();
   octx.setLineDash([]);
+  // a couple of sun cracks in the old vinyl
+  octx.strokeStyle = 'rgba(20,16,12,0.45)';
+  octx.lineWidth = 1;
+  octx.beginPath();
+  octx.moveTo(w * 0.30, tubeY + 30);
+  octx.quadraticCurveTo(w * 0.34, tubeY + 44, w * 0.315, tubeY + 60);
+  octx.moveTo(w * 0.71, tubeY + 34);
+  octx.quadraticCurveTo(w * 0.74, tubeY + 42, w * 0.77, tubeY + 46);
+  octx.stroke();
 
   /* air vents, centre of the dash */
   for (const vx of [0.475, 0.60]) {
@@ -757,8 +912,87 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number, 
     octx.fillStyle = sheen;
     octx.beginPath(); octx.arc(sx, sy, sr * 1.12, 0, 7); octx.fill();
   };
+  /* instrument binnacle hood over the gauges */
+  octx.fillStyle = '#0a0908';
+  octx.beginPath();
+  octx.moveTo(w * 0.205, h * 0.965);
+  octx.quadraticCurveTo(w * 0.24, h * 0.78, w * 0.355, h * 0.775);
+  octx.quadraticCurveTo(w * 0.46, h * 0.79, w * 0.49, h * 0.97);
+  octx.closePath();
+  octx.fill();
+  octx.strokeStyle = 'rgba(120,115,100,0.18)';
+  octx.lineWidth = 2;
+  octx.beginPath();
+  octx.moveTo(w * 0.215, h * 0.94);
+  octx.quadraticCurveTo(w * 0.25, h * 0.785, w * 0.355, h * 0.782);
+  octx.quadraticCurveTo(w * 0.455, h * 0.795, w * 0.482, h * 0.945);
+  octx.stroke();
+
+  /* indicator stalk poking out left of the column */
+  octx.strokeStyle = '#1c1a17';
+  octx.lineWidth = h * 0.014;
+  octx.lineCap = 'round';
+  octx.beginPath();
+  octx.moveTo(w * 0.295, h * 0.955);
+  octx.lineTo(w * 0.245, h * 0.905);
+  octx.stroke();
+  octx.fillStyle = '#26231f';
+  octx.beginPath();
+  octx.arc(w * 0.243, h * 0.903, h * 0.008, 0, 7);
+  octx.fill();
+
   gauge(w * 0.29, h * 0.855, h * 0.072, Math.abs(speed) * 3.6 / 160, '235,70,55');       // speed, red
   gauge(w * 0.415, h * 0.875, h * 0.058, 0.25 + Math.abs(speed) / MAX_SPEED * 0.7, '240,170,40'); // revs, amber
+
+  /* rolling odometer window inside the speedo */
+  {
+    const ox = w * 0.29, oy = h * 0.895;
+    const odoStr = Math.floor(84213.7 + s / 1000).toString().padStart(6, '0');
+    octx.fillStyle = '#050505';
+    octx.fillRect(ox - h * 0.037, oy - h * 0.010, h * 0.074, h * 0.019);
+    octx.strokeStyle = 'rgba(217,160,40,0.3)';
+    octx.lineWidth = 1;
+    octx.strokeRect(ox - h * 0.037, oy - h * 0.010, h * 0.074, h * 0.019);
+    octx.fillStyle = `rgba(225,218,200,${0.5 + 0.3 * backlight})`;
+    octx.font = `${Math.round(h * 0.0135)}px "Courier New", monospace`;
+    octx.textAlign = 'center';
+    for (let dgt = 0; dgt < 6; dgt++) {
+      // last wheel is the red tenth-of-km barrel
+      if (dgt === 5) octx.fillStyle = `rgba(230,110,80,${0.6 + 0.3 * backlight})`;
+      octx.fillText(odoStr[dgt], ox - h * 0.030 + dgt * h * 0.012, oy + h * 0.005);
+    }
+  }
+
+  /* radio head unit: preset buttons + volume knob, left of the CRT */
+  {
+    const bx = w * 0.615, by = h * 0.80;
+    octx.fillStyle = '#0b0c0c';
+    octx.fillRect(bx, by, w * 0.05, h * 0.14);
+    octx.strokeStyle = 'rgba(110,112,110,0.3)';
+    octx.strokeRect(bx, by, w * 0.05, h * 0.14);
+    // volume knob with a position tick
+    const kx = bx + w * 0.025, ky = by + h * 0.028;
+    const kn = octx.createRadialGradient(kx - 2, ky - 2, 1, kx, ky, h * 0.014);
+    kn.addColorStop(0, '#3a3c3e');
+    kn.addColorStop(1, '#101112');
+    octx.fillStyle = kn;
+    octx.beginPath(); octx.arc(kx, ky, h * 0.014, 0, 7); octx.fill();
+    octx.strokeStyle = 'rgba(230,225,210,0.6)';
+    octx.lineWidth = 1.4;
+    octx.beginPath();
+    octx.moveTo(kx, ky);
+    octx.lineTo(kx + Math.cos(-2.1) * h * 0.011, ky + Math.sin(-2.1) * h * 0.011);
+    octx.stroke();
+    // five worn preset buttons
+    for (let bt = 0; bt < 5; bt++) {
+      const bby = by + h * 0.055 + bt * h * 0.016;
+      octx.fillStyle = bt === (audio.radioIndex % 5 + 5) % 5 ? '#3c3428' : '#1c1d1e';
+      octx.fillRect(bx + w * 0.008, bby, w * 0.034, h * 0.011);
+      octx.strokeStyle = 'rgba(90,90,88,0.35)';
+      octx.lineWidth = 0.8;
+      octx.strokeRect(bx + w * 0.008, bby, w * 0.034, h * 0.011);
+    }
+  }
 
   /* steering wheel + hands (drawn over the binnacle so the rim occludes) */
   const wcx = w * 0.35, wcy = h * 1.20, wr = h * 0.36;
@@ -803,73 +1037,110 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number, 
   octx.stroke();
   octx.setLineDash([]);
 
-  /* hands: forearm cuff, palm behind the rim, four fingers wrapping over,
-     thumb hooked inside — skin with knuckle shading and a hint of nail */
-  const drawHand = (ha: number) => {
-    const hx = Math.cos(ha) * wr, hy = Math.sin(ha) * wr;
-    const tang = ha + Math.PI / 2;                        // tangent along rim
-    // forearm / jacket sleeve coming up from below
-    octx.strokeStyle = '#221f1a';
-    octx.lineWidth = h * 0.052;
+  /* hands seen from the driver's eye: the BACK of each hand lies along the
+     rim, four fingers curl over the far side (only the first phalanx shows),
+     the thumb hooks the near side. One silhouette per hand, then shading. */
+  const drawHand = (ha: number, flip: number) => {
+    octx.save();
+    // local frame at the grip point: +x along the rim, +y toward wheel centre
+    octx.translate(Math.cos(ha) * wr, Math.sin(ha) * wr);
+    octx.rotate(ha + Math.PI / 2);
+    octx.scale(flip, 1);
+    const U = h * 0.001;                     // hand unit
+    // jacket sleeve entering from below-outside
+    octx.strokeStyle = '#1f1c17';
     octx.lineCap = 'round';
+    octx.lineWidth = 46 * U;
     octx.beginPath();
-    octx.moveTo(hx * 1.55, hy * 1.55 + h * 0.10);
-    octx.lineTo(hx * 1.12, hy * 1.12);
+    octx.moveTo(-52 * U, -66 * U);
+    octx.lineTo(-30 * U, -26 * U);
     octx.stroke();
-    // cuff edge
-    octx.strokeStyle = '#2e2a22';
-    octx.lineWidth = h * 0.056;
+    // shirt cuff peeking out
+    octx.strokeStyle = '#4a4438';
+    octx.lineWidth = 40 * U;
     octx.beginPath();
-    octx.moveTo(hx * 1.28, hy * 1.28);
-    octx.lineTo(hx * 1.18, hy * 1.18);
+    octx.moveTo(-34 * U, -32 * U);
+    octx.lineTo(-28 * U, -22 * U);
     octx.stroke();
-    // palm mass (slightly outside the rim)
-    octx.fillStyle = '#a1765190';
-    octx.fillStyle = '#a17651';
+
+    // one closed silhouette: wrist → back of hand → 4 knuckle scallops →
+    // fingertips over the rim → base of index → thumb → back to wrist
+    const skin = octx.createLinearGradient(0, -30 * U, 0, 34 * U);
+    skin.addColorStop(0, '#b1835c');
+    skin.addColorStop(0.55, '#9d7350');
+    skin.addColorStop(1, '#7e5a3e');
+    octx.fillStyle = skin;
     octx.beginPath();
-    octx.ellipse(hx * 1.06, hy * 1.06, h * 0.032, h * 0.026, ha, 0, 7);
+    octx.moveTo(-30 * U, -20 * U);                       // wrist, outer edge
+    octx.quadraticCurveTo(-40 * U, 2 * U, -32 * U, 12 * U);   // heel of hand
+    // knuckle ridge with four scallops, running along the rim
+    octx.quadraticCurveTo(-26 * U, 20 * U, -18 * U, 19 * U);  // pinky knuckle
+    octx.quadraticCurveTo(-12 * U, 26 * U, -4 * U, 24 * U);   // ring
+    octx.quadraticCurveTo(2 * U, 30 * U, 10 * U, 27 * U);     // middle
+    octx.quadraticCurveTo(16 * U, 31 * U, 24 * U, 26 * U);    // index
+    octx.quadraticCurveTo(34 * U, 22 * U, 36 * U, 12 * U);    // index side
+    octx.quadraticCurveTo(42 * U, 2 * U, 34 * U, -8 * U);     // toward thumb web
+    // thumb: hooks the near side of the rim, pointing along it
+    octx.quadraticCurveTo(46 * U, -14 * U, 52 * U, -24 * U);  // thumb tip out
+    octx.quadraticCurveTo(50 * U, -32 * U, 40 * U, -30 * U);  // thumb underside
+    octx.quadraticCurveTo(30 * U, -27 * U, 20 * U, -24 * U);  // web back in
+    octx.quadraticCurveTo(-6 * U, -30 * U, -30 * U, -20 * U); // back to wrist
+    octx.closePath();
     octx.fill();
-    // shading toward the wrist
-    octx.fillStyle = 'rgba(70,44,26,0.35)';
-    octx.beginPath();
-    octx.ellipse(hx * 1.10, hy * 1.10, h * 0.024, h * 0.016, ha, 0, 7);
-    octx.fill();
-    // four fingers wrapping over the rim
+
+    // first phalanxes curling over the far side of the rim (darker: they
+    // fall into the rim's shadow)
+    octx.fillStyle = '#775539';
     for (let k = 0; k < 4; k++) {
-      const fa = ha + (k - 1.5) * 0.115;
-      const fx = Math.cos(fa) * wr, fy = Math.sin(fa) * wr;
-      // finger: short radial capsule crossing the rim inward
-      octx.strokeStyle = k === 0 ? '#9a7050' : '#a17651';
-      octx.lineWidth = h * (0.0135 - k * 0.0004);
-      octx.lineCap = 'round';
+      const fx = (-19 + k * 14) * U;
       octx.beginPath();
-      octx.moveTo(fx * 1.045, fy * 1.045);
-      octx.lineTo(fx * 0.925, fy * 0.925);
-      octx.stroke();
-      // knuckle highlight
-      octx.fillStyle = 'rgba(212,168,128,0.5)';
-      octx.beginPath();
-      octx.arc(fx * 1.03, fy * 1.03, h * 0.0045, 0, 7);
+      octx.moveTo(fx, (19 + (k === 1 || k === 2 ? 6 : 2)) * U);
+      octx.lineTo(fx + 9 * U, (21 + (k === 1 || k === 2 ? 6 : 2)) * U);
+      octx.lineTo(fx + 8 * U, 34 * U);
+      octx.quadraticCurveTo(fx + 4 * U, 38 * U, fx + 1 * U, 34 * U);
+      octx.closePath();
       octx.fill();
-      // crease between segments
-      octx.strokeStyle = 'rgba(70,44,26,0.5)';
-      octx.lineWidth = 1;
+    }
+    // creases between fingers, into the back of the hand
+    octx.strokeStyle = 'rgba(80,52,32,0.55)';
+    octx.lineWidth = 1.2;
+    for (let k = 0; k < 3; k++) {
+      const fx = (-10 + k * 14) * U;
       octx.beginPath();
-      octx.moveTo(fx * 0.985 - Math.cos(tang) * h * 0.006, fy * 0.985 - Math.sin(tang) * h * 0.006);
-      octx.lineTo(fx * 0.985 + Math.cos(tang) * h * 0.006, fy * 0.985 + Math.sin(tang) * h * 0.006);
+      octx.moveTo(fx, 22 * U);
+      octx.lineTo(fx - 3 * U, 8 * U);
       octx.stroke();
     }
-    // thumb hooked on the inside of the rim, pointing along it
-    const tx0 = Math.cos(ha) * wr * 0.90, ty0 = Math.sin(ha) * wr * 0.90;
-    octx.strokeStyle = '#a17651';
-    octx.lineWidth = h * 0.0145;
+    // knuckle highlights
+    octx.fillStyle = 'rgba(222,178,136,0.55)';
+    for (let k = 0; k < 4; k++) {
+      octx.beginPath();
+      octx.ellipse((-17 + k * 14) * U, 18 * U, 4.4 * U, 2.6 * U, 0.2, 0, 7);
+      octx.fill();
+    }
+    // thumb nail + crease
+    octx.fillStyle = 'rgba(222,182,142,0.5)';
     octx.beginPath();
-    octx.moveTo(tx0, ty0);
-    octx.lineTo(tx0 + Math.cos(tang) * h * 0.030, ty0 + Math.sin(tang) * h * 0.030);
+    octx.ellipse(46 * U, -25 * U, 4 * U, 2.6 * U, -0.5, 0, 7);
+    octx.fill();
+    octx.strokeStyle = 'rgba(80,52,32,0.45)';
+    octx.beginPath();
+    octx.moveTo(26 * U, -24 * U);
+    octx.quadraticCurveTo(32 * U, -20 * U, 38 * U, -22 * U);
     octx.stroke();
+    // tendon hints on the back of the hand
+    octx.strokeStyle = 'rgba(120,86,58,0.30)';
+    octx.lineWidth = 1;
+    for (let k = 0; k < 3; k++) {
+      octx.beginPath();
+      octx.moveTo((-14 + k * 13) * U, 16 * U);
+      octx.lineTo((-20 + k * 11) * U, -12 * U);
+      octx.stroke();
+    }
+    octx.restore();
   };
-  drawHand(-2.35);
-  drawHand(-0.75);
+  drawHand(-2.35, -1);   // left hand mirrored
+  drawHand(-0.75, 1);
   octx.restore();
 
   /* gear lever with rubber boot, between the seats */
@@ -908,30 +1179,70 @@ function drawInterior(dt: number, inr: number, rainI: number, darkness: number, 
     octx.beginPath(); octx.arc(tipX, tipY, h * 0.016, 0, 7); octx.fill();
   }
 
-  /* the package on the passenger seat — brown paper, string, never opened */
+  /* the package on the passenger seat — loose. it slides with the car's
+     accelerations, tips over on hard moves, thumps against the seat edges */
   {
-    const px = w * 0.55, py = h * 0.88, pw = w * 0.13, ph = h * 0.13;
+    // seat-top friction sim in screen units
+    pkgVx += -gLat * 26 * dt;                            // lateral throw
+    pkgVx += -gLong * Math.sign(pkgX || 1) * 2 * dt;     // braking scuffs it too
+    pkgVx += (Math.random() - 0.5) * Math.abs(bodyVy) * 8 * dt;   // bump jitter
+    pkgVx -= pkgVx * Math.min(1, 5.5 * dt);              // paper-on-vinyl friction
+    pkgX += pkgVx * dt * h * 0.4;
+    const lim = w * 0.045;
+    if (pkgX > lim) { pkgX = lim; if (Math.abs(pkgVx) > 0.5) { audio.crash(Math.min(0.12, Math.abs(pkgVx) * 0.06)); pkgThumpT = 0.3; } pkgVx *= -0.25; }
+    if (pkgX < -lim) { pkgX = -lim; if (Math.abs(pkgVx) > 0.5) { audio.crash(Math.min(0.12, Math.abs(pkgVx) * 0.06)); pkgThumpT = 0.3; } pkgVx *= -0.25; }
+    // it leans into the slide and settles back crooked
+    const targetRot = -0.06 - pkgVx * 0.10 - gLat * 0.02;
+    pkgRot += (targetRot - pkgRot) * Math.min(1, 7 * dt);
+    pkgThumpT = Math.max(0, pkgThumpT - dt);
+
+    const px = w * 0.64 + pkgX, py = h * 0.90 + Math.abs(bodyVy) * h * 0.01 + (pkgThumpT > 0 ? -h * 0.004 : 0);
+    const pw = w * 0.13, ph = h * 0.13;
     octx.save();
     octx.translate(px, py);
-    octx.rotate(-0.06);
+    octx.rotate(pkgRot);
+    // shadow thrown on the seat
+    octx.fillStyle = 'rgba(0,0,0,0.45)';
+    octx.beginPath();
+    octx.ellipse(pw * 0.04, ph * 0.98, pw * 0.56, ph * 0.10, 0.02, 0, 7);
+    octx.fill();
     const paper = octx.createLinearGradient(0, 0, 0, ph);
-    paper.addColorStop(0, '#6b5636');
-    paper.addColorStop(1, '#4a3c26');
+    paper.addColorStop(0, '#71603e');
+    paper.addColorStop(0.5, '#5d4c30');
+    paper.addColorStop(1, '#463823');
     octx.fillStyle = paper;
     octx.fillRect(-pw / 2, 0, pw, ph);
-    // creases
+    // top face hint (parcel is a box, we see a sliver of its top)
+    octx.fillStyle = '#7d6b48';
+    octx.beginPath();
+    octx.moveTo(-pw / 2, 0); octx.lineTo(-pw / 2 + pw * 0.08, -ph * 0.06);
+    octx.lineTo(pw / 2 + pw * 0.06, -ph * 0.05); octx.lineTo(pw / 2, 0);
+    octx.closePath();
+    octx.fill();
+    // creases + torn corner
     octx.strokeStyle = 'rgba(30,22,12,0.4)';
     octx.lineWidth = 1;
     octx.beginPath();
     octx.moveTo(-pw / 2, ph * 0.4); octx.lineTo(pw / 2, ph * 0.5);
     octx.moveTo(0, 0); octx.lineTo(pw * 0.1, ph);
+    octx.moveTo(pw * 0.32, ph * 0.08); octx.lineTo(pw * 0.40, ph * 0.22);
     octx.stroke();
-    // string cross
-    octx.strokeStyle = 'rgba(20,16,10,0.75)';
+    // string cross with a small knot
+    octx.strokeStyle = 'rgba(24,18,10,0.8)';
     octx.lineWidth = 2;
     octx.beginPath();
-    octx.moveTo(0, 0); octx.lineTo(pw * 0.06, ph);
+    octx.moveTo(pw * 0.02, -ph * 0.04); octx.lineTo(pw * 0.08, ph);
     octx.moveTo(-pw / 2, ph * 0.45); octx.lineTo(pw / 2, ph * 0.5);
+    octx.stroke();
+    octx.fillStyle = 'rgba(24,18,10,0.9)';
+    octx.beginPath();
+    octx.arc(pw * 0.05, ph * 0.47, 2.6, 0, 7);
+    octx.fill();
+    // string highlight
+    octx.strokeStyle = 'rgba(200,180,140,0.25)';
+    octx.lineWidth = 0.8;
+    octx.beginPath();
+    octx.moveTo(-pw / 2, ph * 0.44); octx.lineTo(pw / 2, ph * 0.49);
     octx.stroke();
     octx.restore();
   }
@@ -1132,6 +1443,8 @@ function frame() {
   laneV -= world.curvature(s) * speed * speed * dt;
   laneX += laneV * dt;
   const latAccel = (laneV - prevLaneV) / Math.max(dt, 0.001);
+  gLat = latAccel;
+  gLong = longAccel;
 
   const offroad = Math.abs(laneX) > ROAD_HALF + 0.15 && Math.abs(speed) > 1;
   if (offroad) {
@@ -1270,12 +1583,25 @@ function frame() {
     camera.position.set(laneX * 0.62 + shx + sway, 2.55 + bodyY * 0.4 + shy, 1.6);
     camera.lookAt(laneX * 0.80 + ahead.x * 0.30, 1.3 + ahead.y * 0.45, -26);
   }
+  /* free look: the gaze follows the mouse, eased, on top of the base framing */
+  const lk = 1 - Math.exp(-6 * dt);
+  lookX += (lookTX - lookX) * lk;
+  lookY += (lookTY - lookY) * lk;
+  camera.rotateY(-lookX * (interior ? 0.55 : 0.35));
+  camera.rotateX(-lookY * (interior ? 0.25 : 0.15));
 
   /* --- overlay + map --- */
   octx.clearRect(0, 0, innerWidth, innerHeight);
   const inCabin = interior && driving;
   document.body.classList.toggle('cabin', inCabin);   // diegetic screens replace the HUD
-  if (inCabin) drawInterior(dt, inr, rainI, day.darkness, inTun, hm.str, damage);
+  if (inCabin) {
+    // head-turn parallax: the dash slides against the view
+    octx.save();
+    octx.translate(-lookX * innerWidth * 0.20, -lookY * innerHeight * 0.10 + Math.max(0, lookY) * innerHeight * 0.04);
+    drawInterior(dt, inr, rainI, day.darkness, inTun, hm.str, damage);
+    octx.restore();
+  }
+  if (driving) drawLensDrops(dt, inTun ? 0 : rainI, inCabin);
   map.update(s, cycle, inr, now);
 
   /* --- HUD --- */

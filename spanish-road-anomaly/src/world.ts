@@ -763,14 +763,63 @@ export class World {
     addB(new THREE.BoxGeometry(1.00, 0.16, 0.04), new THREE.MeshStandardMaterial({ color: '#20242a', roughness: 0.5, metalness: 0.6 }), 0, 0.58, -2.13);
     addB(new THREE.BoxGeometry(0.40, 0.11, 0.02), new THREE.MeshStandardMaterial({ color: '#e5e2d5', roughness: 0.5 }), 0, 0.42, 2.15);
     if (detailed) {
+      const darkTrim = new THREE.MeshStandardMaterial({ color: '#54514a', roughness: 0.8 });
+      const rubberTrim = new THREE.MeshStandardMaterial({ color: '#141412', roughness: 0.95 });
+      // wing mirrors with a glass face
       for (const mx of [-0.90, 0.90]) {
         addB(new THREE.BoxGeometry(0.06, 0.09, 0.13), chrome, mx, 0.94, -0.62);
+        addB(new THREE.BoxGeometry(0.012, 0.07, 0.10),
+          new THREE.MeshStandardMaterial({ color: '#0d1013', roughness: 0.05, metalness: 0.9, envMapIntensity: 1.5 }),
+          mx + (mx > 0 ? -0.03 : 0.03), 0.94, -0.62);
       }
-      // door seam hint
-      const seam = new THREE.Mesh(new THREE.BoxGeometry(1.66, 0.015, 0.012),
-        new THREE.MeshStandardMaterial({ color: '#54514a', roughness: 0.8 }));
-      seam.position.set(0, 0.62, -0.10);
-      body.add(seam);
+      // door seams (two doors a side)
+      for (const sz of [-0.10, 0.85]) {
+        const seam = new THREE.Mesh(new THREE.BoxGeometry(1.66, 0.015, 0.012), darkTrim);
+        seam.position.set(0, 0.62, sz);
+        body.add(seam);
+      }
+      // chrome door handles
+      for (const hx of [-0.815, 0.815]) {
+        for (const hz of [0.18, 1.05]) {
+          addB(new THREE.BoxGeometry(0.02, 0.03, 0.16), chrome, hx, 0.70, hz);
+        }
+      }
+      // side chrome trim line + dark rocker panel
+      for (const tx of [-0.825, 0.825]) {
+        addB(new THREE.BoxGeometry(0.015, 0.03, 3.6), chrome, tx, 0.52, 0);
+        addB(new THREE.BoxGeometry(0.02, 0.10, 3.3), rubberTrim, tx * 0.985, 0.16, 0);
+      }
+      // radio antenna, front left wing
+      const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.012, 0.85, 6), chrome);
+      ant.position.set(-0.72, 1.15, -1.55);
+      ant.rotation.z = 0.06;
+      body.add(ant);
+      // amber front indicators beside the lamps
+      const amber = new THREE.MeshStandardMaterial({
+        color: '#7a4a10', emissive: '#e08818', emissiveIntensity: 0.25, roughness: 0.4,
+      });
+      for (const ix of [-0.78, 0.78]) {
+        addB(new THREE.BoxGeometry(0.12, 0.08, 0.05), amber, ix, 0.50, -2.10);
+      }
+      // wiper blades parked on the cowl
+      for (const wx of [-0.42, 0.28]) {
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.02, 0.03), rubberTrim);
+        blade.position.set(wx, 0.83, -0.72);
+        blade.rotation.y = 0.18;
+        body.add(blade);
+      }
+      // fuel cap + exhaust tip
+      const cap = addB(new THREE.CylinderGeometry(0.055, 0.055, 0.015, 10), chrome, -0.83, 0.60, 1.55);
+      cap.rotation.z = Math.PI / 2;
+      const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.22, 8),
+        new THREE.MeshStandardMaterial({ color: '#2a2a28', roughness: 0.5, metalness: 0.7 }));
+      exhaust.rotation.x = Math.PI / 2;
+      exhaust.position.set(0.55, 0.20, 2.10);
+      body.add(exhaust);
+      // windscreen rubber gasket
+      const gasket = new THREE.Mesh(new THREE.BoxGeometry(1.48, 0.025, 0.02), rubberTrim);
+      gasket.position.set(0, 0.83, -0.80);
+      body.add(gasket);
     }
 
     /* wheels: tire + rim + hubcap, spinning, front pair steerable */
