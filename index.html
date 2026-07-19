@@ -264,7 +264,6 @@ footer{background:var(--negro);color:var(--blanco);padding:70px 26px 40px;text-a
     <span><b>SLOP</b> · «AI slop», palabra del año 2025</span>
   </div>
 </div>
-<div id="boot"><span>— click or press any key to open —</span></div>
 
 <!-- EDITORIAL -->
 <section class="editorial" id="editorial">
@@ -672,71 +671,6 @@ labBtn.addEventListener('click',()=>{
   u.onend=()=>{labSpeaking=false;labBtn.textContent='▶ QUE TE LO EXPLIQUE EL LAB';};
   speechSynthesis.cancel();speechSynthesis.speak(u);labSpeaking=true;labBtn.textContent='■ SILENCIAR';
 });
-addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
-
-/* ---------- car state ------------------------------------------------------ */
-let speed = 0;          // m/s along the road
-let laneX = 0;          // lateral position of the car
-let steer = 0;          // smoothed steer input for body roll
-const MAX_SPEED = 60;
-
-/* ---------- main loop ------------------------------------------------------ */
-const clock = new THREE.Clock();
-let scroll = 0;
-let started = false;
-
-function openExperience() {
-  if (started) return;
-  started = true;
-  const boot = document.getElementById('boot');
-  boot.style.opacity = 0;
-  setTimeout(() => boot.remove(), 700);
-  clock.start();
-  requestAnimationFrame(frame);
-}
-document.addEventListener('keydown', openExperience, { once: true });
-document.addEventListener('pointerdown', openExperience, { once: true });
-
-function frame() {
-  requestAnimationFrame(frame);
-  const dt = Math.min(clock.getDelta(), 0.05);
-  postUniforms.time.value += dt;
-
-  if (!paused) {
-    /* throttle / brake / natural drag */
-    const up = keys['w'] || keys['arrowup'], down = keys['s'] || keys['arrowdown'];
-    if (up)   speed += 34 * dt;
-    if (down) speed -= 46 * dt;
-    speed -= speed * 0.35 * dt;                       // drag
-    if (rainOn) speed -= speed * 0.10 * dt;           // wet drag
-    speed = THREE.MathUtils.clamp(speed, 0, MAX_SPEED);
-
-    /* steering — only bites with some speed, like a real car */
-    const grip = rainOn ? 0.7 : 1.0;
-    const left = keys['a'] || keys['arrowleft'], right = keys['d'] || keys['arrowright'];
-    let sIn = (left ? -1 : 0) + (right ? 1 : 0);
-    steer = THREE.MathUtils.lerp(steer, sIn, 0.12);
-    laneX += steer * (speed / MAX_SPEED) * 16 * grip * dt;
-    laneX = THREE.MathUtils.clamp(laneX, -LANE, LANE);
-
-    /* scroll the world toward the camera */
-    scroll += speed * dt;
-    roadMap.offset.y = -scroll * 0.02;
-
-    for (const p of props) {
-      p.position.z += speed * dt;
-      p.userData.bob += dt;
-      // gentle surreal float on the sky-side props (never on the road)
-      if (Math.abs(p.position.x) > LANE + 2)
-        p.position.y = p.userData.baseY + Math.sin(p.userData.bob * 0.6) * 0.4;
-      if (p.position.z > 18) {                         // recycle behind the camera
-        scene.remove(p);
-        props.splice(props.indexOf(p), 1);
-        spawnProp(-SPAN + (p.position.z - 18));
-        break;                                         // one respawn per frame is plenty
-      }
-    }
-  }
 
 /* LAB scrollytelling — difusión ruido→imagen */
 const canvas=document.getElementById('diffCanvas'),ctx=canvas.getContext('2d');
@@ -778,18 +712,6 @@ else{window.addEventListener('scroll',onLabScroll,{passive:true});labScroll();}
 /* animar orejas del gato al hover del retrato */
 const catSvg=document.getElementById('catSvg');
 if(catSvg&&!RM){catSvg.addEventListener('mouseenter',()=>{catMouth.setAttribute('ry',7);setTimeout(()=>catMouth.setAttribute('ry',4),200);});}
-// frame() is started by openExperience() on first user interaction
-
-/* ---------- resize --------------------------------------------------------- */
-addEventListener('resize', () => {
-  renderer.setSize(innerWidth, innerHeight);
-  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
-  sizeBackdrop();
-  sceneRT.dispose(); sceneRT = makeTargets();
-  postUniforms.tDiffuse.value = sceneRT.texture;
-  postUniforms.tDepth.value = sceneRT.depthTexture;
-  postUniforms.resolution.value.set(innerWidth, innerHeight);
-});
 </script>
 </body>
 </html>
