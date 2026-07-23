@@ -2,13 +2,13 @@
 
 Repositorio con dos proyectos independientes:
 
-- **`ecosistema-mundo-gris/`** — todo lo del medio digital **Mundo Gris**:
-  la portada (`index.html`, con el gato director) y la versión con el
-  portfolio **ACADEM(IA) GRIS** de Edu Naudín (`academia-gris.html`).
+- **`MUNDO GRIS ECOSISTEMA22/`** — todas las webs del medio digital
+  **Mundo Gris**: la portada (`index.html`, con el gato director) y la versión
+  con el portfolio **ACADEM(IA) GRIS** de Edu Naudín (`academia-gris.html`).
 - **`juego-euskadi-norte/`** — **EUSKADI NORTE**, un juego narrativo de
   conducción nocturna (thriller político, prototipo jugable en navegador).
 
-El `index.html` de la raíz solo redirige a `ecosistema-mundo-gris/index.html`.
+El `index.html` de la raíz solo redirige a `MUNDO GRIS ECOSISTEMA22/index.html`.
 
 Todos los textos son originales de redacción; las imágenes se sirven vía
 Wikimedia Commons y los vídeos vía YouTube.
@@ -20,8 +20,8 @@ Basta con abrir el archivo en el navegador:
 
 ```bash
 # opción 1: abrir directamente
-xdg-open ecosistema-mundo-gris/index.html      # Linux
-open ecosistema-mundo-gris/index.html          # macOS
+xdg-open "MUNDO GRIS ECOSISTEMA22/index.html"  # Linux
+open "MUNDO GRIS ECOSISTEMA22/index.html"      # macOS
 
 # opción 2: servirlo por HTTP (recomendado, evita restricciones de origen)
 python3 -m http.server 8099
@@ -57,8 +57,8 @@ run_server.bat           # Windows
 ## Estructura
 
 ```
-index.html                          # redirección a ecosistema-mundo-gris/
-ecosistema-mundo-gris/
+index.html                          # redirección a MUNDO GRIS ECOSISTEMA22/
+MUNDO GRIS ECOSISTEMA22/
   index.html                        # MUNDO GRIS · portada (con gato director)
   academia-gris.html                # MUNDO GRIS + portfolio ACADEM(IA) GRIS
 juego-euskadi-norte/
