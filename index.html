@@ -557,9 +557,9 @@ applyTOD();
 /* ---------- input ---------------------------------------------------------- */
 const keys = {};
 addEventListener('keydown', e => {
+  if (!started) return;
   const k = e.key.toLowerCase();
   keys[k] = true;
-  if (!started) return;
   if (k === 'n') { todIndex = (todIndex + 1) % TOD.length; applyTOD(); }
   if (k === 'r') { rainOn = !rainOn; applyTOD(); }
   if (k === 'p') { paused = !paused; }
