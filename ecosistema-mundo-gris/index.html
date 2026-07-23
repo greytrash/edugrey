@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="es-ES">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MUNDO GRIS — comenta, comparte, construye</title>
+<meta name="description" content="Mundo Gris: medio digital español de contracultura anarco-aceleracionista. Tecnología, internacional, reportajes y opinión con voz propia. Edición nº001.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;900&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --blanco:#FCFCFA; --magenta:#F012B8; --negro:#0A0A0B;
+  --rosa-claro:#FF3DD1; --rosa-tinta:#B60D8C; --velo:#FDEBF8;
+  --archivo:'Archivo',sans-serif; --cuerpo:'Instrument Sans',sans-serif; --mono:'Space Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--blanco);color:var(--negro);font-family:var(--cuerpo);overflow-x:hidden;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+img{max-width:100%;display:block}
+
+/* grain global */
+.grain{position:fixed;inset:0;pointer-events:none;z-index:9998;opacity:.05;mix-blend-mode:multiply}
+
+/* cursor custom */
+.cursor{position:fixed;width:22px;height:22px;border:2px solid var(--magenta);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .2s,height .2s,background .2s;mix-blend-mode:difference;left:-100px}
+.cursor.grow{width:54px;height:54px;background:rgba(240,18,184,.25)}
+@media(hover:none){.cursor{display:none}}
+
+/* orbes parallax */
+.orbe{position:fixed;border-radius:50%;filter:blur(70px);z-index:0;opacity:.5;pointer-events:none}
+.orbe.a{width:420px;height:420px;background:radial-gradient(circle,var(--magenta),transparent 70%);top:-120px;right:-80px}
+.orbe.b{width:360px;height:360px;background:radial-gradient(circle,var(--rosa-claro),transparent 70%);top:60vh;left:-120px}
+
+/* HEADER */
+header{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:center;justify-content:space-between;
+  padding:14px 26px;background:rgba(252,252,250,.75);backdrop-filter:blur(14px);border-bottom:1px solid rgba(10,10,11,.08);transition:background .4s,color .4s}
+header.dark{background:rgba(10,10,11,.82);color:var(--blanco);border-bottom-color:rgba(255,255,255,.1)}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--archivo);font-weight:900;text-decoration:none}
+.logo .disc{width:38px;height:38px;background:var(--magenta);border-radius:50%;display:grid;place-items:center;color:#fff;font-size:15px;box-shadow:0 3px 12px rgba(240,18,184,.5);letter-spacing:-.5px}
+.logo .tag{font-family:var(--mono);font-size:9px;font-weight:400;opacity:.6;letter-spacing:1px;text-transform:uppercase}
+nav.main{display:flex;gap:20px;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+nav.main a{text-decoration:none;position:relative;padding:4px 0;opacity:.8;transition:opacity .2s}
+nav.main a:hover{opacity:1}
+nav.main a::after{content:'';position:absolute;left:0;bottom:0;width:0;height:2px;background:var(--magenta);transition:width .3s}
+nav.main a:hover::after{width:100%}
+.ig-btn{font-family:var(--mono);font-size:10px;text-transform:uppercase;background:var(--magenta);color:#fff;padding:8px 14px;border-radius:30px;text-decoration:none;letter-spacing:.5px;white-space:nowrap;box-shadow:0 3px 12px rgba(240,18,184,.4);transition:transform .2s}
+.ig-btn:hover{transform:scale(1.06)}
+.burger{display:none;background:none;border:none;font-size:22px;cursor:pointer;color:inherit}
+
+/* HERO */
+.hero{min-height:78vh;display:flex;flex-direction:column;justify-content:center;padding:120px 26px 50px;position:relative;z-index:2}
+.kicker{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:2px;color:var(--rosa-tinta);margin-bottom:16px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.kicker .dot{width:8px;height:8px;background:var(--magenta);border-radius:50%;animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(1.5)}}
+.masthead{font-family:var(--archivo);font-weight:900;font-size:clamp(3.4rem,15vw,13rem);line-height:.86;letter-spacing:-.02em;font-stretch:120%;text-transform:uppercase;position:relative}
+.masthead .m-echo{position:absolute;inset:0;color:var(--magenta);opacity:.28;animation:echo 3.5s ease-in-out infinite;z-index:-1}
+@keyframes echo{0%,100%{transform:translate(0,0)}50%{transform:translate(9px,-7px)}}
+.verbos{margin-top:26px;font-family:var(--mono);font-size:clamp(13px,2.5vw,18px);text-transform:uppercase;letter-spacing:1px;display:flex;gap:12px;flex-wrap:wrap}
+.verbos b{color:var(--magenta)}
+
+/* TICKER */
+.ticker{background:var(--negro);color:var(--blanco);overflow:hidden;white-space:nowrap;padding:12px 0;position:relative;z-index:3;border-top:2px solid var(--magenta);border-bottom:2px solid var(--magenta)}
+.ticker-track{display:inline-block;animation:scroll 40s linear infinite;font-family:var(--mono);font-size:13px;text-transform:uppercase;letter-spacing:1px}
+.ticker:hover .ticker-track{animation-play-state:paused}
+.ticker-track span{margin:0 26px}
+.ticker-track b{color:var(--rosa-claro)}
+@keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* SECCIONES */
+section{position:relative;z-index:2}
+.wrap{max-width:1200px;margin:0 auto;padding:0 26px}
+.sec-head{display:flex;align-items:baseline;gap:16px;margin:70px 0 30px;flex-wrap:wrap}
+.sec-head h2{font-family:var(--archivo);font-weight:900;font-size:clamp(2rem,6vw,4rem);text-transform:uppercase;font-stretch:115%;letter-spacing:-.01em;line-height:.9}
+.sec-head .num{font-family:var(--mono);font-size:12px;color:var(--magenta)}
+
+/* EDITORIAL */
+.editorial{background:var(--negro);color:var(--blanco);padding:60px 0;overflow:hidden}
+.editorial .wrap{display:grid;grid-template-columns:340px 1fr;gap:48px;align-items:start}
+.cat-portrait{position:sticky;top:100px}
+.cat-svg{width:100%;height:auto;filter:drop-shadow(0 12px 40px rgba(240,18,184,.4))}
+.cat-badge{margin-top:18px;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1px;background:var(--magenta);color:#fff;padding:8px 12px;border-radius:6px;display:none;align-items:center;gap:8px}
+.cat-badge.on{display:inline-flex}
+.cat-badge .blink{width:9px;height:9px;background:#fff;border-radius:50%;animation:pulse .8s infinite}
+.ed-label{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:2px;color:var(--rosa-claro);margin-bottom:10px}
+.ed-title{font-family:var(--archivo);font-weight:900;font-size:clamp(2rem,5vw,3.4rem);text-transform:uppercase;font-stretch:115%;line-height:.92;margin-bottom:8px}
+.ed-byline{font-family:var(--mono);font-size:12px;opacity:.7;margin-bottom:24px}
+.ed-body p{font-size:1.08rem;margin-bottom:18px;max-width:64ch}
+.ed-body .lead{font-size:1.3rem;font-weight:600}
+.ed-drop::first-letter{font-family:var(--archivo);font-weight:900;font-size:4.6rem;float:left;line-height:.7;margin:6px 12px 0 0;color:var(--magenta)}
+.narrar{margin-top:26px;background:var(--magenta);color:#fff;border:none;font-family:var(--mono);font-size:14px;text-transform:uppercase;letter-spacing:1px;padding:16px 26px;border-radius:40px;cursor:pointer;box-shadow:0 6px 22px rgba(240,18,184,.5);transition:transform .2s,background .2s}
+.narrar:hover{transform:scale(1.04)}
+.narrar.playing{background:var(--rosa-tinta)}
+
+/* PORTADA principal */
+.lead-story{display:grid;grid-template-columns:1.4fr 1fr;gap:0;border:2px solid var(--negro);margin-bottom:50px;overflow:hidden}
+.lead-img{position:relative;overflow:hidden;min-height:380px;background:#111}
+.lead-img img{width:100%;height:100%;object-fit:cover;transition:transform .8s}
+.lead-story:hover .lead-img img{transform:scale(1.05)}
+.lead-txt{padding:40px}
+.stack-label{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--magenta);margin-bottom:14px}
+.stack-title{display:inline}
+.stack-title span{font-family:var(--archivo);font-weight:900;font-size:clamp(1.6rem,4vw,2.8rem);text-transform:uppercase;font-stretch:115%;line-height:1.25;background:#fff;color:var(--negro);box-shadow:8px 0 0 #fff,-8px 0 0 #fff;-webkit-box-decoration-break:clone;box-decoration-break:clone;padding:2px 0}
+.lead-summary{margin-top:22px;font-size:1.05rem;max-width:52ch}
+.byline{display:flex;align-items:center;gap:10px;margin-top:22px;font-family:var(--mono);font-size:11px}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--magenta);color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px;flex-shrink:0}
+.src-link{display:inline-block;margin-top:14px;font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--rosa-tinta);text-decoration:none;border-bottom:1px solid var(--rosa-tinta)}
+.src-link:hover{color:var(--magenta)}
+
+/* GRID noticias */
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.card{border:1.5px solid rgba(10,10,11,.14);background:#fff;display:flex;flex-direction:column;transition:transform .35s,box-shadow .35s;transform-style:preserve-3d}
+.card:hover{box-shadow:0 22px 50px rgba(10,10,11,.16)}
+.card-img{position:relative;overflow:hidden;aspect-ratio:16/10;background:#111}
+.card-img img{width:100%;height:100%;object-fit:cover;transition:transform .6s,filter .3s}
+.card:hover .card-img img{transform:scale(1.06)}
+.card:hover .card-img::before{content:'';position:absolute;inset:0;z-index:2;background:linear-gradient(90deg,rgba(255,0,200,.35),transparent 40%,rgba(0,255,255,.25));mix-blend-mode:screen;animation:glitch .35s steps(2) infinite;pointer-events:none}
+@keyframes glitch{0%{transform:translate(0)}50%{transform:translate(-3px,2px)}100%{transform:translate(3px,-2px)}}
+.card-body{padding:20px;display:flex;flex-direction:column;flex:1}
+.card-kicker{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--magenta);margin-bottom:10px}
+.card h3{font-family:var(--archivo);font-weight:900;font-size:1.25rem;text-transform:uppercase;font-stretch:110%;line-height:1.05;margin-bottom:12px}
+.card p{font-size:.94rem;flex:1}
+.card .meta{font-family:var(--mono);font-size:10px;opacity:.6;margin-top:14px}
+.card .byline{margin-top:14px}
+
+/* COLUMNA opinión */
+.columna{background:var(--velo);padding:60px 0}
+.col-inner{max-width:760px;margin:0 auto}
+.col-firma{font-family:var(--archivo);font-weight:900;font-size:clamp(2.2rem,6vw,4rem);text-transform:uppercase;font-stretch:115%;line-height:.9;margin-bottom:6px}
+.col-bio{font-family:var(--mono);font-size:12px;color:var(--rosa-tinta);margin-bottom:30px}
+.col-body p{font-size:1.12rem;margin-bottom:20px}
+.pullquote{font-family:var(--archivo);font-weight:900;font-size:1.9rem;text-transform:uppercase;font-stretch:110%;line-height:1.05;color:var(--magenta);border-left:5px solid var(--magenta);padding-left:22px;margin:30px 0}
+
+/* SEÑAL vídeos */
+.videos{display:grid;grid-template-columns:repeat(2,1fr);gap:30px}
+.vid figure{margin:0}
+.vid .frame{position:relative;aspect-ratio:16/9;background:#000;border:2px solid var(--negro);overflow:hidden}
+.vid iframe{width:100%;height:100%;border:0}
+.vid figcaption{font-size:.95rem;margin-top:12px}
+.vid .v-kick{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--magenta);margin-bottom:6px}
+
+/* LAB scrollytelling */
+.lab{background:var(--negro);color:var(--blanco);position:relative}
+.lab .wrap{padding-top:70px;padding-bottom:70px}
+.lab-stage{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;min-height:420px}
+.lab canvas{width:100%;height:auto;border:2px solid var(--magenta);background:#000;border-radius:4px}
+.lab-hud{font-family:var(--mono);font-size:12px;color:var(--rosa-claro);margin-top:10px}
+.lab-steps p{font-size:1.05rem;margin-bottom:16px;opacity:.4;transition:opacity .4s;max-width:46ch}
+.lab-steps p.active{opacity:1}
+.lab-steps p b{color:var(--magenta)}
+
+/* REDACCIÓN */
+.staff{display:grid;grid-template-columns:repeat(5,1fr);gap:20px}
+.staff .m{text-align:center}
+.staff .big-av{width:76px;height:76px;border-radius:50%;background:var(--magenta);color:#fff;display:grid;place-items:center;font-family:var(--archivo);font-weight:900;font-size:24px;margin:0 auto 14px;box-shadow:0 6px 18px rgba(240,18,184,.4)}
+.staff .m h4{font-family:var(--archivo);font-weight:900;font-size:1rem;text-transform:uppercase;margin-bottom:4px}
+.staff .m .role{font-family:var(--mono);font-size:10px;text-transform:uppercase;color:var(--magenta);margin-bottom:8px}
+.staff .m .bio{font-size:.85rem;opacity:.8}
+
+/* MANIFIESTO */
+.manifiesto{background:var(--magenta);color:#fff;padding:90px 0;position:relative;overflow:hidden;margin-top:80px}
+.manifiesto .mg-mark{position:absolute;right:-4%;bottom:-18%;font-family:var(--archivo);font-weight:900;font-size:clamp(12rem,40vw,34rem);opacity:.12;line-height:.7;pointer-events:none}
+.manifiesto h2{font-family:var(--archivo);font-weight:900;font-size:clamp(2rem,6vw,4.2rem);text-transform:uppercase;font-stretch:115%;line-height:.95;max-width:16ch;position:relative}
+.manifiesto p{font-size:1.2rem;max-width:60ch;margin-top:24px;position:relative}
+
+/* FOOTER */
+footer{background:var(--negro);color:var(--blanco);padding:70px 26px 40px;text-align:center}
+.foot-verbos{font-family:var(--archivo);font-weight:900;font-size:clamp(2.4rem,9vw,7rem);text-transform:uppercase;font-stretch:120%;line-height:.85}
+.foot-verbos span{display:block}
+.foot-verbos span:nth-child(2){color:var(--magenta)}
+.foot-links{margin-top:34px;font-family:var(--mono);font-size:13px;text-transform:uppercase;letter-spacing:1px;display:flex;gap:24px;justify-content:center;flex-wrap:wrap}
+.foot-links a{text-decoration:none;color:var(--rosa-claro)}
+.foot-fine{margin-top:30px;font-family:var(--mono);font-size:10px;opacity:.4}
+
+/* reveals */
+.reveal{opacity:0;transform:translateY(40px);filter:blur(8px);transition:opacity .8s,transform .8s,filter .8s}
+.reveal.in{opacity:1;transform:none;filter:blur(0)}
+.word{display:inline-block;opacity:0;transform:translateY(24px);transition:opacity .5s,transform .5s}
+.word.in{opacity:1;transform:none}
+
+/* responsive */
+@media(max-width:900px){
+  nav.main,.ig-btn{display:none}
+  nav.main.open{display:flex;flex-direction:column;position:absolute;top:66px;left:0;right:0;background:var(--negro);color:#fff;padding:20px 26px;gap:16px}
+  header.dark nav.main.open{background:var(--negro)}
+  .burger{display:block}
+  .editorial .wrap{grid-template-columns:1fr}
+  .cat-portrait{position:static;max-width:260px;margin:0 auto}
+  .lead-story{grid-template-columns:1fr}
+  .grid{grid-template-columns:repeat(2,1fr)}
+  .videos{grid-template-columns:1fr}
+  .lab-stage{grid-template-columns:1fr}
+  .staff{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:560px){
+  .grid{grid-template-columns:1fr}
+  .staff{grid-template-columns:1fr}
+  .sec-head{margin-top:50px}
+}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *{animation:none!important;transition:none!important}
+  .reveal,.word{opacity:1;transform:none;filter:none}
+  .ticker-track{animation:none}
+}
+</style>
+</head>
+<body>
+<svg class="grain"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>
+<div class="cursor" id="cursor"></div>
+<div class="orbe a" data-par="0.2"></div>
+<div class="orbe b" data-par="0.35"></div>
+
+<!-- HEADER -->
+<header id="header">
+  <a class="logo" href="#top">
+    <span class="disc">MG.</span>
+    <span><span style="font-size:15px">MUNDO GRIS</span><br><span class="tag">comenta, comparte, construye</span></span>
+  </a>
+  <nav class="main" id="nav">
+    <a href="#top">Portada</a>
+    <a href="#editorial">El Editorial</a>
+    <a href="#tecnologia">Tecnología</a>
+    <a href="#internacional">Internacional</a>
+    <a href="#reportajes">Reportajes</a>
+    <a href="#opinion">Opinión</a>
+    <a href="#senal">Señal</a>
+    <a href="#lab">El Lab</a>
+  </nav>
+  <a class="ig-btn" href="https://instagram.com/nuestromundogris" target="_blank" rel="noopener">@nuestromundogris</a>
+  <button class="burger" id="burger" aria-label="Abrir menú" aria-controls="nav" aria-expanded="false">☰</button>
+</header>
+
+<!-- HERO -->
+<section class="hero" id="top">
+  <div class="kicker">
+    <span class="dot"></span>
+    <span>Domingo 5 de julio de 2026 — Madrid</span>
+    <span>·</span><span>Edición nº 001</span>
+    <span>·</span><span>mundogris.es</span>
+  </div>
+  <h1 class="masthead" aria-label="Mundo Gris">
+    <span class="m-echo" aria-hidden="true">MUNDO&nbsp;GRIS.</span>
+    <span class="js-split">MUNDO GRIS.</span>
+  </h1>
+  <div class="verbos">
+    <span><b>COMENTA</b></span><span>/</span><span><b>COMPARTE</b></span><span>/</span><span><b>CONSTRUYE</b></span>
+  </div>
+</section>
+
+<!-- TICKER -->
+<div class="ticker" aria-hidden="true">
+  <div class="ticker-track">
+    <span><b>GINEBRA</b> · Arranca mañana el primer Diálogo Mundial de la ONU sobre gobernanza de IA</span>
+    <span><b>ONU</b> · Las tareas de los agentes se duplican cada 4–7 meses, avisa el panel de Bengio</span>
+    <span><b>SORA</b> · OpenAI apaga la API el 24.09.2026 tras cerrar la app el 26.04</span>
+    <span><b>MERCADOS</b> · Oracle firma su peor semana desde 2001: −19%</span>
+    <span><b>SLOP</b> · «AI slop», palabra del año 2025</span>
+    <span><b>GINEBRA</b> · Arranca mañana el primer Diálogo Mundial de la ONU sobre gobernanza de IA</span>
+    <span><b>ONU</b> · Las tareas de los agentes se duplican cada 4–7 meses, avisa el panel de Bengio</span>
+    <span><b>SORA</b> · OpenAI apaga la API el 24.09.2026 tras cerrar la app el 26.04</span>
+    <span><b>MERCADOS</b> · Oracle firma su peor semana desde 2001: −19%</span>
+    <span><b>SLOP</b> · «AI slop», palabra del año 2025</span>
+  </div>
+</div>
+
+<!-- EDITORIAL -->
+<section class="editorial" id="editorial">
+  <div class="wrap">
+    <div class="cat-portrait reveal">
+      <!-- Retrato SVG del gato rosa director -->
+      <svg class="cat-svg" id="catSvg" viewBox="0 0 300 340" role="img" aria-label="Retrato de Don Cornelio Malasombra, gato rosa director de Mundo Gris">
+        <defs>
+          <radialGradient id="fur" cx="50%" cy="40%" r="70%">
+            <stop offset="0%" stop-color="#FF3DD1"/><stop offset="70%" stop-color="#F012B8"/><stop offset="100%" stop-color="#B60D8C"/>
+          </radialGradient>
+        </defs>
+        <!-- pajarita -->
+        <path d="M120 300 L150 285 L180 300 L150 315 Z" fill="#0A0A0B"/>
+        <circle cx="150" cy="300" r="7" fill="#FCFCFA"/>
+        <!-- orejas -->
+        <path d="M78 120 L60 40 L128 96 Z" fill="url(#fur)"/>
+        <path d="M222 120 L240 40 L172 96 Z" fill="url(#fur)"/>
+        <path d="M88 108 L78 62 L118 100 Z" fill="#FDEBF8"/>
+        <path d="M212 108 L222 62 L182 100 Z" fill="#FDEBF8"/>
+        <!-- cabeza -->
+        <ellipse id="catHead" cx="150" cy="180" rx="94" ry="86" fill="url(#fur)"/>
+        <!-- gafas de director -->
+        <circle cx="118" cy="168" r="30" fill="none" stroke="#0A0A0B" stroke-width="5"/>
+        <circle cx="182" cy="168" r="30" fill="none" stroke="#0A0A0B" stroke-width="5"/>
+        <line x1="148" y1="168" x2="152" y2="168" stroke="#0A0A0B" stroke-width="5"/>
+        <!-- ojos -->
+        <circle cx="118" cy="168" r="11" fill="#0A0A0B"/><circle cx="122" cy="164" r="3" fill="#fff"/>
+        <circle cx="182" cy="168" r="11" fill="#0A0A0B"/><circle cx="186" cy="164" r="3" fill="#fff"/>
+        <!-- nariz -->
+        <path d="M144 196 L156 196 L150 205 Z" fill="#0A0A0B"/>
+        <!-- boca animable -->
+        <ellipse id="catMouth" cx="150" cy="222" rx="10" ry="4" fill="#0A0A0B"/>
+        <!-- bigotes -->
+        <g stroke="#FDEBF8" stroke-width="2.4" opacity=".85">
+          <line x1="150" y1="212" x2="66" y2="200"/><line x1="150" y1="220" x2="64" y2="224"/>
+          <line x1="150" y1="212" x2="234" y2="200"/><line x1="150" y1="220" x2="236" y2="224"/>
+        </g>
+      </svg>
+      <span class="cat-badge" id="catBadge"><span class="blink"></span> NARRANDO — EN DIRECTO DESDE EL DESPACHO</span>
+    </div>
+    <div class="ed-text reveal">
+      <div class="ed-label">▚ El Editorial — firma el director</div>
+      <h2 class="ed-title">Mañana Ginebra se pone corbata</h2>
+      <div class="ed-byline">Por DON CORNELIO MALASOMBRA · director de Mundo Gris · 5 de julio de 2026</div>
+      <div class="ed-body">
+        <p class="lead ed-drop" id="edText">Mañana, en un pabellón de Ginebra que huele a moqueta institucional y a café de máquina, los ciento noventa y tres Estados miembros de la ONU se sientan por primera vez a la misma mesa a hablar de inteligencia artificial. Lo llaman Diálogo Mundial sobre la Gobernanza de la IA, y arranca el 6 de julio en el Palexpo. Uno querría creerlo. Este gato ya no cree en casi nada —lleva demasiadas cumbres viendo cómo el futuro se aprueba por consenso y luego no lo cumple nadie—, pero todavía cree en los plazos. Y aquí está el plazo que importa: mientras los embajadores ensayan sus discursos, el panel científico que copresiden Yoshua Bengio y Maria Ressa acaba de avisar de que la longitud de las tareas que los agentes resuelven solos se duplica cada cuatro a siete meses. Traducido del diplomático al felino: para cuando terminen de redactar el comunicado, el problema del comunicado ya será otro. En Bruselas, mientras tanto, han aplazado a diciembre de 2027 lo más incómodo del reglamento, no vaya a ser que la ley llegue antes que el negocio. Nosotros, los del rincón, lo tenemos más fácil. No pedimos frenar la máquina ni bendecirla: pedimos no delegar en ella lo único que nos hace insustituibles, que es decidir. Aceleren lo que quieran, señores; pero la firma, la firma la pone quien tiene conciencia. Ronroneen ustedes. Nosotros vigilamos.</p>
+      </div>
+      <button class="narrar" id="narrarBtn" aria-label="Escuchar el editorial narrado por el director">▶ QUE TE LO LEA EL DIRECTOR</button>
+    </div>
+  </div>
+</section>
+
+<!-- PORTADA / AHORA -->
+<section id="portada">
+  <div class="wrap">
+    <div class="sec-head reveal"><h2>Portada / Ahora</h2><span class="num">01 — la actualidad, reescrita</span></div>
+
+    <!-- Lead story -->
+    <article class="lead-story reveal">
+      <div class="lead-img">
+        <img loading="lazy" data-fallback="Ginebra · Cumbre IA" alt="Palacio de las Naciones, sede de la ONU en Ginebra" src="https://commons.wikimedia.org/wiki/Special:FilePath/Palais_des_nations.jpg?width=1100">
+      </div>
+      <div class="lead-txt">
+        <div class="stack-label">INTERNACIONAL · PORTADA DEL DÍA</div>
+        <h3 class="stack-title"><span>Ginebra intenta gobernar lo que se duplica cada cuatro meses</span></h3>
+        <p class="lead-summary">El 6 y 7 de julio, en el Palexpo, se inaugura el primer Diálogo Mundial sobre la Gobernanza de la IA, la primera vez que los 193 Estados de la ONU se sientan a una misma mesa por este asunto. Llega con deberes: el informe preliminar del Panel Científico Internacional —40 miembros elegidos entre más de 2.600 candidatos de 140 países, copresidido por Bengio y Maria Ressa y presentado por António Guterres el 1 de julio— avisa de que «la longitud de las tareas que los sistemas líderes completan solos se duplica cada cuatro a siete meses». El diagnóstico incómodo: gobernar exige pruebas y las pruebas siempre llegan tarde.</p>
+        <div class="byline"><span class="avatar">IV</span><span>Irene Valdés · Internacional · Fuente: ONU / Reuters</span></div>
+        <a class="src-link" href="https://www.un.org/global-dialogue-ai-governance/en" target="_blank" rel="noopener">Leer en un.org ↗</a>
+      </div>
+    </article>
+
+    <!-- GRID -->
+    <div class="grid" id="tecnologia">
+
+      <article class="card reveal tilt">
+        <div class="card-img"><img loading="lazy" data-fallback="SORA · OFF" alt="Servidores de un centro de datos" src="https://commons.wikimedia.org/wiki/Special:FilePath/Datacenter_Server_Racks_(22370909788).jpg?width=800"></div>
+        <div class="card-body">
+          <div class="card-kicker">TECNOLOGÍA</div>
+          <h3>OpenAI mata a Sora en dos actos</h3>
+          <p>La app se apagó el 26 de abril de 2026 y la API cae el 24 de septiembre: adiós a la marca Sora entera. ¿La moraleja? Que un modelo puede ser deslumbrante y aun así no ser rentable. OpenAI redirige músculo al código y a la empresa. El vídeo por IA no muere; muere la idea de que era producto de consumo. Que cada cual construya sobre tuberías que no le pertenecen bajo su propia responsabilidad.</p>
+          <div class="byline"><span class="avatar">DK</span><span>Dani Kroll · Tecnología</span></div>
+          <div class="meta">26.04.2026 · Fuente: OpenAI Help Center</div>
+          <a class="src-link" href="https://help.openai.com/en/articles/20001152-what-to-know-about-the-sora-discontinuation" target="_blank" rel="noopener">Fuente ↗</a>
+        </div>
+      </article>
+
+      <article class="card reveal tilt">
+        <div class="card-img"><img loading="lazy" data-fallback="SEEDANCE 2.5" alt="Rollo de película de 35 mm" src="https://commons.wikimedia.org/wiki/Special:FilePath/35mm_blank_film_(6498625859).jpg?width=800"></div>
+        <div class="card-body">
+          <div class="card-kicker">TECNOLOGÍA</div>
+          <h3>Seedance 2.5: treinta segundos de una tacada</h3>
+          <p>ByteDance lo enseñó el 23 de junio en su Volcano Engine FORCE: clip nativo de 30 segundos, hasta 50 referencias y edición por zonas. Ojo, es beta empresarial y todo son cifras del fabricante, sin benchmark independiente. Pero el ancla de credibilidad existe: la versión que sí circula, Seedance 2.0, lidera el Artificial Analysis Video Arena por delante de Veo y Kling. Y más barata. Sin humo: China ya compite en la frontera del vídeo.</p>
+          <div class="byline"><span class="avatar">DK</span><span>Dani Kroll · Tecnología</span></div>
+          <div class="meta">23.06.2026 · Fuente: Wikipedia / TechTimes</div>
+          <a class="src-link" href="https://en.wikipedia.org/wiki/Seedance_2.0" target="_blank" rel="noopener">Fuente ↗</a>
+        </div>
+      </article>
+
+      <article class="card reveal tilt">
+        <div class="card-img"><img loading="lazy" data-fallback="KLING 3.0" alt="GPU y hardware de inteligencia artificial" src="https://commons.wikimedia.org/wiki/Special:FilePath/Datacenter-telecom.jpg?width=800"></div>
+        <div class="card-body">
+          <div class="card-kicker">TECNOLOGÍA</div>
+          <h3>Kling 3.0 Turbo, o el vídeo por metro lineal</h3>
+          <p>Kuaishou lanzó el Turbo el 17 de junio: 3–15 segundos, hasta seis planos por generación, audio nativo con lip-sync en cinco idiomas (español incluido) y precio por segundo. La carrera del vídeo generativo ya no va de «¿puede la IA hacer vídeo?» sino de a cuánto sale el segundo. Es fontanería, no magia. Y la fontanería, cuando funciona, es lo que de verdad cambia una redacción.</p>
+          <div class="byline"><span class="avatar">DK</span><span>Dani Kroll · Tecnología</span></div>
+          <div class="meta">17.06.2026 · Fuente: Pexo / Kling AI</div>
+          <a class="src-link" href="https://pexo.ai/blog/what-is-kling-3-0-turbo-3190" target="_blank" rel="noopener">Fuente ↗</a>
+        </div>
+      </article>
+
+      <!-- INTERNACIONAL -->
+      <article class="card reveal tilt" id="internacional">
+        <div class="card-img"><img loading="lazy" data-fallback="BENGIO · ONU" alt="Yoshua Bengio, copresidente del panel científico de la ONU" src="https://commons.wikimedia.org/wiki/Special:FilePath/Yoshua_Bengio_-_2017.jpg?width=800"></div>
+        <div class="card-body">
+          <div class="card-kicker">INTERNACIONAL</div>
+          <h3>El mapa del poder: EE. UU. 75 %, China 15 %</h3>
+          <p>El informe de la ONU pone números al desequilibrio: según estimaciones de Epoch AI que cita el propio panel, Estados Unidos concentra el 75 % de la potencia de cálculo entre los 500 mayores superordenadores de IA y China el 15 %. Y añade el dato que redimensiona el debate: «más de mil millones de personas usan IA conversacional cada semana». La gobernanza global de una tecnología que fabrican, esencialmente, dos países.</p>
+          <div class="byline"><span class="avatar">IV</span><span>Irene Valdés · Internacional</span></div>
+          <div class="meta">01.07.2026 · Fuente: Decrypt / Informe ONU</div>
+          <a class="src-link" href="https://decrypt.co/372543/un-ai-safety-panel-scientists-catastrophic-harm" target="_blank" rel="noopener">Fuente ↗</a>
+        </div>
+      </article>
+
+      <article class="card reveal tilt">
+        <div class="card-img"><img loading="lazy" data-fallback="UE · AI ACT" alt="Palexpo, centro de convenciones de Ginebra" src="https://commons.wikimedia.org/wiki/Special:FilePath/Geneva_Palexpo_-_panoramio.jpg?width=800"></div>
+        <div class="card-body">
+          <div class="card-kicker">INTERNACIONAL</div>
+          <h3>Bruselas afloja el reloj, pero no del todo</h3>
+          <p>El acuerdo del Digital Omnibus (7 de mayo) aplaza las obligaciones de alto riesgo del Anexo III de agosto de 2026 a diciembre de 2027. Pero cuidado con el titular fácil: la transparencia del Artículo 50 —avisar de que hablas con una máquina o de que un contenido es sintético— sigue en pie el 2 de agosto de 2026, con multas de hasta el 3 % de la facturación. Y llega una prohibición nueva de «nudifiers» en diciembre. Ni relajación total ni cliff único.</p>
+          <div class="byline"><span class="avatar">IV</span><span>Irene Valdés · Internacional</span></div>
+          <div class="meta">07.05.2026 · Fuente: Consilium / White &amp; Case</div>
+          <a class="src-link" href="https://www.consilium.europa.eu/en/press/press-releases/2026/05/07/artificial-intelligence-council-and-parliament-agree-to-simplify-and-streamline-rules/" target="_blank" rel="noopener">Fuente ↗</a>
+        </div>
+      </article>
+
+      <article class="card reveal tilt">
+        <div class="card-img"><img loading="lazy" data-fallback="H200 · CHINA" alt="Servidores y hardware de computación" src="https://commons.wikimedia.org/wiki/Special:FilePath/Datacenter_Server_Racks_(22370909788).jpg?width=801"></div>
+        <div class="card-body">
+          <div class="card-kicker">INTERNACIONAL</div>
+          <h3>El chip que EE. UU. deja salir y China no deja entrar</h3>
+          <p>El Departamento de Comercio abrió el 13 de enero la venta condicional del Nvidia H200 a China, con un 25 % de la factura para el Tesoro estadounidense. Un día después, según Reuters, la aduana china dijo a sus agentes que no lo dejaran pasar. Geopolítica del silicio en estado puro: los dos gobiernos controlan la misma pieza, cada uno por su motivo. El CFR calcula que EE. UU. mantiene una ventaja de compute de entre 21 y 49 veces.</p>
+          <div class="byline"><span class="avatar">IV</span><span>Irene Valdés · Internacional</span></div>
+          <div class="meta">14.01.2026 · Fuente: Council on Foreign Relations</div>
+          <a class="src-link" href="https://www.cfr.org/expert-brief/consequences-exporting-nvidias-h200-chips-china" target="_blank" rel="noopener">Fuente ↗</a>
+        </div>
+      </article>
+
+      <!-- REPORTAJES -->
+      <article class="card reveal tilt" id="reportajes">
+        <div class="card-img"><img loading="lazy" data-fallback="SLOP 2025" alt="Ilustración abstracta de tecnología y ruido digital" src="https://commons.wikimedia.org/wiki/Special:FilePath/Datacenter-telecom.jpg?width=801"></div>
+        <div class="card-body">
+          <div class="card-kicker">REPORTAJES</div>
+          <h3>«Slop»: la palabra que nos define en 2025</h3>
+          <p>El diccionario Macquarie coronó «AI slop» palabra del año 2025 —lo define como «contenido de baja calidad creado por IA generativa, a menudo con errores y no pedido por el usuario»— y ganó a la vez el premio del comité y el del público, algo que solo había pasado cuatro veces. Y ahí seguimos, aprendiendo a ser ingenieros de prompts para atravesar la basura. Antes buscábamos información. Ahora vadeamos. Uno abre el móvil por la mañana y ya está hasta las rodillas.</p>
+          <div class="byline"><span class="avatar">BC</span><span>Bruno Cendra · Reportajes</span></div>
+          <div class="meta">26.11.2025 · Fuente: Macquarie Dictionary</div>
+          <a class="src-link" href="https://www.macquariedictionary.com.au/macquarie-dictionary-word-of-the-year-for-2025/" target="_blank" rel="noopener">Fuente ↗</a>
+        </div>
+      </article>
+
+      <article class="card reveal tilt">
+        <div class="card-img"><img loading="lazy" data-fallback="YOUTUBE · 15.000€" alt="Estudio de creación de contenido" src="https://commons.wikimedia.org/wiki/Special:FilePath/35mm_blank_film_(6498625859).jpg?width=801"></div>
+        <div class="card-body">
+          <div class="card-kicker">REPORTAJES</div>
+          <h3>La curva aspiracional: currar gratis con focos de neón</h3>
+          <p>Un estudio internacional con Òscar Coromina (UAB) lo dice sin anestesia: los canales de YouTube de entre 100.000 y un millón de seguidores ganan de media unos 15.000 euros al año, mientras la plataforma se queda hasta el 55 % de la publicidad. Y solo 517 canales en todo el mundo superan los diez millones. Lo llaman economía de creadores. Lo que hay debajo es un sistema desigual que prospera —textual— gracias a la presión económica que ejerce sobre quien produce. La libertad, con letra pequeña.</p>
+          <div class="byline"><span class="avatar">BC</span><span>Bruno Cendra · Reportajes</span></div>
+          <div class="meta">Fuente: UAB · Social Media + Society</div>
+          <a class="src-link" href="https://www.uab.cat/web/sala-de-prensa/detalle-noticia/una-investigacion-revela-las-dificultades-y-la-precariedad-a-la-que-se-enfrentan-los-creadores-de-contenidos-en-youtube-1345830290069.html?detid=1345893090124" target="_blank" rel="noopener">Fuente ↗</a>
+        </div>
+      </article>
+
+      <article class="card reveal tilt">
+        <div class="card-img"><img loading="lazy" data-fallback="BURBUJA · −19%" alt="Servidores y centro de datos" src="https://commons.wikimedia.org/wiki/Special:FilePath/Datacenter_Server_Racks_(22370909788).jpg?width=802"></div>
+        <div class="card-body">
+          <div class="card-kicker">REPORTAJES · MERCADOS</div>
+          <h3>La burbuja tose: −19 % en Oracle, el peor golpe desde 2001</h3>
+          <p>El 23 de junio el KOSPI surcoreano suspendió la cotización veinte minutos para evitar el desplome; Samsung y SK Hynix perdieron un 12 % en una mañana. Esa semana Oracle firmó su peor semana desde 2001 —una caída del 19 %, la más fuerte desde el hundimiento puntocom— y fondos chinos ya hablaban de «superburbuja». ¿Se acuerdan de que la IA generaba de verdad? Puede ser transformadora y ser burbuja a la vez. Las dos cosas caben en el mismo gráfico rojo.</p>
+          <div class="byline"><span class="avatar">BC</span><span>Bruno Cendra · Reportajes</span></div>
+          <div class="meta">26.06.2026 · Fuente: NBC News / CNBC</div>
+          <a class="src-link" href="https://www.nbcnews.com/business/business-news/tech-sell-off-markets-spacex-alphabet-nasdaq100-stocks-rcna351331" target="_blank" rel="noopener">Fuente ↗</a>
+        </div>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<!-- COLUMNA / OPINIÓN -->
+<section class="columna" id="opinion">
+  <div class="wrap">
+    <div class="sec-head reveal"><h2>La Columna</h2><span class="num">02 — opinión, sin red</span></div>
+    <div class="col-inner reveal">
+      <div class="col-firma">Ramón Escario</div>
+      <div class="col-bio">Crítico. Cascarrabias en propiedad. Ha visto demasiado cine para que le vendan un fotograma sin firma.</div>
+      <div class="col-body">
+        <p>Digámoslo pronto y sin ceremonia: 2026 es el año en que la industria del entretenimiento descubrió que tenía dignidad, justo cuando ya casi la había vendido. La Academia de Hollywood decretó el 1 de mayo que las interpretaciones y los guiones deben ser «demostrablemente» obra de humanos para optar al Oscar. Aplausos. Tibios, pero aplausos.</p>
+        <p>Y el 4 de junio los actores de SAG-AFTRA ratificaron su nuevo convenio con un 91,42 % de los votos: los personajes 100 % sintéticos —esos engendros sin madre a los que no hay a quién pagar ni a quién pedir permiso— solo se usarán cuando aporten «un valor añadido significativo». Traducción: casi nunca, si hay abogado delante. Milagro. Resulta que para defender lo humano hizo falta una cláusula de arbitraje.</p>
+        <p class="pullquote">Tilly Norwood no me quita el sueño. Me lo quitan los ejecutivos que la firmaron sin sonrojarse.</p>
+        <p>Porque el problema nunca fue la máquina. La máquina es tonta y obediente; hace lo que le mandan y lo hace deprisa, cada vez más deprisa. El problema es la cobardía del que prefiere un rostro que no cobra, no envejece y no protesta. He visto tráilers generados con IA que tienen la textura moral de un folleto de dentista: impecables, vacíos, olvidables antes de terminar. Y he visto a gente aplaudirlos porque «costaban cincuenta euros». Enhorabuena. Han abaratado el alma hasta el precio de una pizza.</p>
+        <p>La buena noticia, la única, es que el público no traga. Los datos de rechazo a los actores sintéticos son unánimes en todas las generaciones. Resulta que el espectador, ese al que llevamos décadas subestimando, distingue una interpretación de un cadáver bien iluminado. Quizá el cine de verdad —con carne, con dudas, con un actor que un día está regular— salga de esta más valorado que nunca. O quizá no. Pero mientras haya alguien capaz de emocionarse con un temblor real en una cara real, este viejo seguirá comprando la entrada. Y seguiré diciendo que no. Elegantemente. Pero no.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SEÑAL -->
+<section id="senal">
+  <div class="wrap">
+    <div class="sec-head reveal"><h2>Señal.</h2><span class="num">03 — lo que hay que ver</span></div>
+    <div class="videos">
+      <div class="vid reveal">
+        <div class="v-kick">TECNOLOGÍA · DEMO OFICIAL</div>
+        <figure>
+          <div class="frame"><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/ei2PsDpPbB4" title="Introducing Gen-4.5 | Runway" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
+          <figcaption><b>Runway presenta Gen-4.5.</b> El modelo que Runway coloca como número uno del Artificial Analysis. Míralo con ojo crítico: cuando la física falla, falla bonito. Y esa es exactamente la trampa.</figcaption>
+        </figure>
+      </div>
+      <div class="vid reveal">
+        <div class="v-kick">TECNOLOGÍA · LANZAMIENTO</div>
+        <figure>
+          <div class="frame"><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/Yqvh3M12T_M" title="Kling AI Global Launch" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
+          <figcaption><b>Kling AI, lanzamiento global.</b> Kuaishou enseña músculo. La pregunta no es si impresiona —impresiona—, sino a cuánto sale el segundo cuando lo multiplicas por una redacción entera.</figcaption>
+        </figure>
+      </div>
+      <div class="vid reveal">
+        <div class="v-kick">TECNOLOGÍA · GOOGLE DEEPMIND</div>
+        <figure>
+          <div class="frame"><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/VldX34mM95o" title="Google DeepMind — Veo" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
+          <figcaption><b>La apuesta de Google con Veo.</b> DeepMind cuenta cómo un moonshot acabó en su generador de vídeo. Marketing con bata de laboratorio, pero conviene saber qué venden y con qué palabras.</figcaption>
+        </figure>
+      </div>
+      <div class="vid reveal">
+        <div class="v-kick">CULTURA DIGITAL · EN ESPAÑOL</div>
+        <figure>
+          <div class="frame"><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/sc_zOsnmMx0" title="Dot CSV — IA generativa interactiva" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
+          <figcaption><b>La IA generativa interactiva, explicada en español.</b> Dot CSV desmonta hacia dónde va esto sin venderte la moto. Divulgación de la buena: la que te deja con más preguntas que certezas.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LAB -->
+<section class="lab" id="lab">
+  <div class="wrap">
+    <div class="sec-head reveal" style="color:#fff"><h2 style="color:#fff">El Lab.</h2><span class="num">04 — cómo se hace un vídeo con IA</span></div>
+    <div class="lab-stage">
+      <div>
+        <canvas id="diffCanvas" width="480" height="300" aria-label="Simulación de difusión: de ruido a imagen"></canvas>
+        <div class="lab-hud" id="labHud">RUIDO: 100% · haz scroll para revelar la imagen</div>
+        <button class="narrar" id="labNarrar" style="margin-top:16px;font-size:12px;padding:12px 20px" aria-label="Escuchar la explicación del Lab">▶ QUE TE LO EXPLIQUE EL LAB</button>
+      </div>
+      <div class="lab-steps" id="labSteps">
+        <p data-step="0"><b>Paso 1 — El caos.</b> Todo modelo de vídeo generativo empieza con puro ruido: una tormenta de píxeles sin sentido, como una tele mal sintonizada.</p>
+        <p data-step="1"><b>Paso 2 — La predicción.</b> La red neuronal, entrenada con millones de vídeos, aprende a adivinar qué ruido sobra. En cada paso, resta un poco de caos.</p>
+        <p data-step="2"><b>Paso 3 — La forma.</b> Entre el ruido empiezan a emerger bordes, colores, texturas. El modelo «alucina» hacia la imagen que tu prompt describe.</p>
+        <p data-step="3"><b>Paso 4 — La coherencia.</b> Lo difícil no es un fotograma: es que el fotograma siguiente respete la física del anterior. Ahí es donde casi todos fallan todavía.</p>
+        <p data-step="4"><b>Paso 5 — La señal.</b> Cuando el ruido llega a cero, queda la imagen. Bonita, veloz y, si nadie lo remedia, indistinguible de lo real. Ese es el negocio. Y el problema.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- REDACCIÓN -->
+<section id="redaccion">
+  <div class="wrap">
+    <div class="sec-head reveal"><h2>La Redacción</h2><span class="num">05 — quién firma esto</span></div>
+    <div class="staff">
+      <div class="m reveal"><div class="big-av" style="background:#0A0A0B;border:2px solid #F012B8">🐾</div><h4>Don Cornelio Malasombra</h4><div class="role">Director</div><div class="bio">Gato rosa, corbata de pajarita y mala leche de la buena. Dirige el periódico y firma el editorial diario. No ronronea gratis.</div></div>
+      <div class="m reveal"><div class="big-av">DK</div><h4>Dani Kroll</h4><div class="role">Tecnología</div><div class="bio">Nativo digital, técnico y gamberro. Explica sin humo y detesta el hype. Si algo brilla demasiado, lo desmonta.</div></div>
+      <div class="m reveal"><div class="big-av">IV</div><h4>Irene Valdés</h4><div class="role">Internacional</div><div class="bio">Corresponsal quemada de tanta cumbre. Fría, precisa, irónica. Ha visto aprobarse el futuro por consenso y no cumplirse jamás.</div></div>
+      <div class="m reveal"><div class="big-av">BC</div><h4>Bruno Cendra</h4><div class="role">Reportajes</div><div class="bio">Cronista de calle, gonzo español. Frases largas que de repente. Baja al barro y vuelve con barro debajo de las uñas.</div></div>
+      <div class="m reveal"><div class="big-av">RE</div><h4>Ramón Escario</h4><div class="role">Opinión</div><div class="bio">Crítico demoledor y cascarrabias brillante. Sentencias cortas, desprecio elegante. Dice que no. Con estilo, pero que no.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- MANIFIESTO -->
+<section class="manifiesto">
+  <div class="mg-mark" aria-hidden="true">MG.</div>
+  <div class="wrap">
+    <h2 class="reveal">No pedimos frenar la máquina. Pedimos no delegar en ella la decisión.</h2>
+    <p class="reveal">Mundo Gris nace en el gris entre el «esto lo cambia todo» y el «esto no es nada». Aceleracionistas sin fe ciega, anarquistas de redacción, felinos con hemeroteca. Comenta lo que veas, comparte lo que importe, construye lo que aún no existe.</p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="foot-verbos">
+    <span>COMENTA</span><span>COMPARTE</span><span>CONSTRUYE</span>
+  </div>
+  <div class="foot-links">
+    <a href="https://mundogris.es" target="_blank" rel="noopener">mundogris.es</a>
+    <a href="https://instagram.com/nuestromundogris" target="_blank" rel="noopener">@nuestromundogris</a>
+    <a href="#top">YouTube · Canal MG.</a>
+  </div>
+  <div class="foot-fine">MUNDO GRIS · Edición nº001 · 5 de julio de 2026 · Textos originales de redacción. Imágenes vía Wikimedia Commons. Vídeos vía YouTube.</div>
+</footer>
+
+<script>
+const RM = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* cursor custom */
+const cursor=document.getElementById('cursor');
+if(!RM){
+  window.addEventListener('mousemove',e=>{cursor.style.left=e.clientX+'px';cursor.style.top=e.clientY+'px';});
+  document.querySelectorAll('a,button,.card,.tilt').forEach(el=>{
+    el.addEventListener('mouseenter',()=>cursor.classList.add('grow'));
+    el.addEventListener('mouseleave',()=>cursor.classList.remove('grow'));
+  });
+}
+
+/* header camaleónico */
+const header=document.getElementById('header');
+const darkSecs=[document.getElementById('editorial'),document.getElementById('lab')];
+function chkHeader(){
+  let dark=false;
+  darkSecs.forEach(s=>{if(!s)return;const r=s.getBoundingClientRect();if(r.top<70&&r.bottom>70)dark=true;});
+  header.classList.toggle('dark',dark);
+}
+window.addEventListener('scroll',chkHeader);chkHeader();
+
+/* burger */
+const burger=document.getElementById('burger'),nav=document.getElementById('nav');
+function setMenu(open){nav.classList.toggle('open',open);burger.setAttribute('aria-expanded',open?'true':'false');}
+burger.addEventListener('click',()=>setMenu(!nav.classList.contains('open')));
+nav.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>setMenu(false)));
+
+/* parallax orbes */
+if(!RM){window.addEventListener('scroll',()=>{const y=window.scrollY;document.querySelectorAll('.orbe').forEach(o=>{o.style.transform='translateY('+(y*parseFloat(o.dataset.par))+'px)';});});}
+
+/* split masthead en palabras/letras */
+document.querySelectorAll('.js-split').forEach(el=>{
+  const txt=el.textContent;el.innerHTML='';
+  txt.split('').forEach((c,i)=>{const s=document.createElement('span');s.className='word';s.textContent=c===' '?' ':c;s.style.transitionDelay=(i*0.05)+'s';el.appendChild(s);});
+});
+
+/* reveals + word stagger */
+const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');if(e.target.querySelectorAll){e.target.querySelectorAll('.word').forEach(w=>w.classList.add('in'));}io.unobserve(e.target);}});},{threshold:.15});
+document.querySelectorAll('.reveal,.js-split').forEach(el=>io.observe(el));
+// asegurar masthead visible
+setTimeout(()=>document.querySelectorAll('.masthead .word').forEach(w=>w.classList.add('in')),200);
+
+/* micro-tilt 3D */
+if(!RM){
+  document.querySelectorAll('.tilt').forEach(card=>{
+    card.addEventListener('mousemove',e=>{
+      const r=card.getBoundingClientRect();
+      const px=(e.clientX-r.left)/r.width-0.5, py=(e.clientY-r.top)/r.height-0.5;
+      card.style.transform='perspective(800px) rotateY('+(px*8)+'deg) rotateX('+(-py*8)+'deg) translateZ(6px)';
+    });
+    card.addEventListener('mouseleave',()=>card.style.transform='');
+  });
+}
+
+/* imágenes: fallback generativo canvas */
+document.querySelectorAll('img[data-fallback]').forEach(img=>{
+  img.addEventListener('error',function(){
+    const c=document.createElement('canvas');c.width=800;c.height=500;
+    const x=c.getContext('2d');
+    const g=x.createLinearGradient(0,0,800,500);
+    g.addColorStop(0,'#F012B8');g.addColorStop(.5,'#B60D8C');g.addColorStop(1,'#0A0A0B');
+    x.fillStyle=g;x.fillRect(0,0,800,500);
+    for(let i=0;i<2600;i++){x.fillStyle='rgba(255,61,209,'+Math.random()*0.5+')';x.fillRect(Math.random()*800,Math.random()*500,2,2);}
+    x.fillStyle='#FCFCFA';x.font='900 40px Archivo, sans-serif';x.textAlign='center';
+    x.fillText(this.dataset.fallback||'MG.',400,260);
+    x.font='700 13px "Space Mono", monospace';x.fillText('MUNDO GRIS · ARTE GENERATIVO',400,300);
+    this.src=c.toDataURL();
+  });
+});
+
+/* NARRACIÓN editorial (Web Speech) */
+const btn=document.getElementById('narrarBtn'),badge=document.getElementById('catBadge');
+const edText=document.getElementById('edText').textContent;
+const catHead=document.getElementById('catHead'),catMouth=document.getElementById('catMouth');
+let speaking=false,mouthTimer=null;
+function pickVoice(){const vs=speechSynthesis.getVoices();return vs.find(v=>v.lang&&v.lang.toLowerCase().startsWith('es-es'))||vs.find(v=>v.lang&&v.lang.toLowerCase().startsWith('es'))||null;}
+function animMouth(on){
+  if(mouthTimer){clearInterval(mouthTimer);mouthTimer=null;}
+  if(on&&!RM){mouthTimer=setInterval(()=>{const r=4+Math.random()*9;catMouth.setAttribute('ry',r);catHead.setAttribute('cy',180+(Math.random()*2-1));},130);}
+  else{catMouth.setAttribute('ry',4);catHead.setAttribute('cy',180);}
+}
+function stopNarr(){speechSynthesis.cancel();speaking=false;btn.textContent='▶ QUE TE LO LEA EL DIRECTOR';btn.classList.remove('playing');badge.classList.remove('on');animMouth(false);}
+function startNarr(){
+  if(!('speechSynthesis'in window)){alert('Tu navegador no soporta la síntesis de voz.');return;}
+  const u=new SpeechSynthesisUtterance(edText);
+  u.lang='es-ES';u.pitch=0.8;u.rate=0.98;const v=pickVoice();if(v)u.voice=v;
+  u.onend=stopNarr;u.onerror=stopNarr;
+  speechSynthesis.cancel();speechSynthesis.speak(u);
+  speaking=true;btn.textContent='■ SILENCIAR AL DIRECTOR';btn.classList.add('playing');badge.classList.add('on');animMouth(true);
+}
+btn.addEventListener('click',()=>{speaking?stopNarr():startNarr();});
+if('speechSynthesis'in window){speechSynthesis.onvoiceschanged=pickVoice;}
+
+/* NARRACIÓN Lab */
+const labBtn=document.getElementById('labNarrar');
+const labTxt='Todo modelo de vídeo generativo empieza con puro ruido. La red neuronal, entrenada con millones de vídeos, aprende a restar caos en cada paso, hasta que emerge la imagen que describe tu prompt. Lo difícil no es un fotograma: es que el siguiente respete la física del anterior.';
+let labSpeaking=false;
+labBtn.addEventListener('click',()=>{
+  if(!('speechSynthesis'in window))return;
+  if(labSpeaking){speechSynthesis.cancel();labSpeaking=false;labBtn.textContent='▶ QUE TE LO EXPLIQUE EL LAB';return;}
+  const u=new SpeechSynthesisUtterance(labTxt);u.lang='es-ES';u.pitch=0.9;u.rate=1;const v=pickVoice();if(v)u.voice=v;
+  u.onend=()=>{labSpeaking=false;labBtn.textContent='▶ QUE TE LO EXPLIQUE EL LAB';};
+  speechSynthesis.cancel();speechSynthesis.speak(u);labSpeaking=true;labBtn.textContent='■ SILENCIAR';
+});
+
+/* LAB scrollytelling — difusión ruido→imagen */
+const canvas=document.getElementById('diffCanvas'),ctx=canvas.getContext('2d');
+const hud=document.getElementById('labHud');
+const steps=document.querySelectorAll('#labSteps p');
+const W=canvas.width,H=canvas.height;
+function drawDiffusion(progress){ // progress 0..1  (0=ruido, 1=imagen)
+  ctx.clearRect(0,0,W,H);
+  // imagen objetivo: gradiente magenta con "sol"
+  const g=ctx.createLinearGradient(0,0,W,H);
+  g.addColorStop(0,'#FF3DD1');g.addColorStop(.6,'#B60D8C');g.addColorStop(1,'#1a0a18');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  ctx.beginPath();ctx.arc(W*0.7,H*0.4,60,0,Math.PI*2);ctx.fillStyle='rgba(255,240,180,'+progress+')';ctx.fill();
+  // ruido decreciente
+  const noiseAmt=Math.floor((1-progress)*16000);
+  for(let i=0;i<noiseAmt;i++){
+    const v=Math.random()*255;ctx.fillStyle='rgba('+v+','+v+','+v+','+(0.6*(1-progress)+0.2)+')';
+    ctx.fillRect(Math.random()*W,Math.random()*H,2,2);
+  }
+  const pct=Math.round((1-progress)*100);
+  hud.textContent='RUIDO: '+pct+'% · '+(pct>66?'caos total':pct>33?'emergiendo la forma':pct>2?'coherencia':'SEÑAL LIMPIA');
+}
+drawDiffusion(0);
+const labSec=document.getElementById('lab');
+function labScroll(){
+  const r=labSec.getBoundingClientRect();
+  const vh=window.innerHeight;
+  let p=(vh-r.top)/(vh+r.height);
+  p=Math.max(0,Math.min(1,p));
+  drawDiffusion(RM?1:p);
+  const idx=Math.min(steps.length-1,Math.floor(p*steps.length));
+  steps.forEach((s,i)=>s.classList.toggle('active',i===idx));
+}
+let labTicking=false;
+function onLabScroll(){if(labTicking)return;labTicking=true;requestAnimationFrame(()=>{labScroll();labTicking=false;});}
+if(RM){drawDiffusion(1);steps.forEach(s=>s.classList.add('active'));}
+else{window.addEventListener('scroll',onLabScroll,{passive:true});labScroll();}
+
+/* animar orejas del gato al hover del retrato */
+const catSvg=document.getElementById('catSvg');
+if(catSvg&&!RM){catSvg.addEventListener('mouseenter',()=>{catMouth.setAttribute('ry',7);setTimeout(()=>catMouth.setAttribute('ry',4),200);});}
+</script>
+</body>
+</html>
