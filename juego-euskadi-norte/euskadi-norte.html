@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="es-ES">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>EUSKADI NORTE · Fase 0</title>
+<style>
+  :root{ color-scheme:dark; --tinta:#0a0c0b; --hueso:#d8d2c4; --ambar:#e8b25a; --verde:#6ef0b0; --rojo:#e0454a; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:"Courier New",ui-monospace,monospace;color:var(--hueso)}
+  #stage{position:fixed;inset:0;display:block}
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:auto}
+  /* viñeta + grano encima del canvas */
+  #vig{position:fixed;inset:0;pointer-events:none;z-index:5;
+       box-shadow:inset 0 0 200px 60px rgba(0,0,0,.85), inset 0 0 60px 10px rgba(0,0,0,.6)}
+  #grain{position:fixed;inset:0;pointer-events:none;z-index:6;opacity:.06;mix-blend-mode:overlay}
+
+  /* overlays de texto */
+  .ui{position:fixed;z-index:8;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.9)}
+  #sub{left:50%;bottom:15%;transform:translateX(-50%);max-width:min(760px,86vw);text-align:center;
+       font-size:clamp(15px,2.2vw,21px);line-height:1.5;letter-spacing:.02em;opacity:0;transition:opacity .5s}
+  #sub .who{display:block;font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--ambar);margin-bottom:8px;opacity:.85}
+  #sub.on{opacity:1}
+  #prompt{left:50%;bottom:6%;transform:translateX(-50%);font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+          color:var(--hueso);opacity:.0;transition:opacity .4s}
+  #prompt.on{opacity:.8}
+  #prompt b{color:var(--ambar)}
+  #hud{left:22px;top:18px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.75;line-height:1.9}
+  #hud .k{color:var(--verde)}
+  #hud .r{color:var(--ambar)}
+  #hud .warn{color:var(--rojo)}
+
+  /* pantalla de arranque / fin */
+  #screen{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;
+          text-align:center;padding:30px;background:radial-gradient(ellipse at center,#0b0f0e 0%,#000 80%);
+          transition:opacity .8s;gap:18px}
+  #screen.hide{opacity:0;pointer-events:none}
+  #screen .plate{font-size:11px;letter-spacing:.5em;text-transform:uppercase;color:var(--ambar);opacity:.8}
+  #screen h1{font-size:clamp(2.4rem,9vw,6rem);letter-spacing:.02em;font-weight:700;line-height:.92;
+             color:#e9e3d4;text-shadow:0 2px 30px rgba(0,0,0,.9)}
+  #screen h1 span{display:block;font-size:.34em;letter-spacing:.42em;color:var(--hueso);opacity:.7;margin-top:14px}
+  #screen p{max-width:560px;font-size:14px;line-height:1.7;opacity:.72}
+  #screen .keys{font-size:12px;letter-spacing:.12em;line-height:2;opacity:.6;margin-top:6px}
+  #screen .keys b{color:var(--verde)}
+  #start{margin-top:12px;pointer-events:auto;cursor:pointer;background:none;border:1px solid var(--ambar);color:var(--ambar);
+         font-family:inherit;font-size:13px;letter-spacing:.28em;text-transform:uppercase;padding:14px 30px;border-radius:2px;
+         transition:background .25s,color .25s}
+  #start:hover{background:var(--ambar);color:#0a0c0b}
+  .disc{font-size:10px;letter-spacing:.14em;opacity:.4;max-width:520px;line-height:1.6;text-transform:uppercase}
+  /* ---- controles táctiles (móvil) ---- */
+  #touch{position:fixed;inset:0;z-index:9;pointer-events:none;display:none}
+  body.touch #touch{display:block}
+  .tbtn{position:absolute;pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;
+    display:flex;align-items:center;justify-content:center;font-family:inherit;color:var(--hueso);
+    background:rgba(12,16,15,.5);border:1px solid rgba(216,210,196,.30);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+    border-radius:50%;width:74px;height:74px;font-size:26px;transition:background .1s,transform .1s}
+  .tbtn.on{background:rgba(232,178,90,.38);border-color:var(--ambar);transform:scale(.93)}
+  #t-left{left:18px;bottom:26px}
+  #t-right{left:104px;bottom:26px}
+  #t-gas{right:18px;bottom:92px;width:88px;height:88px;font-size:30px}
+  #t-brake{right:34px;bottom:24px;width:60px;height:60px;font-size:20px}
+  .tpill{position:absolute;pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;
+    background:rgba(12,16,15,.55);border:1px solid rgba(216,210,196,.30);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+    color:var(--hueso);font-size:11px;letter-spacing:.14em;text-transform:uppercase;padding:11px 15px;border-radius:24px;white-space:nowrap}
+  .tpill.on{background:rgba(232,178,90,.38);border-color:var(--ambar)}
+  #t-radio{right:16px;top:14px}
+  #t-act{right:16px;top:56px;color:var(--ambar);border-color:var(--ambar)}
+  #t-stop{right:16px;top:98px;display:none;color:var(--verde);border-color:var(--verde)}
+  #t-talk{left:50%;bottom:120px;transform:translateX(-50%);display:none;color:var(--verde);border-color:var(--verde)}
+  body.touch #t-stop.show{display:block}
+  body.touch #t-talk.show{display:block}
+  .keys-touch{display:none}
+  body.touch .keys-desktop{display:none}
+  body.touch .keys-touch{display:block;color:var(--ambar)}
+  @media (max-width:520px){ #screen p{font-size:13px} #screen .keys{font-size:11px} #hud{font-size:10px} }
+  @media (prefers-reduced-motion: reduce){ #grain{display:none} }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="c"></canvas>
+</div>
+<div id="vig"></div>
+<svg id="grain"><filter id="gn"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#gn)"/></svg>
+
+<div id="hud" class="ui"></div>
+<div id="sub" class="ui"><span class="who"></span><span class="txt"></span></div>
+<div id="prompt" class="ui"></div>
+
+<div id="touch" aria-hidden="true">
+  <div class="tbtn" id="t-left">◀</div>
+  <div class="tbtn" id="t-right">▶</div>
+  <div class="tbtn" id="t-gas">▲</div>
+  <div class="tbtn" id="t-brake">▼</div>
+  <div class="tpill" id="t-radio">Radio</div>
+  <div class="tpill" id="t-act">✆ Acción</div>
+  <div class="tpill" id="t-stop">Parar</div>
+  <div class="tpill" id="t-talk">Mantén · Hablar</div>
+</div>
+
+<div id="screen">
+  <div class="plate">Expediente · Comarca Norte · sin fecha</div>
+  <h1>EUSKADI NORTE<span>FASE 0 — CORTE VERTICAL</span></h1>
+  <p>Conduces de noche por una comarcal que la niebla se está tragando. En el asiento del copiloto hay un paquete de papel marrón que no vas a abrir. Cada tanto suena el teléfono del salpicadero. Al otro lado, alguien que llaman <em>el Enlace</em>. No sabrás para quién trabajas hasta el final.</p>
+  <div class="keys">
+    <span class="keys-desktop"><b>W/↑</b> acelerar · <b>S/↓</b> frenar · <b>A/D · ←/→</b> volante<br>
+    <b>R</b> cambiar de dial en la radio · <b>E</b> parar en las paradas · <b>ENTER</b> descolgar / continuar<br>
+    <b>ESPACIO</b> (mantén) hablar por el micro · <b>M</b> silenciar</span>
+    <span class="keys-touch">Controles en pantalla: <b>◀ ▶</b> volante · <b>▲</b> gas · <b>▼</b> freno · <b>Radio</b> · <b>Parar</b> · <b>✆</b> descolgar/continuar · mantén <b>Hablar</b></span>
+  </div>
+  <button id="start">Arrancar el motor</button>
+  <div class="disc">Ficción. Thriller político. Música y textos originales generados en el navegador. Sin datos reales de personas.</div>
+</div>
+
+<script>
+"use strict";
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+let W=0,H=0,DPR=1;
+function resize(){
+  DPR=Math.min(2, window.devicePixelRatio||1);
+  W=cv.clientWidth; H=cv.clientHeight;
+  cv.width=Math.floor(W*DPR); cv.height=Math.floor(H*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+addEventListener('resize',resize); resize();
+
+/* ---------- input ---------- */
+const keys={};
+const held=new Set();
+addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  keys[k]=true;
+  if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) e.preventDefault();
+  if(k==='enter') onEnter();
+  if(k==='r') cycleRadio();
+  if(k==='e') tryStop();
+  if(k==='m') toggleMute();
+  if(k===' ') startTalk();
+});
+addEventListener('keyup',e=>{ const k=e.key.toLowerCase(); keys[k]=false; if(k===' ') endTalk(); });
+
+/* ---------- audio ---------- */
+let AC=null,masterG=null,muted=false;
+let engineOsc=null,engineGain=null,rainSrc=null,rainGain=null;
+let musicOn=false, musicTimer=null, musicNodes=null, musicGain=null;
+function ensureAudio(){
+  if(AC) return;
+  try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return; }
+  masterG=AC.createGain(); masterG.gain.value=0.9; masterG.connect(AC.destination);
+  // engine
+  engineGain=AC.createGain(); engineGain.gain.value=0.0; engineGain.connect(masterG);
+  engineOsc=AC.createOscillator(); engineOsc.type='sawtooth'; engineOsc.frequency.value=60;
+  const eLP=AC.createBiquadFilter(); eLP.type='lowpass'; eLP.frequency.value=220;
+  engineOsc.connect(eLP); eLP.connect(engineGain); engineOsc.start();
+  // rain (filtered noise)
+  const len=AC.sampleRate*2, buf=AC.createBuffer(1,len,AC.sampleRate), d=buf.getChannelData(0);
+  for(let i=0;i<len;i++) d[i]=(Math.random()*2-1);
+  rainSrc=AC.createBufferSource(); rainSrc.buffer=buf; rainSrc.loop=true;
+  const rBP=AC.createBiquadFilter(); rBP.type='bandpass'; rBP.frequency.value=1600; rBP.Q.value=0.5;
+  rainGain=AC.createGain(); rainGain.gain.value=0.14;
+  rainSrc.connect(rBP); rBP.connect(rainGain); rainGain.connect(masterG); rainSrc.start();
+  // music bus
+  musicGain=AC.createGain(); musicGain.gain.value=0.0; musicGain.connect(masterG);
+}
+function toggleMute(){ if(!AC) return; muted=!muted; masterG.gain.setTargetAtTime(muted?0:0.9, AC.currentTime, 0.05); }
+// dark synthwave/lofi — procedural, original
+const CH=[[110,164.81,220],[97.99,146.83,196],[130.81,196,261.63],[87.31,130.81,174.61]];
+let chI=0;
+function musicStep(){
+  if(!musicOn||!AC) return;
+  const t=AC.currentTime, dur=3.4, f=CH[chI%CH.length]; chI++;
+  const lp=AC.createBiquadFilter(); lp.type='lowpass'; lp.frequency.setValueAtTime(420,t);
+  lp.frequency.linearRampToValueAtTime(1100,t+dur*0.5); lp.frequency.linearRampToValueAtTime(500,t+dur); lp.connect(musicGain);
+  const g=AC.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.13,t+0.9);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur); g.connect(lp);
+  f.forEach((fr,i)=>{ const o=AC.createOscillator(); o.type='sawtooth'; o.frequency.value=fr; o.detune.value=(i-1)*7;
+    o.connect(g); o.start(t); o.stop(t+dur+0.1); });
+  const bo=AC.createOscillator(); bo.type='triangle'; bo.frequency.value=f[2]*2;
+  const bg=AC.createGain(); bg.gain.setValueAtTime(0.0001,t+0.3); bg.gain.exponentialRampToValueAtTime(0.05,t+0.5);
+  bg.gain.exponentialRampToValueAtTime(0.0001,t+1.8); bo.connect(bg); bg.connect(musicGain); bo.start(t+0.3); bo.stop(t+1.9);
+}
+function setMusic(on){
+  if(!AC) return; musicOn=on;
+  musicGain.gain.setTargetAtTime(on?0.5:0.0, AC.currentTime, 0.4);
+  if(on){ if(musicTimer) clearInterval(musicTimer); musicStep(); musicTimer=setInterval(musicStep,3400); }
+  else if(musicTimer){ clearInterval(musicTimer); musicTimer=null; }
+}
+function ringtone(){
+  if(!AC) return; const t=AC.currentTime;
+  for(let r=0;r<2;r++){ const s=t+r*0.9;
+    [0,0.22].forEach(off=>{ const o=AC.createOscillator(); o.type='square'; o.frequency.value=520;
+      const g=AC.createGain(); g.gain.setValueAtTime(0.0001,s+off); g.gain.exponentialRampToValueAtTime(0.08,s+off+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,s+off+0.18); o.connect(g); g.connect(masterG); o.start(s+off); o.stop(s+off+0.2); });
+  }
+}
+function dryLaugh(){ // risa seca, sutil
+  if(!AC) return; const t=AC.currentTime;
+  for(let i=0;i<3;i++){ const s=t+i*0.14; const o=AC.createOscillator(); o.type='triangle';
+    o.frequency.setValueAtTime(150-i*18,s); const g=AC.createGain();
+    g.gain.setValueAtTime(0.0001,s); g.gain.exponentialRampToValueAtTime(0.06,s+0.02); g.gain.exponentialRampToValueAtTime(0.0001,s+0.12);
+    o.connect(g); g.connect(masterG); o.start(s); o.stop(s+0.13); }
+}
+
+/* speech synthesis (best-effort; siempre hay subtítulo) */
+let esVoice=null;
+function pickVoice(){ if(!('speechSynthesis'in window))return; const vs=speechSynthesis.getVoices();
+  esVoice=vs.find(v=>/es-ES/i.test(v.lang))||vs.find(v=>/^es/i.test(v.lang))||null; }
+if('speechSynthesis'in window){ speechSynthesis.onvoiceschanged=pickVoice; pickVoice(); }
+function speak(text,{pitch=0.7,rate=0.92}={}){
+  if(!('speechSynthesis'in window)) return;
+  try{ const u=new SpeechSynthesisUtterance(text.replace(/\([^)]*\)/g,'')); u.lang='es-ES'; u.pitch=pitch; u.rate=rate;
+    if(esVoice)u.voice=esVoice; speechSynthesis.speak(u);}catch(e){}
+}
+function stopSpeak(){ if('speechSynthesis'in window){ try{speechSynthesis.cancel();}catch(e){} } }
+
+/* ---------- narrative content (original) ---------- */
+const HANDLER = [
+  {t:"¿Me oyes? Bien. No digas nombres. Ni el tuyo ni el mío.", d:4.2},
+  {t:"Sigue la comarcal. Hasta el segundo cruce, no el primero. El segundo.", d:4.6},
+  {t:"El paquete no se abre. Lo que respira ahí dentro no es asunto tuyo.", d:4.8},
+  {t:"(risa seca) Relájate. Si fueran a por ti, ya lo sabrías.", d:4.4, laugh:true},
+  {t:"En el peaje viejo apagas el motor y esperas. No preguntes a quién.", d:4.8},
+];
+const HANDLER2 = [
+  {t:"Buen trabajo. O eso dicen los que me lo dicen a mí.", d:4.2},
+  {t:"¿Que para quién trabajas? Curiosa manera de empezar a dudar. Justo ahora.", d:5.0},
+  {t:"Conduce. Al final de la niebla te lo enseñan todo. Y ojalá no lo entiendas.", d:5.2},
+];
+const STOP_SCENE = [
+  {who:"PEAJE VIEJO", t:"Apagas el motor. El silencio pesa más que el ruido.", d:4.2},
+  {who:"PEAJE VIEJO", t:"Una cabina oxidada, la barrera partida. Bajo el puente, un río negro que no refleja nada.", d:5.6},
+  {who:"PEAJE VIEJO", t:"Las botas se hunden en el barro. Miras atrás: el paquete, en el asiento, parece más grande.", d:5.6},
+  {who:"PEAJE VIEJO", t:"Nadie viene. Eso, aquí, es una respuesta.", d:4.0},
+];
+const RADIO = {
+  1:{ name:"DIAL 1 · CRÓNICA NEGRA", pitch:0.62, rate:0.9, lines:[
+    "En un caserío que ya no aparece en los mapas, encontraron la mesa puesta para dos. Nadie recuerda quién comía.",
+    "El forense habló de frío. La comarca, de otra cosa. En el norte, ciertas historias se cuentan bajo la voz.",
+    "Cerraron el caso por falta de indicios. O de ganas. En la niebla, ambas se parecen."
+  ]},
+  2:{ name:"DIAL 2 · LECTURA", pitch:0.8, rate:0.98, lines:[
+    "De la orografía del terreno. El relieve asciende en pliegues sucesivos, y la carretera se somete a ellos con paciencia de siglos.",
+    "Capítulo tercero. Las hayas dan paso al roble, y el roble al pino, según la mano del hombre o su abandono.",
+    "El viajero prudente no confía en la línea recta. En estas tierras, la recta es una promesa que el monte no piensa cumplir."
+  ]},
+  3:{ name:"DIAL 3 · SEÑAL NOCTURNA", music:true }
+};
+
+/* ---------- game state ---------- */
+const S={ BOOT:0, DRIVE:1, CALL:2, STOP:3, END:4 };
+let state=S.BOOT;
+let speed=0, maxSpeed=135, carX=0, steer=0, dist=0, damage=0, shake=0, hitCD=0;
+let wet=0.0, wiper=0, wiperActive=true, wiperT=0;
+let radio=0; // 0 apagada, 1..3
+let phase=0; // progreso narrativo
+let calledOnce=false, called2=false, stopDone=false, endArmed=false, atStop=false, stopMarker=99999;
+let started=false, last=0;
+const drops=[];
+for(let i=0;i<(RM?70:150);i++) drops.push(newDrop(true));
+function newDrop(init){ return {x:Math.random()*W, y:init?Math.random()*H:-20, l:6+Math.random()*18, v:9+Math.random()*11, a:0.12+Math.random()*0.22}; }
+
+/* trees keyed by segment so emergen de la niebla */
+function treeAt(seg){ // pseudo-random determinista
+  const s=Math.sin(seg*12.9898)*43758.5453; const r=s-Math.floor(s);
+  const s2=Math.sin(seg*78.233)*12543.123; const r2=s2-Math.floor(s2);
+  return {present:r>0.45, side:r2>0.5?1:-1, kind:r2, h:0.7+r*0.7};
+}
+
+/* ---------- narrative runner ---------- */
+let seq=null, seqI=0, seqT=0, seqDone=null;
+function playSeq(arr, who, opts, done){
+  seq=arr.map(x=> typeof x==='string'?{t:x}:x); seqI=0; seqT=0; seqDone=done||null;
+  seq._who=who; seq._opts=opts||{}; showSeqStep();
+}
+function showSeqStep(){
+  if(!seq) return;
+  const step=seq[seqI]; const who=step.who||seq._who||'';
+  setSub(who, step.t);
+  const o=seq._opts;
+  speak(step.t, {pitch:step.pitch||o.pitch||0.7, rate:step.rate||o.rate||0.92});
+  if(step.laugh) setTimeout(dryLaugh, 1600);
+  seqT = step.d || Math.max(2.6, step.t.length*0.055);
+}
+function updateSeq(dt){
+  if(!seq) return;
+  seqT-=dt;
+  if(seqT<=0){ seqI++; if(seqI>=seq.length){ const done=seqDone; seq=null; clearSub(); if(done)done(); } else showSeqStep(); }
+}
+
+/* ---------- UI helpers ---------- */
+const subEl=document.getElementById('sub'), whoEl=subEl.querySelector('.who'), txtEl=subEl.querySelector('.txt');
+const promptEl=document.getElementById('prompt'), hudEl=document.getElementById('hud');
+function setSub(who,txt){ whoEl.textContent=who||''; whoEl.style.display=who?'block':'none'; txtEl.textContent=txt; subEl.classList.add('on'); }
+function clearSub(){ subEl.classList.remove('on'); }
+function setPrompt(html){ if(html){ promptEl.innerHTML=html; promptEl.classList.add('on'); } else promptEl.classList.remove('on'); }
+
+/* ---------- interactions ---------- */
+function onEnter(){
+  if(state===S.BOOT){ startGame(); return; }
+  if(state===S.CALL){ /* answered by ring auto; enter avanza si acabó */ }
+  if(state===S.STOP && !seq){ // volver al coche
+    state=S.DRIVE; setPrompt(''); clearSub(); if(radio===3) setMusic(true);
+  }
+  if(state===S.END){ location.reload(); }
+}
+function cycleRadio(){
+  if(state!==S.DRIVE) return;
+  ensureAudio();
+  radio=(radio+1)%4;
+  stopSpeak(); setMusic(false);
+  if(radio===0){ setSub('RADIO','— apagada —'); setTimeout(()=>{ if(txtEl.textContent==='— apagada —')clearSub(); },1400); return; }
+  const dial=RADIO[radio];
+  if(dial.music){ setMusic(true); setSub('RADIO', dial.name); setTimeout(()=>{ if(state===S.DRIVE&&radio===3)clearSub(); },1600); }
+  else { const line=dial.lines[Math.floor(Math.random()*dial.lines.length)];
+    setSub(dial.name, line); speak(line,{pitch:dial.pitch,rate:dial.rate}); }
+}
+function tryStop(){
+  if(state===S.DRIVE && atStop){ enterStop(); }
+}
+/* mic (best-effort) */
+let recog=null, talking=false;
+function startTalk(){
+  if(state!==S.CALL || talking) return;
+  talking=true; setPrompt('● ESCUCHANDO… suelta <b>ESPACIO</b> para terminar');
+  try{
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(SR){ recog=new SR(); recog.lang='es-ES'; recog.interimResults=false; recog.maxAlternatives=1;
+      recog.onresult=e=>{}; recog.onerror=()=>{}; recog.start(); }
+  }catch(e){}
+}
+function endTalk(){
+  if(!talking) return; talking=false; setPrompt('');
+  try{ if(recog) recog.stop(); }catch(e){}
+}
+
+/* ---------- flow ---------- */
+document.getElementById('start').addEventListener('click',startGame);
+function startGame(){
+  if(started) return; started=true;
+  ensureAudio(); if(AC && AC.state==='suspended') AC.resume();
+  document.getElementById('screen').classList.add('hide');
+  state=S.DRIVE; last=performance.now();
+  // intro
+  setTimeout(()=>{ setSub('', "Comarcal N-tantos. Medianoche. La niebla se lo está comiendo todo."); }, 500);
+  setTimeout(()=>clearSub(), 5200);
+  setTimeout(()=>{ setSub('', "El paquete sigue ahí. Tú intenta no mirarlo."); }, 6000);
+  setTimeout(()=>clearSub(), 10500);
+  stopMarker = 2600;
+  requestAnimationFrame(loop);
+}
+function triggerCall(seqArr,after){
+  state=S.CALL; setMusic(false); stopSpeak();
+  setSub('TELÉFONO', "· · ·  suena el teléfono del salpicadero  · · ·"); ringtone();
+  setPrompt('pulsa <b>ENTER</b> para descolgar');
+  const answer=()=>{ removeEventListener('keydown',waitAns); clearInterval(ringInt); setPrompt('');
+    playSeq(seqArr,'EL ENLACE',{pitch:0.66,rate:0.9},()=>{ state=S.DRIVE; setPrompt(''); after&&after(); if(radio===3)setMusic(true); }); };
+  const waitAns=e=>{ if(e.key.toLowerCase()==='enter') answer(); };
+  addEventListener('keydown',waitAns);
+  let rc=0; const ringInt=setInterval(()=>{ ringtone(); if(++rc>6){ clearInterval(ringInt);} },1900);
+  // auto-answer failsafe
+  setTimeout(()=>{ if(state===S.CALL && seq===null) answer(); }, 12000);
+}
+function enterStop(){
+  state=S.STOP; atStop=false; stopDone=true; speed=0; setMusic(false); stopSpeak(); setPrompt('');
+  playSeq(STOP_SCENE,null,{pitch:0.7,rate:0.95},()=>{ setPrompt('pulsa <b>ENTER</b> para volver al coche'); });
+  endArmed=true;
+}
+function endGame(){
+  state=S.END; setMusic(false); stopSpeak(); setPrompt('');
+  const sc=document.getElementById('screen'); sc.classList.remove('hide');
+  sc.innerHTML='<div class="plate">Fin del corte vertical</div>'+
+    '<h1>¿PARA QUIÉN<span>estás haciendo el trabajo sucio?</span></h1>'+
+    '<p>Servicios del Estado. Una célula. Mercenarios con nómina de nadie. En la Fase 0 la pregunta se queda abierta a propósito: el vértigo es no saberlo. La respuesta llega en el último cruce… que aún no has conducido.</p>'+
+    '<div class="keys">Has recorrido '+Math.floor(dist/10)+' — chapa: '+(damage<20?'intacta':damage<60?'tocada':'deformada')+'</div>'+
+    '<button id="start">Volver a arrancar</button>'+
+    '<div class="disc">Ficción. Thriller político. Música y textos originales. EUSKADI NORTE · Fase 0.</div>';
+  document.getElementById('start').addEventListener('click',()=>location.reload());
+}
+
+/* ---------- update ---------- */
+function update(dt){
+  if(state===S.DRIVE || state===S.CALL){
+    const throttle=(keys['w']||keys['arrowup'])?1:0;
+    const brake=(keys['s']||keys['arrowdown'])?1:0;
+    const accel = throttle*46 - brake*150 - 20; // peso e inercia: sube despacio, frena con ganas
+    speed += accel*dt; speed=Math.max(0,Math.min(maxSpeed,speed));
+    // dirección
+    let dir=0; if(keys['a']||keys['arrowleft'])dir-=1; if(keys['d']||keys['arrowright'])dir+=1;
+    steer += (dir - steer)*Math.min(1,dt*6);
+    carX += steer * dt * 1.7 * (0.4+speed/maxSpeed);
+    // curva de la carretera empuja + leve auto-centrado (perdona a baja velocidad)
+    carX -= curveAt(0)*dt*0.5*(speed/maxSpeed);
+    carX -= carX*dt*0.15;
+    // fuera de la carretera → guardarraíl / árbol (golpe discreto, no castigo continuo)
+    if(Math.abs(carX)>1.02){
+      carX=Math.max(-1.12,Math.min(1.12,carX));
+      if(speed>40 && hitCD<=0){ damage=Math.min(100,damage+8); shake=Math.min(1,shake+0.5); speed*=0.82; hit(); hitCD=0.8; }
+    }
+    hitCD-=dt;
+    dist += speed*dt;
+    // engine audio
+    if(engineGain){ engineGain.gain.setTargetAtTime(state===S.CALL?0.05:0.09,AC.currentTime,0.1);
+      engineOsc.frequency.setTargetAtTime(55+speed*1.5+(throttle?18:0),AC.currentTime,0.08); }
+    if(rainGain) rainGain.gain.setTargetAtTime(0.10+Math.min(0.12,speed/maxSpeed*0.12),AC.currentTime,0.2);
+    // triggers
+    if(!calledOnce && dist>stopMarker){ calledOnce=true; triggerCall(HANDLER,()=>{ stopMarker=dist+2400; }); }
+    if(calledOnce && !stopDone && dist>stopMarker-260){ atStop=true; }
+    if(atStop && !stopDone) setPrompt('PARADA: <b>PEAJE VIEJO</b> — pulsa <b>E</b> para parar');
+    else if(state===S.DRIVE && promptEl.textContent.startsWith('PARADA')) setPrompt('');
+    if(stopDone && !called2 && dist>stopMarker+1400){ called2=true; triggerCall(HANDLER2,()=>{ endArmed=true; stopMarker=dist+1500; }); }
+    if(called2 && dist>stopMarker){ endGame(); }
+  }
+  // wiper + wetness
+  wet=Math.min(1, wet + dt*0.11);
+  if(wiperActive){ wiperT+=dt; if(wiperT>3.0){ wiperT=0; } wiper=Math.sin(Math.min(Math.PI, wiperT<0.9? (wiperT/0.9)*Math.PI : 0));
+    if(wiperT<0.9) wet=Math.max(0, wet-dt*1.6); }
+  shake=Math.max(0,shake-dt*2.2);
+  updateSeq(dt);
+  // rain
+  const gust=(speed/maxSpeed);
+  for(const dp of drops){ dp.y+=dp.v*(1+gust*1.4); dp.x-=gust*2.2; if(dp.y>H){ Object.assign(dp,newDrop(false)); } if(dp.x<0)dp.x+=W; }
+}
+function hit(){ if(AC){ const t=AC.currentTime; const o=AC.createOscillator(); o.type='square'; o.frequency.setValueAtTime(90,t);
+  o.frequency.exponentialRampToValueAtTime(40,t+0.18); const g=AC.createGain(); g.gain.setValueAtTime(0.14,t);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+0.25); o.connect(g); g.connect(masterG); o.start(t); o.stop(t+0.26); } }
+
+/* carretera: curva/altura por distancia (determinista, suave) */
+function curveAt(zAhead){ const d=(dist*0.0006)+zAhead; return Math.sin(d*1.3)*0.6 + Math.sin(d*0.5+2)*0.4; }
+function hillAt(zAhead){ const d=(dist*0.0006)+zAhead; return Math.sin(d*0.8+1)*0.5; }
+
+/* ---------- render ---------- */
+function render(){
+  const sx=(Math.random()-0.5)*shake*14, sy=(Math.random()-0.5)*shake*10;
+  ctx.save(); ctx.translate(sx,sy);
+  drawSky();
+  if(state===S.STOP) drawStopScene(); else { drawRoad(); drawHeadlights(); }
+  drawRain(); drawWindshield(); drawDashboard(); drawHUD();
+  ctx.restore();
+}
+function drawSky(){
+  const horizon=H*0.42;
+  const g=ctx.createLinearGradient(0,0,0,horizon);
+  g.addColorStop(0,'#05070a'); g.addColorStop(0.7,'#0a0f14'); g.addColorStop(1,'#141b1e');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,horizon);
+  // niebla en el horizonte
+  const fg=ctx.createLinearGradient(0,horizon-60,0,horizon+40);
+  fg.addColorStop(0,'rgba(30,40,44,0)'); fg.addColorStop(1,'rgba(60,74,78,0.5)');
+  ctx.fillStyle=fg; ctx.fillRect(0,horizon-60,W,100);
+}
+function drawRoad(){
+  const horizon=H*0.42;
+  // suelo con leve gradiente para separar del asfalto
+  const gg=ctx.createLinearGradient(0,horizon,0,H);
+  gg.addColorStop(0,'#10140f'); gg.addColorStop(1,'#070908');
+  ctx.fillStyle=gg; ctx.fillRect(0,horizon,W,H-horizon);
+  const rows=Math.floor((H-horizon));
+  const trees=[];
+  for(let i=0;i<rows;i+=2){
+    const y=horizon+i;
+    const p=(i)/(H-horizon); // 0 lejos .. 1 cerca
+    const persp=p*p;
+    const zAhead=(1-p)*3.2;
+    const curve = curveAt(zAhead)* (1-p)*(1-p) * W*0.30;
+    const roadW = (W*0.10 + persp*W*0.85);
+    const cx = W/2 + curve - carX*roadW*0.38; // la cámara sigue al coche solo en parte: la carretera nunca sale del plano
+    const fog = Math.max(0, 1-p*1.6); // niebla solo en lo lejano
+    // asfalto húmedo, más claro que el suelo
+    const seg = Math.floor((dist*0.06 + zAhead*40));
+    const band = seg%2===0;
+    const base = (band? 34:27) - Math.floor(fog*10);
+    ctx.fillStyle = 'rgb('+(base)+','+(base+5)+','+(base+4)+')';
+    ctx.fillRect(cx-roadW/2, y, roadW, 3);
+    // reflejo mojado de faros en el centro cercano
+    if(p>0.45){ ctx.fillStyle='rgba(232,178,90,'+(0.06*(p-0.45)/0.55)+')'; ctx.fillRect(cx-roadW*0.16, y, roadW*0.32, 3); }
+    // arcén claro a ambos lados
+    ctx.fillStyle='rgba(160,160,145,'+(0.14+0.16*persp)+')';
+    ctx.fillRect(cx-roadW/2-2, y, 3, 3); ctx.fillRect(cx+roadW/2-1, y, 3, 3);
+    // doble línea amarilla discontinua
+    if((seg%2===0) && p>0.06){ ctx.fillStyle='rgba(210,170,70,'+(0.55*persp+0.12)+')';
+      ctx.fillRect(cx-roadW*0.02-1.5, y, 1.8, 3); ctx.fillRect(cx+roadW*0.02, y, 1.8, 3); }
+    // árboles: recogemos y pintamos después (lejos→cerca), con tamaño acotado
+    if(i%8===0 && p>0.10 && p<0.85){ const t=treeAt(seg);
+      if(t.present){ const tx=cx + t.side*(roadW/2 + roadW*0.14);
+        const th=Math.min(H*0.34, roadW*0.34*t.h);
+        const tw=Math.min(W*0.03, Math.max(2, roadW*0.035));
+        trees.push({tx,y,th,tw,a:0.35+0.45*persp});
+      }
+    }
+    // velo de niebla, tenue y solo lejano
+    if(fog>0){ ctx.fillStyle='rgba(70,84,86,'+(fog*0.32)+')'; ctx.fillRect(0,y,W,2); }
+  }
+  // siluetas de árboles (tronco + copa), del fondo hacia delante
+  for(const t of trees){
+    ctx.fillStyle='rgba(7,11,9,'+t.a+')';
+    ctx.fillRect(t.tx-t.tw/2, t.y-t.th, t.tw, t.th);
+    ctx.beginPath(); ctx.ellipse(t.tx, t.y-t.th, t.tw*2.4, t.th*0.42, 0, 0, 7); ctx.fill();
+  }
+}
+function drawHeadlights(){
+  const horizon=H*0.42, cx=W/2 - carX*W*0.12;
+  const g=ctx.createRadialGradient(cx,H*0.72,10, cx,H*0.62, W*0.55);
+  g.addColorStop(0,'rgba(232,205,150,0.14)'); g.addColorStop(0.5,'rgba(200,180,130,0.06)'); g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.moveTo(cx-24,H); ctx.lineTo(cx-W*0.28,horizon+30); ctx.lineTo(cx+W*0.28,horizon+30); ctx.lineTo(cx+24,H); ctx.closePath(); ctx.fill();
+}
+function drawStopScene(){
+  const horizon=H*0.5;
+  ctx.fillStyle='#080b0b'; ctx.fillRect(0,horizon,W,H-horizon);
+  // puente / cabina siluetas en niebla
+  ctx.fillStyle='rgba(14,18,18,0.9)';
+  ctx.fillRect(W*0.12,horizon-70,W*0.10,70); // cabina
+  ctx.fillStyle='rgba(10,14,14,0.9)';
+  ctx.fillRect(W*0.30,horizon-8,W*0.5,10); // barrera
+  ctx.fillRect(W*0.30,horizon-40,6,40);
+  // río negro
+  const rg=ctx.createLinearGradient(0,horizon,0,H); rg.addColorStop(0,'#040605'); rg.addColorStop(1,'#0a0e0d');
+  ctx.fillStyle=rg; ctx.fillRect(0,horizon,W,H-horizon);
+  // niebla
+  for(let k=0;k<6;k++){ ctx.fillStyle='rgba(70,84,86,'+(0.05+k*0.02)+')'; ctx.fillRect(0,horizon-30+k*16,W,18); }
+}
+function drawRain(){
+  ctx.lineWidth=1; ctx.strokeStyle='rgba(200,215,220,0.5)';
+  const gust=(speed/maxSpeed);
+  ctx.beginPath();
+  for(const dp of drops){ ctx.globalAlpha=dp.a; ctx.moveTo(dp.x,dp.y); ctx.lineTo(dp.x-gust*3, dp.y+dp.l); }
+  ctx.stroke(); ctx.globalAlpha=1;
+}
+function drawWindshield(){
+  // condensación/lluvia acumulada en bordes
+  if(wet>0.02){
+    ctx.fillStyle='rgba(150,170,175,'+(0.05*wet)+')'; ctx.fillRect(0,0,W,H);
+    // gotas estáticas dispersas segun wetness
+    ctx.fillStyle='rgba(190,205,210,'+(0.10*wet)+')';
+    for(let i=0;i<40*wet;i++){ const x=((i*97.3)%W), y=((i*57.7)%(H*0.6)); ctx.fillRect(x,y,1.5,3.5); }
+  }
+  // limpiaparabrisas
+  const cx=W*0.30, cy=H*1.15, R=H*1.05;
+  const ang = -1.15 + wiper*1.15;
+  ctx.save(); ctx.translate(cx,cy); ctx.rotate(ang);
+  ctx.strokeStyle='rgba(6,8,8,0.9)'; ctx.lineWidth=7; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-R); ctx.stroke();
+  ctx.strokeStyle='rgba(20,24,24,0.9)'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(-4,-R*0.25); ctx.lineTo(-4,-R*0.95); ctx.stroke();
+  ctx.restore();
+  // segundo brazo tenue
+  ctx.save(); ctx.translate(W*0.72,cy); ctx.rotate(-ang*0.9);
+  ctx.strokeStyle='rgba(6,8,8,0.5)'; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-R*0.92); ctx.stroke();
+  ctx.restore();
+}
+function drawDashboard(){
+  const dashY=H*0.74;
+  // silueta del salpicadero
+  const g=ctx.createLinearGradient(0,dashY,0,H); g.addColorStop(0,'#0a0d0c'); g.addColorStop(0.15,'#0d1110'); g.addColorStop(1,'#050706');
+  ctx.fillStyle=g;
+  ctx.beginPath(); ctx.moveTo(0,H); ctx.lineTo(0,dashY+18);
+  ctx.quadraticCurveTo(W*0.5,dashY-26, W,dashY+18); ctx.lineTo(W,H); ctx.closePath(); ctx.fill();
+  // volante
+  ctx.strokeStyle='rgba(5,7,6,0.95)'; ctx.lineWidth=14;
+  ctx.save(); ctx.translate(W*0.30,H*1.02); ctx.rotate(steer*0.5);
+  ctx.beginPath(); ctx.arc(0,0,H*0.24,Math.PI*1.15,Math.PI*1.85); ctx.stroke();
+  ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(-H*0.16,-H*0.14); ctx.lineTo(0,0); ctx.lineTo(H*0.16,-H*0.14); ctx.stroke();
+  ctx.restore();
+  // cuadro analógico: velocímetro
+  gauge(W*0.30, dashY+8, 34, speed/maxSpeed, '#e8b25a', Math.round(speed)+'');
+  // temperatura / rpm secundario
+  gauge(W*0.18, dashY+16, 20, 0.4+0.5*(speed/maxSpeed), '#8ea', '');
+  // CRT vectorial verde (nav)
+  drawCRT(W*0.5-46, dashY+2, 92, 46);
+  // paquete en el asiento del copiloto
+  drawPackage(W*0.80, dashY+8);
+  // teléfono
+  const ringing = state===S.CALL;
+  ctx.fillStyle= ringing? (Math.floor(performance.now()/300)%2? '#e0454a':'#5a1416') : '#12201a';
+  roundRect(W*0.62, dashY-4, 22, 34, 4); ctx.fill();
+}
+function gauge(x,y,r,val,col,label){
+  ctx.save();
+  ctx.strokeStyle='rgba(120,130,120,0.25)'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.arc(x,y,r,Math.PI*0.8,Math.PI*2.2); ctx.stroke();
+  const a=Math.PI*0.8 + Math.max(0,Math.min(1,val))*(Math.PI*1.4);
+  ctx.strokeStyle=col; ctx.lineWidth=3; ctx.shadowColor=col; ctx.shadowBlur=8;
+  ctx.beginPath(); ctx.arc(x,y,r,Math.PI*0.8,a); ctx.stroke(); ctx.shadowBlur=0;
+  ctx.strokeStyle=col; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+Math.cos(a)*r*0.8,y+Math.sin(a)*r*0.8); ctx.stroke();
+  if(label){ ctx.fillStyle=col; ctx.font='bold 13px "Courier New",monospace'; ctx.textAlign='center'; ctx.fillText(label,x,y+r+14); }
+  ctx.restore();
+}
+function drawCRT(x,y,w,h){
+  ctx.save();
+  ctx.fillStyle='#04120a'; roundRect(x,y,w,h,4); ctx.fill();
+  ctx.strokeStyle='rgba(110,240,176,0.25)'; ctx.lineWidth=1; ctx.strokeRect(x+0.5,y+0.5,w-1,h-1);
+  ctx.strokeStyle='rgba(110,240,176,0.75)'; ctx.lineWidth=1.4; ctx.shadowColor='#6ef0b0'; ctx.shadowBlur=6;
+  // "ruta" vectorial que serpentea con la curva
+  ctx.beginPath();
+  for(let i=0;i<=20;i++){ const p=i/20; const px=x+w*0.5 + Math.sin((dist*0.002)+p*4+curveAt(p*2)*2)*w*0.32*(1-p*0.3);
+    const py=y+h-4-p*(h-8); if(i===0)ctx.moveTo(px,py); else ctx.lineTo(px,py); }
+  ctx.stroke(); ctx.shadowBlur=0;
+  // scanlines
+  ctx.fillStyle='rgba(0,0,0,0.25)'; for(let sy=y;sy<y+h;sy+=3) ctx.fillRect(x,sy,w,1);
+  ctx.fillStyle='rgba(110,240,176,0.7)'; ctx.font='7px "Courier New",monospace'; ctx.textAlign='left';
+  ctx.fillText('N-'+(Math.floor(dist/100)%900), x+5,y+9);
+  ctx.restore();
+}
+function drawPackage(x,y){
+  const br=6+Math.sin(performance.now()*0.0016)*(state===S.CALL?1.6:0.7); // "respira"
+  ctx.save(); ctx.translate(x,y+br*0.2);
+  ctx.fillStyle='#6a5433'; // papel marrón
+  ctx.strokeStyle='#3d2f1c'; ctx.lineWidth=1;
+  roundRect(-30,-2,60,42,3); ctx.fill(); ctx.stroke();
+  // pliegues + cordel
+  ctx.strokeStyle='rgba(30,22,12,0.7)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,-2); ctx.lineTo(0,40); ctx.moveTo(-30,19); ctx.lineTo(30,19); ctx.stroke();
+  // sombra bajo el paquete
+  ctx.fillStyle='rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(0,42,32,5,0,0,7); ctx.fill();
+  ctx.restore();
+}
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function drawHUD(){
+  let s='<span class="r">'+(radio===0?'RADIO OFF':(RADIO[radio]?RADIO[radio].name.split(' · ')[0]:''))+'</span>';
+  s+=' &nbsp; '+Math.round(speed)+' km/h';
+  if(damage>10) s+=' &nbsp; <span class="warn">CHAPA '+(damage<60?'TOCADA':'DEFORMADA')+'</span>';
+  hudEl.innerHTML=s;
+}
+
+/* ---------- main loop ---------- */
+function loop(now){
+  let dt=(now-last)/1000; last=now; if(dt>0.05)dt=0.05;
+  update(dt); render();
+  requestAnimationFrame(loop);
+}
+/* ---------- controles táctiles ---------- */
+const TOUCH = matchMedia('(pointer:coarse)').matches || ('ontouchstart' in window) || navigator.maxTouchPoints>0;
+if(TOUCH){ document.body.classList.add('touch'); document.addEventListener('touchmove',e=>{e.preventDefault();},{passive:false}); }
+function bindHold(id,k){
+  const el=document.getElementById(id); if(!el) return;
+  const dn=e=>{ e.preventDefault(); keys[k]=true; el.classList.add('on'); };
+  const up=e=>{ e.preventDefault(); keys[k]=false; el.classList.remove('on'); };
+  el.addEventListener('pointerdown',dn); el.addEventListener('pointerup',up);
+  el.addEventListener('pointerleave',up); el.addEventListener('pointercancel',up);
+}
+function bindTap(id,fn){ const el=document.getElementById(id); if(!el) return;
+  el.addEventListener('pointerdown',e=>{ e.preventDefault(); el.classList.add('on'); fn(); });
+  el.addEventListener('pointerup',e=>{ e.preventDefault(); el.classList.remove('on'); });
+  el.addEventListener('pointerleave',()=>el.classList.remove('on'));
+}
+bindHold('t-left','a'); bindHold('t-right','d'); bindHold('t-gas','w'); bindHold('t-brake','s');
+bindTap('t-radio',cycleRadio);
+bindTap('t-stop',tryStop);
+bindTap('t-act',()=>{ if(state===S.BOOT) startGame(); else onEnter(); });
+(function(){ const el=document.getElementById('t-talk'); if(!el)return;
+  el.addEventListener('pointerdown',e=>{ e.preventDefault(); el.classList.add('on'); startTalk(); });
+  const end=e=>{ if(e)e.preventDefault(); el.classList.remove('on'); endTalk(); };
+  el.addEventListener('pointerup',end); el.addEventListener('pointerleave',end); el.addEventListener('pointercancel',end);
+})();
+let _touchSig='';
+function syncTouch(){
+  if(!TOUCH) return;
+  const sig = state+'|'+((atStop&&!stopDone)?1:0);
+  if(sig===_touchSig) return; _touchSig=sig;
+  document.getElementById('t-stop').classList.toggle('show', state===S.DRIVE && atStop && !stopDone);
+  document.getElementById('t-talk').classList.toggle('show', state===S.CALL);
+  document.getElementById('t-act').textContent =
+    state===S.BOOT?'✆ Arrancar':(state===S.CALL?'✆ Descolgar':(state===S.STOP?'✆ Continuar':'✆ Acción'));
+}
+const _loopRef = loop;
+loop = function(now){ syncTouch(); _loopRef(now); };
+
+// primer render estático de fondo tras la pantalla de inicio
+syncTouch(); render();
+</script>
+</body>
+</html>

@@ -1,91 +1,76 @@
-# Dalinian Roads · Lithograph Dream — Fase 0 (prototipo de estilo)
+# MUNDO GRIS — Edición nº001
 
-Prototipo jugable en el navegador que fusiona **"Dalinian Roads"** (surrealismo de
-carretera tipo Dalí) con **"Lithograph Dream"** (grabado / litografía de alto
-contraste), sobre **física de conducción arcade**, **clima** y **ciclo día/noche**.
+Repositorio con dos proyectos independientes:
 
-Es la **Fase 0** recomendada en el informe técnico: un corte vertical de una sola
-escena — la composición clave de la imagen de referencia (carretera recta con
-doble línea amarilla, coche visto desde atrás, "sol-sello" rojo y siluetas
-imposibles en el horizonte) — construido para validar el *look* antes que nada.
+- **`MUNDO GRIS ECOSISTEMA22/`** — todas las webs del medio digital
+  **Mundo Gris**: la portada (`index.html`, con el gato director) y la versión
+  con el portfolio **ACADEM(IA) GRIS** de Edu Naudín (`academia-gris.html`).
+- **`juego-euskadi-norte/`** — **EUSKADI NORTE**, un juego narrativo de
+  conducción nocturna (thriller político, prototipo jugable en navegador).
 
-![Prototipo — día](docs/preview.png)
-![Prototipo — noche + lluvia](docs/preview-night-rain.png)
+El `index.html` de la raíz solo redirige a `MUNDO GRIS ECOSISTEMA22/index.html`.
 
-## Cómo ejecutar
+Todos los textos son originales de redacción; las imágenes se sirven vía
+Wikimedia Commons y los vídeos vía YouTube.
 
-No hay build. Todo es autocontenido (Three.js va **vendorizado** en `vendor/`, así
-que funciona sin conexión). Los módulos ES necesitan servirse por HTTP:
+## Cómo verlo
+
+Son webs estáticas autocontenidas (sin build, sin dependencias locales).
+Basta con abrir el archivo en el navegador:
 
 ```bash
-cd edugrey
+# opción 1: abrir directamente
+xdg-open "MUNDO GRIS ECOSISTEMA22/index.html"  # Linux
+open "MUNDO GRIS ECOSISTEMA22/index.html"      # macOS
+
+# opción 2: servirlo por HTTP (recomendado, evita restricciones de origen)
 python3 -m http.server 8099
 # abre http://127.0.0.1:8099/
 ```
 
-(Abrir `index.html` con `file://` no funciona: el navegador bloquea los módulos ES.)
+En Windows/macOS/Linux también puedes usar los scripts incluidos:
 
-## Controles
+```bash
+./run_server.sh          # Mac/Linux
+run_server.bat           # Windows
+```
 
-| Tecla | Acción |
-|------|--------|
-| `W` / `S` | acelerar / frenar |
-| `A` / `D` | girar (solo muerde con velocidad; menos agarre bajo lluvia) |
-| `N` | ciclar hora del día (día → atardecer → noche) |
-| `R` | lluvia on/off |
-| `P` | pausa |
+> Las fuentes (Google Fonts), las imágenes (Wikimedia Commons) y los vídeos
+> (YouTube) se cargan de la red, así que hace falta conexión para verlo
+> completo. Si una imagen no carga, la página genera un sustituto con arte
+> generativo en `<canvas>`.
 
-## La arquitectura: dos capas desacopladas
+## Detalles técnicos
 
-Sigue exactamente la tesis central del informe — **el estilo se resuelve en
-post-proceso, no en la iluminación**, para que el look gráfico plano y la
-simulación dinámica no compitan.
-
-1. **Capa de simulación** (`scene` → render target)
-   - Física de coche arcade (throttle/brake/drag, dirección dependiente de la
-     velocidad y del agarre, balanceo de carrocería).
-   - Carretera euclidiana legible: strip largo con doble amarilla, la textura
-     hace scroll para fingir avance; los props se reciclan → conducción infinita.
-   - Mid-ground surreal **en 3D real** hacia el que conduces (arco, obelisco,
-     losas de collage, rocas, tráfico) + un **skybox-collage plano** con el
-     sol-sello, esfera y diamante flotantes, nubes de papel rasgado y montañas.
-   - Sombreado **cel** (`MeshToonMaterial` con rampa de 3 bandas duras).
-
-2. **Capa litográfica** (un único pase GLSL3 a pantalla completa)
-   - **Contornos de tinta**: discontinuidad de profundidad + sobel de luminancia.
-   - **Dither ordenado (Bayer 4×4)**: entinta por trama las zonas de sombra
-     (efecto grabado), anclado a `gl_FragCoord` → sin "hervor" temporal.
-   - **Grano de papel + mottle + viñeta**.
-   - **Grade por hora del día** y **lluvia** (estrías de grafito animadas): se
-     mueven *por debajo* del pase de estilo, remapeando lo que recibe el shader
-     en vez de pelearse con él.
-
-Todo el arte es **procedural** (texturas dibujadas en `<canvas>`): cero assets
-externos, cero dependencias más allá de Three.js vendorizado.
-
-## Legibilidad de la carretera (regla de diseño)
-
-Lo colisionable/jugable (carretera, coches, líneas) va con **máximo contraste y
-contornos nítidos**; lo surreal (esfera, diamante, montañas, sol) vive en el
-skybox o fuera del corredor navegable y solo "flota" suavemente cuando está lejos
-de la calzada. Es la regla "la carretera es real, el mundo no".
-
-## Qué falta (siguientes fases del informe)
-
-- **Fase 2** — validar estabilidad del dither/hatching en un ciclo día/noche
-  completo bajo lluvia/niebla en el hardware objetivo (aquí ya se sostiene, pero
-  no está medido); probar *hatching* con Tonal Art Maps como alternativa al dither.
-- **Fase 3** — playtest de legibilidad de la carretera con curvas reales.
-- **Fase 4** — sistema social asíncrono (monólogos de voz como "signos" tipo
-  Death Stranding).
-- Migración a motor real (UE5 + Chaos Vehicles o Unity + RCC) si el corte de
-  estilo convence — ver `docs/DESIGN.md`.
+- **HTML/CSS/JS puro**, sin frameworks ni dependencias.
+- **Accesibilidad y movimiento**: respeta `prefers-reduced-motion` (desactiva
+  animaciones, ticker y parallax).
+- **Interacción**:
+  - Editorial narrado por el director con la Web Speech API (síntesis de voz en
+    español) y un gato SVG que mueve la boca al hablar.
+  - «El Lab»: simulación de difusión ruido → imagen en `<canvas>`, sincronizada
+    con el scroll.
+  - Cursor personalizado, micro-tilt 3D en las tarjetas, ticker de titulares y
+    reveals al hacer scroll.
+- **Responsive** hasta móvil, con menú hamburguesa.
 
 ## Estructura
 
 ```
-index.html                 prototipo completo (sim + post)
-vendor/three.module.js      Three.js r160 vendorizado (offline)
-docs/preview*.png           capturas
-docs/DESIGN.md              diseño técnico condensado desde el informe
+index.html                          # redirección a MUNDO GRIS ECOSISTEMA22/
+MUNDO GRIS ECOSISTEMA22/
+  index.html                        # MUNDO GRIS · portada (con gato director)
+  academia-gris.html                # MUNDO GRIS + portfolio ACADEM(IA) GRIS
+juego-euskadi-norte/
+  euskadi-norte.html                # EUSKADI NORTE · juego de conducción
+run_server.sh                       # servidor HTTP local (Mac/Linux)
+run_server.bat                      # servidor HTTP local (Windows)
 ```
+
+## Créditos
+
+- **Redacción**: Don Cornelio Malasombra (director), Dani Kroll (Tecnología),
+  Irene Valdés (Internacional), Bruno Cendra (Reportajes) y Ramón Escario
+  (Opinión).
+- Imágenes: Wikimedia Commons. Vídeos: YouTube.
+- Instagram: [@nuestromundogris](https://instagram.com/nuestromundogris)
