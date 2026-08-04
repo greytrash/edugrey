@@ -1,0 +1,95 @@
+name: Montaje final Alizza
+
+on:
+  push:
+    branches:
+      - video-montaje-alizza-20260804
+  workflow_dispatch:
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Download clips and song
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p media normalized out
+          cat > media/urls.txt <<'EOF'
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260804_174849_38691f7b-a1ae-4887-8eb7-863fc2c6a764.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260804_175631_c108ffd5-7c21-4b3d-861a-f2e879a708bb.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260804_180822_1cdf0a78-3e99-4513-957c-3994db75bc15.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260804_181834_92136a96-6adc-414d-9f2a-0b8c5edf0d0e.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260804_182928_6179d45f-abfa-49f6-95b1-7cdc575ee108.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260804_183635_8e02f919-36d4-4062-b1a8-8caf4b29df0e.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260804_185119_e05bb9dc-1a09-4ed3-a507-ec9b0b06c387.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260804_185917_d1e649af-84ef-4bf9-b1b6-1c0c2ed02004.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260803_211038_6c011e34-38b2-4fd2-b2e9-7d1a08196b33.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260804_193649_70b5a8f8-602f-4023-b94c-025925c77756.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260803_211041_c215094b-c8de-417f-a852-3c927ff13f06.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260804_193708_43050286-d4aa-42b3-a34b-f01e37a4c558.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260804_193720_7ccd908b-2a1b-4404-9056-29b8980ff5ea.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260803_211042_eb81954b-854c-491b-942c-bad6179507e7.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260804_193736_3948002b-06d5-4c2d-9fd2-c83e40838495.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260804_193753_dd292a48-3b65-4323-85c2-ad8fe5ab825b.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260804_160348_138d2c17-c035-4bd7-ad43-d309c29dbb66.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260804_193809_c1383033-0f30-4e9b-9e4c-7cc7283e0d13.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260803_211043_cf945245-8248-40eb-a1d5-4e4242984157.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260804_193831_b5c5b218-4ba9-43e6-ba5a-9f9c054ce82f.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260804_210113_8a11b997-6423-479f-9647-d1a2705fd74c.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260804_153508_50319fbd-b60a-4c51-9049-01a03bbf42dd.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260804_153508_957c2643-cf73-4a5d-94be-47f7738e4a79.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260804_153508_955b6d96-0625-45fd-a137-b596a41147ef.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260804_153508_eee5dd58-6e45-4ca6-8ec3-e3ad19ef6b9c.mp4
+          https://d8j0ntlcm91z4.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/hf_20260804_153508_c2f28bc0-eee8-440b-a9bd-2f180460a811.mp4
+          EOF
+
+          i=1
+          while IFS= read -r url; do
+            printf -v n "%02d" "$i"
+            curl -fL --retry 4 --retry-delay 2 "$url" -o "media/${n}.mp4"
+            i=$((i+1))
+          done < media/urls.txt
+
+          curl -fL --retry 4 --retry-delay 2 \
+            "https://d2ol7oe51mr4n9.cloudfront.net/user_39FawnWdBDpWoQ2ZrVdxTUqPeLj/ff77042f-7064-4966-a0dc-34ab0534df1b.mp3" \
+            -o media/song.mp3
+
+      - name: Normalize clips
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in media/[0-9][0-9].mp4; do
+            b=$(basename "$f")
+            ffmpeg -y -i "$f" \
+              -vf "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,fps=24,format=yuv420p" \
+              -an -c:v libx264 -preset medium -crf 18 -movflags +faststart "normalized/$b"
+          done
+          : > normalized/concat.txt
+          for f in normalized/[0-9][0-9].mp4; do echo "file '$PWD/$f'" >> normalized/concat.txt; done
+
+      - name: Assemble four-minute videoclip
+        shell: bash
+        run: |
+          set -euo pipefail
+          ffmpeg -y -f concat -safe 0 -i normalized/concat.txt \
+            -c copy out/picture.mp4
+
+          ffmpeg -y -i out/picture.mp4 -stream_loop -1 -i media/song.mp3 \
+            -filter_complex "[1:a]afade=t=in:st=0:d=1.5,afade=t=out:st=236:d=4,apad=pad_dur=240[a]" \
+            -map 0:v:0 -map "[a]" -t 240 \
+            -c:v copy -c:a aac -b:a 320k -movflags +faststart \
+            out/ALIZZA_SE_ACABO_VIDEOCLIP_FINAL_4MIN.mp4
+
+      - name: Upload final videoclip
+        uses: actions/upload-artifact@v4
+        with:
+          name: ALIZZA-SE-ACABO-VIDEOCLIP-FINAL
+          path: out/ALIZZA_SE_ACABO_VIDEOCLIP_FINAL_4MIN.mp4
+          retention-days: 7
