@@ -9,6 +9,7 @@ Higgsfield y la secuencia de llamadas MCP.
 |---|---|---|
 | 01 | `MUNDO GRIS — el ecosistema` (artifact de Claude) | [`01-mundo-gris.md`](01-mundo-gris.md) |
 | 02 | `grey-ai.higgsfield.app` (web en Higgsfield) | [`02-grey-ai.md`](02-grey-ai.md) |
+| 03 | Plano Seedance 2.5 · gente corriendo hacia cámara (b-roll de impacto) | [`03-seedance-shot.md`](03-seedance-shot.md) |
 
 ## Estado
 
