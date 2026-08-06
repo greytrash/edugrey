@@ -1,38 +1,55 @@
 name: Fetch spot videos
 
-# Utilidad manual: descarga los MP4 generados (los enlaces de Kling caducan a
-# las 24 h) y los commitea en docs/spots/ de la rama desde la que se lanza.
+# Utilidad de un solo uso: descarga los MP4 generados por Kling (sus enlaces
+# caducan a las 24 h y el entorno de la sesión no puede alcanzar el CDN) y los
+# commitea en docs/spots/. Se auto-desactiva: solo actúa si los MP4 aún no
+# existen en la rama.
 on:
+  push:
+    branches:
+      - claude/short-film-spot-versions-pl49sh
   workflow_dispatch:
     inputs:
       spot_a_url:
-        description: URL of spot-a-dynamic.mp4
-        required: true
+        description: URL of spot-a-dynamic.mp4 (overrides default)
+        required: false
       spot_b_url:
-        description: URL of spot-b-educational.mp4
-        required: true
+        description: URL of spot-b-educational.mp4 (overrides default)
+        required: false
 
 permissions:
   contents: write
+
+env:
+  DEFAULT_SPOT_A_URL: "https://v15-kling.klingai.com/bs2/upload-ylab-stunt-sgp/b4d35cf0-42a2-4dab-8e5e-e8f2403346a9-YhjOy-Yqk6qUbccGWn5ojA-output.mp4?x-kcdn-pid=112372"
+  DEFAULT_SPOT_B_URL: "https://v15-kling.klingai.com/bs2/upload-ylab-stunt-sgp/c2ef4fdf-fac2-428d-a30a-b7a194c0950d-VbNuTZp7uxEPZhyQbkcLqA-output.mp4?x-kcdn-pid=112372"
 
 jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Download videos
+      - name: Download videos (if missing)
         run: |
+          if [ -f docs/spots/spot-a-dynamic.mp4 ] && [ -f docs/spots/spot-b-educational.mp4 ]; then
+            echo "Videos already in the branch; nothing to do."
+            echo "SKIP=1" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          SPOT_A="${{ inputs.spot_a_url }}"; SPOT_A="${SPOT_A:-$DEFAULT_SPOT_A_URL}"
+          SPOT_B="${{ inputs.spot_b_url }}"; SPOT_B="${SPOT_B:-$DEFAULT_SPOT_B_URL}"
           mkdir -p docs/spots
-          curl -fSL -o docs/spots/spot-a-dynamic.mp4 "${{ inputs.spot_a_url }}"
-          curl -fSL -o docs/spots/spot-b-educational.mp4 "${{ inputs.spot_b_url }}"
+          curl -fSL -o docs/spots/spot-a-dynamic.mp4 "$SPOT_A"
+          curl -fSL -o docs/spots/spot-b-educational.mp4 "$SPOT_B"
           file docs/spots/*.mp4
           # ambos deben ser MP4 reales, no páginas de error
           file docs/spots/spot-a-dynamic.mp4 | grep -qi 'MP4\|ISO Media'
           file docs/spots/spot-b-educational.mp4 | grep -qi 'MP4\|ISO Media'
       - name: Commit videos
+        if: env.SKIP != '1'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/spots/spot-a-dynamic.mp4 docs/spots/spot-b-educational.mp4
-          git commit -m "Add rendered spot videos (A: dynamic, B: educational)"
+          git commit -m "Add rendered spot videos (A: dynamic, B: educational) [skip ci]"
           git push
