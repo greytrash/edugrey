@@ -1,0 +1,38 @@
+name: Fetch spot videos
+
+# Utilidad manual: descarga los MP4 generados (los enlaces de Kling caducan a
+# las 24 h) y los commitea en docs/spots/ de la rama desde la que se lanza.
+on:
+  workflow_dispatch:
+    inputs:
+      spot_a_url:
+        description: URL of spot-a-dynamic.mp4
+        required: true
+      spot_b_url:
+        description: URL of spot-b-educational.mp4
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download videos
+        run: |
+          mkdir -p docs/spots
+          curl -fSL -o docs/spots/spot-a-dynamic.mp4 "${{ inputs.spot_a_url }}"
+          curl -fSL -o docs/spots/spot-b-educational.mp4 "${{ inputs.spot_b_url }}"
+          file docs/spots/*.mp4
+          # ambos deben ser MP4 reales, no páginas de error
+          file docs/spots/spot-a-dynamic.mp4 | grep -qi 'MP4\|ISO Media'
+          file docs/spots/spot-b-educational.mp4 | grep -qi 'MP4\|ISO Media'
+      - name: Commit videos
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/spots/spot-a-dynamic.mp4 docs/spots/spot-b-educational.mp4
+          git commit -m "Add rendered spot videos (A: dynamic, B: educational)"
+          git push
