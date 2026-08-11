@@ -24,6 +24,14 @@ jobs:
             echo "El one-take ya existe; nada que hacer."
           fi
 
+      - name: Instalar ffmpeg
+        if: env.SKIP != '1'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
+
       - name: Descargar planos
         if: env.SKIP != '1'
         run: |
