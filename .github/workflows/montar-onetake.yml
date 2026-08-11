@@ -1,0 +1,83 @@
+name: Montar one-take La noche amarilla
+
+# Descarga los 7 planos encadenados de Higgsfield (su CDN no es accesible desde
+# la sesión), los normaliza a un formato común y los concatena en un único
+# plano secuencia. Se auto-desactiva cuando el montaje ya existe en la rama.
+on:
+  push:
+    branches:
+      - claude/short-film-spot-versions-pl49sh
+
+permissions:
+  contents: write
+
+jobs:
+  montar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Comprobar si ya está montado
+        run: |
+          if [ -f docs/noche-amarilla/la-noche-amarilla-onetake.mp4 ]; then
+            echo "SKIP=1" >> "$GITHUB_ENV"
+            echo "El one-take ya existe; nada que hacer."
+          fi
+
+      - name: Descargar planos
+        if: env.SKIP != '1'
+        run: |
+          mkdir -p raw
+          base="https://d8j0ntlcm91z4.cloudfront.net/user_2vZruksM5o1HAI0XURppaTLu2pE"
+          # Orden narrativo del plano secuencia
+          curl -fSL -o raw/1.mp4 "$base/hf_20260810_182957_28479002-641b-4192-aeb5-6b772b0aee2a.mp4"
+          curl -fSL -o raw/2.mp4 "$base/hf_20260810_190038_b8a89b36-f375-4a19-b403-6900bcc6b7c0.mp4"
+          curl -fSL -o raw/3.mp4 "$base/hf_20260810_190543_c2c99e80-adcf-42f6-80d2-9daf570b8d83.mp4"
+          curl -fSL -o raw/4.mp4 "$base/hf_20260810_191011_ba367dee-f1df-40a9-acae-4cda1d7882a4.mp4"
+          curl -fSL -o raw/5.mp4 "$base/hf_20260810_191359_e770f649-ff27-4a92-ab80-9e4bb28c9246.mp4"
+          curl -fSL -o raw/6.mp4 "$base/hf_20260811_001355_35376713-c0c0-45e1-a66e-c018443abb76.mp4"
+          curl -fSL -o raw/7.mp4 "$base/hf_20260811_001425_faede629-c840-4f90-919f-28d20abc6bfc.mp4"
+          for f in raw/*.mp4; do
+            file "$f" | grep -qi 'MP4\|ISO Media' || { echo "FALLO: $f no es un MP4"; exit 1; }
+          done
+          ls -la raw/
+
+      - name: Normalizar y concatenar
+        if: env.SKIP != '1'
+        run: |
+          set -e
+          mkdir -p norm docs/noche-amarilla
+          VF="scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24,format=yuv420p"
+          for i in 1 2 3 4 5 6 7; do
+            f="raw/$i.mp4"
+            ffprobe -v error -show_entries stream=codec_type,width,height,r_frame_rate -of csv "$f"
+            if ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "$f" | grep -q .; then
+              # tiene pista de audio: se conserva
+              ffmpeg -nostdin -v error -y -i "$f" \
+                -map 0:v:0 -map 0:a:0 -vf "$VF" \
+                -c:v libx264 -crf 18 -preset medium \
+                -c:a aac -b:a 192k -ar 48000 -ac 2 "norm/$i.mp4"
+            else
+              # sin audio: se añade silencio para que el concat no se descuadre
+              ffmpeg -nostdin -v error -y -i "$f" \
+                -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=48000 \
+                -map 0:v:0 -map 1:a:0 -shortest -vf "$VF" \
+                -c:v libx264 -crf 18 -preset medium \
+                -c:a aac -b:a 192k -ar 48000 -ac 2 "norm/$i.mp4"
+            fi
+          done
+          for i in 1 2 3 4 5 6 7; do echo "file '$PWD/norm/$i.mp4'"; done > concat.txt
+          cat concat.txt
+          ffmpeg -nostdin -v error -y -f concat -safe 0 -i concat.txt \
+            -c copy -movflags +faststart docs/noche-amarilla/la-noche-amarilla-onetake.mp4
+          echo "=== RESULTADO ==="
+          ffprobe -v error -show_entries format=duration,size -show_entries stream=codec_type,codec_name,width,height,r_frame_rate -of default=noprint_wrappers=1 docs/noche-amarilla/la-noche-amarilla-onetake.mp4
+
+      - name: Commit del montaje
+        if: env.SKIP != '1'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/noche-amarilla/la-noche-amarilla-onetake.mp4
+          git commit -m "Montar plano secuencia de La noche amarilla (7 planos, ~102 s) [skip ci]"
+          git push
