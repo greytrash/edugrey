@@ -55,7 +55,9 @@ jobs:
         run: |
           set -e
           mkdir -p norm docs/noche-amarilla
-          VF="scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24,format=yuv420p"
+          # Los planos son verticales nativos (720x1280): se monta en vertical
+          # para no perder resolucion ni meter bandas negras.
+          VF="scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24,format=yuv420p"
           for i in 1 2 3 4 5 6 7; do
             f="raw/$i.mp4"
             ffprobe -v error -show_entries stream=codec_type,width,height,r_frame_rate -of csv "$f"

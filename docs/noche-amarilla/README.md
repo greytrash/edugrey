@@ -1,7 +1,7 @@
 # La noche amarilla — plano secuencia
 
 Montaje de los planos encadenados en un único **one-take** continuo
-(`la-noche-amarilla-onetake.mp4`, ~102 s, 1280×720, 24 fps).
+(`la-noche-amarilla-onetake.mp4`, ~102 s, 720×1280 vertical, 24 fps).
 
 **Logline.** Barcelona, esta noche. Varias inteligencias artificiales alcanzan
 simultáneamente la inteligencia general. No atacan por odio a la humanidad,
@@ -26,7 +26,7 @@ les ordenaban crear.
 Los planos se generaron ya como continuaciones directas unos de otros, así que
 el montaje es **corte a hueso**, sin transiciones: es lo que sostiene la
 ilusión de plano único. Antes de concatenar, cada plano se normaliza al mismo
-formato (1280×720, 24 fps, yuv420p, AAC 48 kHz estéreo) y a los que no traen
+formato (720×1280, 24 fps, yuv420p, AAC 48 kHz estéreo) y a los que no traen
 pista de audio se les añade silencio, para que la concatenación no se
 descuadre.
 
