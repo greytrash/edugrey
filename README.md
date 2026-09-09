@@ -103,6 +103,8 @@ python3 tools/person_site_queries.py config.json --urls google --salida consulta
 ```
 
 Entrada: JSON con `nombres`, `sitios_oficiales`, `sitios_no_oficiales` y,
-opcionalmente, `palabras_clave`. Salida: el mismo objeto con `consultas_generadas`
-(`"Nombre" site:dominio` y `"Nombre" "palabra clave"`) y, con `--urls`, enlaces
-listos para abrir en Google, DuckDuckGo o Bing.
+opcionalmente, `palabras_clave` (cada una puede ser un texto o una lista de
+términos, p. ej. `["lista", "periodistas"]`). Salida: el mismo objeto con
+`consultas_generadas` (`"Nombre" site:dominio` y `"Nombre" "palabra clave"`) y,
+con `--urls`, enlaces listos para abrir en Google, DuckDuckGo o Bing. La salida
+vuelve a ser una entrada válida, así que puede reutilizarse como configuración.

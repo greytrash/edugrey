@@ -7,6 +7,7 @@ determinista de consultas:
 
   * "Nombre" site:dominio            → para cada nombre × cada sitio
   * "Nombre" "palabra clave"          → para cada nombre × cada palabra clave
+  * "Nombre" "término 1" "término 2"  → si la palabra clave es una lista de términos
 
 Sin dependencias externas. Uso:
 
@@ -48,6 +49,16 @@ def _limpiar(valores: Iterable[str] | None) -> list[str]:
     return salida
 
 
+def _palabra_clave(entrada) -> str:
+    """Convierte una palabra clave (str o lista de términos) en texto entrecomillado.
+
+    "periodista"              → '"periodista"'
+    ["lista", "periodistas"]  → '"lista" "periodistas"'
+    """
+    terminos = entrada if isinstance(entrada, (list, tuple)) else [entrada]
+    return " ".join(f'"{t}"' for t in _limpiar(terminos))
+
+
 def _dominio(sitio: str) -> str:
     """Convierte «https://www.boe.es/ruta» o «boe.es» en «boe.es»."""
     s = sitio.strip()
@@ -69,7 +80,7 @@ def generar_consultas(config: dict) -> list[str]:
     nombres = _limpiar(config.get("nombres"))
     oficiales = _limpiar(_dominio(s) for s in config.get("sitios_oficiales") or [])
     no_oficiales = _limpiar(_dominio(s) for s in config.get("sitios_no_oficiales") or [])
-    palabras = _limpiar(config.get("palabras_clave"))
+    palabras = _limpiar(_palabra_clave(p) for p in config.get("palabras_clave") or [])
 
     consultas: list[str] = []
     for bloque in (oficiales, no_oficiales):
@@ -78,9 +89,9 @@ def generar_consultas(config: dict) -> list[str]:
                 consultas.append(f'"{nombre}" site:{sitio}')
     for nombre in nombres:
         for palabra in palabras:
-            if palabra == nombre:
+            if palabra == f'"{nombre}"':
                 continue
-            consultas.append(f'"{nombre}" "{palabra}"')
+            consultas.append(f'"{nombre}" {palabra}')
     return _limpiar(consultas)
 
 
@@ -90,7 +101,7 @@ def construir_salida(config: dict, motor: str | None = None) -> dict:
         "nombres": _limpiar(config.get("nombres")),
         "sitios_oficiales": _limpiar(_dominio(s) for s in config.get("sitios_oficiales") or []),
         "sitios_no_oficiales": _limpiar(_dominio(s) for s in config.get("sitios_no_oficiales") or []),
-        "palabras_clave": _limpiar(config.get("palabras_clave")),
+        "palabras_clave": [p for p in config.get("palabras_clave") or [] if _palabra_clave(p)],
         "consultas_generadas": consultas,
     }
     if motor:

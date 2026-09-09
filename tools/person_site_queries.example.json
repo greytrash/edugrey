@@ -4,7 +4,7 @@
     "Eduardo Naudín Escuder",
     "Grey Trash",
     "Edu Grey",
-    "Inés Hernad",
+    "Inés Hernand",
     "Lorena G. Maldonado",
     "Mundo Gris"
   ],
@@ -29,6 +29,8 @@
     "Ministerio del Interior",
     "CNI",
     "Mundo Gris",
-    "periodista"
+    "periodista",
+    "El Confidencial",
+    ["lista", "periodistas"]
   ]
 }
