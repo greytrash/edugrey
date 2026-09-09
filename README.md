@@ -89,3 +89,20 @@ vendor/three.module.js      Three.js r160 vendorizado (offline)
 docs/preview*.png           capturas
 docs/DESIGN.md              diseño técnico condensado desde el informe
 ```
+
+## Herramienta auxiliar: consultas «persona × sitio»
+
+`tools/person_site_queries.py` genera, sin dependencias, el conjunto completo y
+determinista de consultas de búsqueda para cruzar una lista de nombres o alias
+con sitios oficiales, sitios no oficiales y palabras clave:
+
+```bash
+python3 tools/person_site_queries.py tools/person_site_queries.example.json
+python3 tools/person_site_queries.py config.json --formato txt
+python3 tools/person_site_queries.py config.json --urls google --salida consultas.json
+```
+
+Entrada: JSON con `nombres`, `sitios_oficiales`, `sitios_no_oficiales` y,
+opcionalmente, `palabras_clave`. Salida: el mismo objeto con `consultas_generadas`
+(`"Nombre" site:dominio` y `"Nombre" "palabra clave"`) y, con `--urls`, enlaces
+listos para abrir en Google, DuckDuckGo o Bing.
