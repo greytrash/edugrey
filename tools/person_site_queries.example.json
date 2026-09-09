@@ -1,0 +1,36 @@
+{
+  "nombres": [
+    "Eduardo Naudín",
+    "Eduardo Naudín Escuder",
+    "Grey Trash",
+    "Edu Grey",
+    "Inés Hernand",
+    "Lorena G. Maldonado",
+    "Mundo Gris"
+  ],
+  "sitios_oficiales": [
+    "boe.es",
+    "interior.gob.es",
+    "congreso.es",
+    "transparencia.gob.es",
+    "policia.es",
+    "guardiacivil.es",
+    "mir.es"
+  ],
+  "sitios_no_oficiales": [
+    "acom.es",
+    "elconfidencial.com",
+    "elespanol.com",
+    "okdiario.com",
+    "x.com",
+    "linkedin.com"
+  ],
+  "palabras_clave": [
+    "Ministerio del Interior",
+    "CNI",
+    "Mundo Gris",
+    "periodista",
+    "El Confidencial",
+    ["lista", "periodistas"]
+  ]
+}
