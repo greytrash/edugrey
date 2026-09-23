@@ -2,6 +2,9 @@ name: Alizza fetch proxies
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ claude/clever-heisenberg-gubfbm ]
+    paths: [ 'alizza/run_fetch.txt' ]
 
 permissions:
   contents: write
