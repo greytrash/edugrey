@@ -27,7 +27,8 @@ def cut(i_s):
     o = os.path.join(tmp, f"seg_{i:04d}.mp4")
     vf = (f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},fps={FPS},format=yuv420p,setsar=1")
     cmd = ["ffmpeg", "-y", "-v", "error", "-ss", f"{s['in']:.3f}", "-i", src, "-frames:v", str(n), "-vf", vf,
-           "-an", "-c:v", "libx264", "-preset", "medium", "-crf", str(crf), "-g", "48", o]
+           "-an", "-c:v", "libx264", "-preset", "medium", "-crf", str(crf), "-g", "48", "-bf", "0",
+           "-avoid_negative_ts", "make_zero", "-video_track_timescale", "24000", o]
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0 or not os.path.exists(o):
         # fallback: black frames so timing never drifts
@@ -43,7 +44,8 @@ with open(lst, "w") as f:
     for p in parts:
         f.write(f"file '{p}'\n")
 pic = os.path.join(tmp, "picture.mp4")
-subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", lst, "-c", "copy", pic], check=True)
+subprocess.run(["ffmpeg", "-y", "-v", "error", "-fflags", "+genpts", "-f", "concat", "-safe", "0", "-i", lst, "-c", "copy",
+                "-video_track_timescale", "24000", pic], check=True)
 subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", pic, "-i", song, "-map", "0:v:0", "-map", "1:a:0",
                 "-c:v", "copy", "-c:a", "aac", "-b:a", "256k", "-shortest", "-movflags", "+faststart", out], check=True)
 shutil.rmtree(tmp, ignore_errors=True)
