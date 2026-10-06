@@ -1,0 +1,56 @@
+name: Alizza render versions
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ claude/clever-heisenberg-gubfbm ]
+    paths: [ 'alizza/run_render.txt' ]
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ffmpeg
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+
+      - name: Download referenced sources
+        run: python3 alizza/ensure_media.py alizza/sources.csv media_map.json alizza/edl/*.json
+
+      - name: Song
+        run: |
+          set -e
+          SONG=$(python3 -c "import json,glob; print(json.load(open(sorted(glob.glob('alizza/edl/*.json'))[0]))['song'])")
+          echo "song key: $SONG"
+          python3 - "$SONG" <<'EOF'
+          import csv, subprocess, sys, os
+          key = sys.argv[1]
+          rows = {r["key"]: r for r in csv.DictReader(open("alizza/sources.csv", encoding="utf-8"))}
+          url = rows[key]["url"]; ext = os.path.splitext(url)[1]
+          subprocess.run(["curl", "-fsSL", "--retry", "4", url, "-o", "song" + ext], check=True)
+          os.rename("song" + ext, "song.audio")
+          EOF
+
+      - name: Render all EDLs at 1080p
+        run: |
+          set -e
+          mkdir -p out
+          for e in alizza/edl/*.json; do
+            n=$(basename "$e" .json)
+            python3 alizza/render.py "$e" media_map.json song.audio "out/SE_ACABO_${n}_1080p.mp4" 1920x1080 17
+          done
+          ls -la out
+
+      - name: Publish as GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          TAG="alizza-$(date -u +%Y%m%d-%H%M)"
+          gh release create "$TAG" out/*.mp4 --title "SE ACABÓ · 4 versiones · $TAG" --notes "Montajes al ritmo generados desde alizza/edl (rama ${{ github.ref_name }})." --repo "${{ github.repository }}"
+          echo "release $TAG"

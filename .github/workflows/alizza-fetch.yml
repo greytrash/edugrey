@@ -1,0 +1,42 @@
+name: Alizza fetch proxies
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ claude/clever-heisenberg-gubfbm ]
+    paths: [ 'alizza/run_fetch.txt' ]
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ffmpeg
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+
+      - name: Download sources and build proxies
+        run: python3 alizza/fetch_proxies.py alizza/sources.csv
+
+      - name: Report
+        run: |
+          du -sh media proxies sheets || true
+          python3 - <<'EOF'
+          import json; m=json.load(open("manifest.json"))
+          bad=[k for k,v in m["download_log"].items() if v.startswith("fail")]
+          print("clips:",len(m["clips"]),"failed downloads:",len(bad)); print("\n".join(bad[:40]))
+          EOF
+
+      - name: Publish proxies to branch alizza-proxies
+        run: |
+          set -e
+          mkdir -p /tmp/pub && cp -r proxies sheets manifest.json /tmp/pub/
+          cd /tmp/pub
+          git init -q -b alizza-proxies
+          git config user.email "actions@github.com"; git config user.name "github-actions"
+          git add -A && git commit -q -m "Alizza proxies $(date -u +%Y%m%dT%H%M)"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" alizza-proxies

@@ -1,0 +1,26 @@
+name: Alizza fetch dossier html
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ claude/clever-heisenberg-gubfbm ]
+    paths: [ 'alizza/run_html.txt' ]
+
+permissions:
+  contents: write
+
+jobs:
+  html:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download dossier HTML and publish to branch alizza-html
+        run: |
+          set -e
+          mkdir pub && cd pub
+          curl -fsSL --retry 3 -o DOSSIER_COCHE_Y_GRAFITI_57_CLIPS.html "https://d2ol7oe51mr4n9.cloudfront.net/user_2vZruksM5o1HAI0XURppaTLu2pE/32963865-dec6-4d9b-93fd-ccfee639f757.html"
+          ls -la
+          git init -q -b alizza-html
+          git config user.email "actions@github.com"; git config user.name "github-actions"
+          git add -A && git commit -q -m "Dossier HTML coche y grafiti"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" alizza-html
