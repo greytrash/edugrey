@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-<title>Dalinian Roads · Lithograph Dream — style prototype</title>
+<title>Mundo Gris · Road Lithograph — prototipo interactivo</title>
 <style>
   :root { color-scheme: dark; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -13,48 +13,81 @@
   #ui {
     position: fixed; inset: 0; pointer-events: none;
     font-family: "Courier New", ui-monospace, monospace;
-    color: #efe7d3; text-shadow: 0 1px 2px rgba(0,0,0,.6);
+    color: #efe7d3; text-shadow: 0 1px 2px rgba(0,0,0,.65);
+  }
+  #ui::before {
+    content: ""; position: absolute; inset: 14px; border: 1px solid rgba(239,231,211,.22);
+    box-shadow: inset 0 0 0 1px rgba(34,31,27,.35); opacity: .9;
+  }
+  .panel {
+    background: linear-gradient(135deg, rgba(34,31,27,.72), rgba(20,17,13,.42));
+    border: 1px solid rgba(239,231,211,.28);
+    box-shadow: 0 16px 38px rgba(0,0,0,.25), inset 0 0 30px rgba(198,154,68,.05);
+    backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
   }
   #title {
-    position: absolute; top: 22px; left: 26px;
-    letter-spacing: .04em;
+    position: absolute; top: 22px; left: 26px; max-width: min(560px, calc(100vw - 52px));
+    padding: 16px 18px 15px; letter-spacing: .04em;
   }
-  #title h1 { font-size: 15px; font-weight: 700; text-transform: uppercase; }
-  #title p  { font-size: 11px; opacity: .7; margin-top: 3px; max-width: 42ch; }
+  #title .eyebrow { color: #d9553f; font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; }
+  #title h1 { margin-top: 5px; font-size: clamp(26px, 5vw, 58px); line-height: .88; font-weight: 900; text-transform: uppercase; }
+  #title p  { font-size: 12px; opacity: .82; margin-top: 10px; max-width: 58ch; line-height: 1.5; }
+  #badges { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+  #badges span { border: 1px solid rgba(239,231,211,.28); padding: 5px 8px; font-size: 10px; text-transform: uppercase; background: rgba(181,53,40,.14); }
 
   #hud {
-    position: absolute; right: 26px; bottom: 22px; text-align: right;
+    position: absolute; right: 26px; bottom: 22px; min-width: 172px; padding: 14px 16px; text-align: right;
     font-size: 12px; line-height: 1.5;
   }
-  #hud .spd { font-size: 30px; font-weight: 700; letter-spacing: .05em; }
-  #hud .unit { font-size: 11px; opacity: .6; }
-  #hud .mode { opacity: .75; }
+  #hud .spd { font-size: 42px; line-height: .9; font-weight: 900; letter-spacing: .05em; }
+  #hud .unit { font-size: 11px; opacity: .68; }
+  #hud .mode { opacity: .82; text-transform: uppercase; }
+  #hud .meter { height: 5px; margin-top: 10px; background: rgba(239,231,211,.16); overflow: hidden; }
+  #hud .meter i { display: block; width: 0%; height: 100%; background: linear-gradient(90deg, #c69a44, #d9553f); transition: width .12s linear; }
 
   #help {
-    position: absolute; left: 26px; bottom: 22px;
-    font-size: 11px; line-height: 1.7; opacity: .8;
+    position: absolute; left: 26px; bottom: 22px; max-width: min(520px, calc(100vw - 52px)); padding: 12px 14px;
+    font-size: 11px; line-height: 1.7; opacity: .92;
   }
-  #help b { color: #d9553f; font-weight: 700; }
+  #help b { color: #f06b52; font-weight: 900; }
+  #touchControls { display: none; position: absolute; inset: auto 18px 92px 18px; justify-content: space-between; align-items: end; }
+  .touchGroup { display: grid; grid-template-columns: repeat(2, 56px); gap: 10px; }
+  .touchBtn { pointer-events: auto; width: 56px; height: 56px; border-radius: 50%; border: 1px solid rgba(239,231,211,.35); color: #efe7d3; background: rgba(34,31,27,.56); font: 900 18px/1 "Courier New", monospace; }
 
   #boot {
     position: absolute; inset: 0; display: grid; place-items: center;
-    background: #14110d; transition: opacity .6s ease; z-index: 5;
+    background: radial-gradient(circle at 50% 35%, #2a211a, #14110d 62%); transition: opacity .6s ease; z-index: 5;
   }
-  #boot span { font-size: 12px; letter-spacing: .3em; text-transform: uppercase; opacity: .6; }
+  #boot span { font-size: 12px; letter-spacing: .3em; text-transform: uppercase; opacity: .75; }
+  @media (max-width: 760px) {
+    #title { padding: 13px 14px; }
+    #title p, #badges { display: none; }
+    #help { display: none; }
+    #touchControls { display: flex; }
+    #hud { right: 18px; bottom: 18px; min-width: 136px; }
+    #ui::before { inset: 10px; }
+  }
 </style>
 </head>
 <body>
 <div id="ui">
-  <div id="title">
-    <h1>Dalinian Roads · Lithograph Dream</h1>
-    <p>Fase 0 style prototype — real road, unreal world. Cel + ink outlines + ordered dither + paper grain, over live driving physics.</p>
+  <div id="title" class="panel">
+    <div class="eyebrow">Prototipo interactivo</div>
+    <h1>Mundo Gris</h1>
+    <p>Una carretera real atravesando un sueño litográfico: conducción arcade, lluvia de tinta, ciclo día/noche y paisajes imposibles con contraste editorial.</p>
+    <div id="badges"><span>Cel shading</span><span>Tinta + papel</span><span>Clima dinámico</span></div>
   </div>
-  <div id="help">
-    <b>W</b>/<b>S</b> throttle · brake &nbsp; <b>A</b>/<b>D</b> steer &nbsp; <b>N</b> time of day &nbsp; <b>R</b> rain &nbsp; <b>P</b> pause
+  <div id="help" class="panel">
+    <b>W</b>/<b>S</b> acelerar · frenar &nbsp; <b>A</b>/<b>D</b> girar &nbsp; <b>N</b> hora &nbsp; <b>R</b> lluvia &nbsp; <b>P</b> pausa
   </div>
-  <div id="hud">
+  <div id="touchControls">
+    <div class="touchGroup"><button class="touchBtn" data-key="a">←</button><button class="touchBtn" data-key="d">→</button></div>
+    <div class="touchGroup"><button class="touchBtn" data-key="s">S</button><button class="touchBtn" data-key="w">W</button></div>
+  </div>
+  <div id="hud" class="panel">
     <div><span class="spd">0</span> <span class="unit">km/h</span></div>
-    <div class="mode" id="modeline">day · clear</div>
+    <div class="mode" id="modeline">día · despejado</div>
+    <div class="meter"><i></i></div>
   </div>
 </div>
 <div id="boot"><span>loading press…</span></div>
@@ -539,9 +572,9 @@ postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), postMat));
    central risk: remap what the style shaders receive instead of fighting it.
    ========================================================================== */
 const TOD = [
-  { name:'day',  light:0xfff4e0, li:2.1, amb:0.28, grade:[1.00,0.99,0.95], exp:1.00, sun:[-6,10,-8] },
-  { name:'dusk', light:0xff9d5c, li:1.7, amb:0.22, grade:[1.02,0.90,0.82], exp:0.92, sun:[-9, 4,-6] },
-  { name:'night',light:0x8aa0d6, li:0.8, amb:0.16, grade:[0.72,0.78,0.98], exp:0.80, sun:[ 4, 7,-9] },
+  { name:'día',  light:0xfff4e0, li:2.1, amb:0.28, grade:[1.00,0.99,0.95], exp:1.00, sun:[-6,10,-8] },
+  { name:'atardecer', light:0xff9d5c, li:1.7, amb:0.22, grade:[1.02,0.90,0.82], exp:0.92, sun:[-9, 4,-6] },
+  { name:'noche',light:0x8aa0d6, li:0.8, amb:0.16, grade:[0.72,0.78,0.98], exp:0.80, sun:[ 4, 7,-9] },
 ];
 let todIndex = 0, rainOn = false, paused = false;
 function applyTOD() {
@@ -550,7 +583,7 @@ function applyTOD() {
   sun.position.set(...t.sun); amb.intensity = t.amb;
   postUniforms.grade.value.setRGB(...t.grade);
   postUniforms.exposure.value = t.exp;
-  document.getElementById('modeline').textContent = `${t.name} · ${rainOn ? 'rain' : 'clear'}`;
+  document.getElementById('modeline').textContent = `${t.name} · ${rainOn ? 'lluvia' : 'despejado'}`;
 }
 applyTOD();
 
@@ -565,6 +598,14 @@ addEventListener('keydown', e => {
   if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+for (const btn of document.querySelectorAll('.touchBtn')) {
+  const key = btn.dataset.key;
+  const set = value => { keys[key] = value; };
+  btn.addEventListener('pointerdown', e => { e.preventDefault(); btn.setPointerCapture(e.pointerId); set(true); });
+  btn.addEventListener('pointerup', () => set(false));
+  btn.addEventListener('pointercancel', () => set(false));
+  btn.addEventListener('lostpointercapture', () => set(false));
+}
 
 /* ---------- car state ------------------------------------------------------ */
 let speed = 0;          // m/s along the road
@@ -632,6 +673,7 @@ function frame() {
 
   /* HUD */
   document.querySelector('#hud .spd').textContent = Math.round(speed * 3.6);
+  document.querySelector('#hud .meter i').style.width = `${Math.round((speed / MAX_SPEED) * 100)}%`;
 
   /* --- render sim to target, then the print pass to screen --- */
   renderer.setRenderTarget(sceneRT);
